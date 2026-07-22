@@ -152,21 +152,28 @@ A kijelölés/kiemelés (mely mező van kiválasztva, mely mezőkre lehet lépni
 ```typescript
 function getValidMoves(state: DamaState, from: Position): Position[];
 function getWinner(state: DamaState): Player | null;
+function getMovablePositions(state: DamaState): Position[]; // hozzáadva 2026-07-22: a 3.5/0. lépéshez (kör eleji kiemelés)
 ```
+
+`getMovablePositions` a soron lévő játékos ténylegesen léphető bábuinak mezőit adja vissza (a kötelező ütés szabályát is figyelembe véve, mert `getValidMoves`-ra épül) — ez szolgálja ki a 3.5 szakasz 0. lépését.
 
 ### 3.4 Reducer — fő szabályok
 
+> **Státusz: implementálva és Vitest-tel lefedve (2026-07-22)** — `src/games/dama/engine/{rules,reducer,selectors,initialState}.ts`, tesztek: `rules.test.ts`, `reducer.test.ts` (19 teszt). Az alábbi lista az implementáció közben pontosított/eldöntött végleges szabályokat írja le; ahol eltér a korábbi tervezetitől, azt jelezve.
+
 1. Ha `chainCaptureFrom` be van állítva, csak onnan induló ütés fogadható el.
-2. Ha van kötelező ütési lehetőség a soron lévő játékosnak bárhol a táblán, nem-ütő lépés érvénytelen (kötelező ütés szabálya).
-3. Sima bábu: 1 mezőt léphet átlósan előre (üres célmezőre), vagy 1 ellenfél-bábu fölött ugorhat előre (üres mezőre mögötte).
-4. Király: tetszőleges számú üres mezőt léphet/üthet az átlón (repülő király).
+2. Ha van kötelező ütési lehetőség a soron lévő játékosnak bárhol a táblán, nem-ütő lépés érvénytelen (kötelező ütés szabálya). **Nincs "maximum ütés" kényszer** — ha több ütési lehetőség közül lehet választani, bármelyik legális, nem kell a leghosszabbat/legtöbbet ütőt választani.
+3. Sima bábu: **sima (nem ütő) lépésben** csak átlósan előre léphet 1 mezőt üres célmezőre. **Ütésben viszont mind a 4 átlós irányban üthet** (előre és hátra is), ha a szomszédos mezőn ellenfél-bábu áll és a mögötte lévő mező üres — ez a nemzetközi/klasszikus dáma szabálya, pontosítás a korábbi tervezethez képest (ami tévesen csak előre-ütést írt).
+4. Király: tetszőleges számú üres mezőt léphet/üthet az átlón (repülő király); ütésnél 0 vagy több üres mező, pontosan 1 ellenfél-bábu, majd tetszőleges üres mező a mögötte lévő szabad szakaszon — nem ugorhat át két bábun ugyanabban az irányban.
 5. Ütés után, ha a mozgatott bábuval további ütés lehetséges ugyanabból a pozícióból, a kör nem vált — `chainCaptureFrom` beállítódik, és a soron lévő játszik tovább.
-6. Bábu, ami eléri az ellenfél alapsorát, dámává (`KING`) alakul.
-7. Győzelem: ha a soron lévő játékosnak nincs egyetlen léphető bábuja sem (se lépés, se ütés) → a másik játékos nyer.
+6. Bábu, ami eléri az ellenfél alapsorát, dámává (`KING`) alakul. **Döntés (implementáció közben, mert a szabály nem volt egyértelműen rögzítve):** ha ez láncütés közben történik, a lépés ott véget ér — a frissen dámává vált bábu **nem** folytatja ugyanabban a körben az ütést, még akkor sem, ha királyként tudna tovább ütni. Más dáma-variánsok ezt másképp kezelik (pl. FMJD nemzetközi szabály szerint bizonyos esetekben kötelező a folytatás) — ha ez fontos, jelezd, és módosítjuk.
+7. Győzelem: ha a soron lévő játékosnak nincs egyetlen léphető bábuja sem (se lépés, se ütés) → a másik játékos nyer. Ha egy oldalnak elfogy az összes bábuja, ez automatikusan ide tartozik (nincs bábu → nincs lépés).
 
-Ez a logika teljes egészében a `reducer.ts`-ben és a hozzá tartozó `rules.ts` segédfüggvényekben valósul meg (pl. `findCaptureSequences`, `hasAnyCapture`, `isPromotionRow`).
+**Implementációs eltérés a korábbi tervezethez képest:** a `rules.ts` nem `findCaptureSequences(state, from): Position[][]` (teljes, előre kiszámolt több-ugrásos szekvenciák) formában készült el, hanem **`findCaptureMoves(state, from): CaptureMove[]`** — egy-ugrásos ütési lehetőségeket ad vissza (`{ to, captured }` alakban). A láncütést a reducer valósítja meg úgy, hogy minden egyes `MOVE` action egyetlen ugrást hajt végre, és utána újra lekérdezi, van-e folytatás a landolási mezőről (lásd 3.5 szakasz) — ez egyszerűbb, mint egy teljes rekurzív szekvencia-generátor, és pontosan illeszkedik az action-modellhez.
 
-Lásd: [`docs/diagrams/dama-class-diagram.puml`](./diagrams/dama-class-diagram.puml) és [`docs/diagrams/dama-state-diagram.puml`](./diagrams/dama-state-diagram.puml)
+Ez a logika teljes egészében a `reducer.ts`-ben és a hozzá tartozó `rules.ts` segédfüggvényekben valósul meg (`findSimpleMoves`, `findCaptureMoves`, `hasAnyCapture`, `hasAnyLegalMove`, `isPromotionRow`, `opponentOf`).
+
+Lásd: [`docs/diagrams/dama-class-diagram.puml`](./diagrams/dama-class-diagram.puml) és [`docs/diagrams/dama-state-diagram.puml`](./diagrams/dama-state-diagram.puml) — ezek a diagramok a `findCaptureSequences` nevet használják a `findCaptureMoves` helyett; a nevet a diagramban is érdemes lesz egy következő review körben frissíteni, tartalmilag a leírt állapotgép/folyamat helytálló marad.
 
 ### 3.5 Egy lépés folyamata (UI → state)
 
@@ -205,10 +212,13 @@ src/
       engine/
         state.ts
         actions.ts
+        initialState.ts          # createInitialState() — a tervezetben eredetileg state.ts-be volt sorolva, SRP miatt külön fájl lett
         reducer.ts
         rules.ts
         selectors.ts
-        engine.test.ts
+        testHelpers.ts           # teszt-fixture segédfüggvények (emptyBoard, withPieces, man/king/pos) — nem production kód
+        rules.test.ts            # a tervezett egyetlen engine.test.ts helyett rules.test.ts + reducer.test.ts, jobb SRP a tesztekben is
+        reducer.test.ts
       ui/
         DamaGamePage.tsx
         DamaGamePage.module.css
@@ -284,6 +294,15 @@ export class DamaAIController implements PlayerController<DamaState, DamaAction,
 
 A `DamaGamePage` (vagy egy generikus `GameSessionRunner`) minden playerhez egy `PlayerController`-t rendel a munkamenet indításakor (`HumanController` mindkettőhöz Fázis 1-ben), és minden `subscribe` callback-nél végigfuttatja a controllereken az `onStateChange`-et. Ez a réteg a Transport és a UI között helyezkedik el, és — akárcsak a Transport — nem befolyásolja a core reducer-t.
 
-## 7. Nyitott kérdések (ehhez a specifikációhoz)
+> **Implementációs eltérés (2026-07-22):** a ténylegesen elkészült `DamaGamePage` **nem** példányosít `HumanController`-t — hot-seat módban a UI kattintás közvetlenül dispatch-el a transporton, a `HumanController` egy no-op réteg beiktatása csak felesleges indirekciót adott volna hozzá (YAGNI). A `PlayerController`/`HumanController` a `core/`-ban készen áll, és a bekötés pontosan akkor válik szükségessé, amikor egy `AIController` is megjelenik ugyanabban a munkamenetben — addig nincs éles felhasználója, csak illesztési pont.
 
-Nincs nyitott kérdés — a szabályváltozat, a build tool és az AI/hot-seat kérdés is megerősítésre került 2026-07-22-én.
+## 7. Fázis 1 státusz és nyitott pontok
+
+**Implementálva és tesztelve (2026-07-22):** a teljes Dáma engine (`rules.ts`, `reducer.ts`, `selectors.ts`, `initialState.ts`) és a hot-seat `DamaGamePage` UI. 19 Vitest teszt zöld, `tsc --noEmit`, `eslint .` és `vite build` is hibamentes. Élő böngészős kattintgatásos tesztelés **nem történt** ebben a körben — ha ezt szeretnéd, jelezd, és végigmegyünk rajta a dev szerverrel.
+
+A review során a kód gyakorlatilag felülírta/pontosította a spec néhány részletét (lásd a 3.4 és a fenti implementációs eltérés jegyzet) — ezek nem blokkoló nyitott kérdések, hanem tudatosan dokumentált döntések, de érdemes átnézni és jelezni, ha valamelyik nem a szándékod szerint való:
+
+- [ ] A MAN mind a 4 irányban üthet (nem csak előre) — nemzetközi dáma szabály, eltér az eredeti tervezet szövegétől (3.4/3. pont).
+- [ ] Promóció megszakítja a láncütést, még akkor is, ha a frissen dámává vált bábu tudna tovább ütni (3.4/6. pont) — más variánsok másképp kezelik.
+- [ ] LIGHT kezd (konvenció, `initialState.ts`) — tetszőleges választás volt, ha DARK-ot preferálod, egysoros csere.
+- [ ] Nincs "maximum ütés" kényszer — bármelyik legális ütés választható, nem kell a leghosszabb szekvenciát végigjátszani.

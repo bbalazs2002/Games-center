@@ -10,3 +10,25 @@
   color: #4a5568;
   font-style: italic;
 }
+
+.piece {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  box-sizing: border-box;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+}
+
+.lightPiece {
+  background: #f0e6d2;
+  color: #7a6a4f;
+}
+
+.darkPiece {
+  background: #4a3f35;
+  color: #d9cdb8;
+}

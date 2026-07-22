@@ -1,24 +1,64 @@
-import { GridBoard2D } from '../../../renderers/grid-2d/GridBoard2D';
-import type { Piece } from '../engine/state';
+import { useMemo, useState } from 'react';
+import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
+import { useGameTransport } from '../../../core/transport/useGameTransport';
+import { GridBoard2D, type GridPosition } from '../../../renderers/grid-2d/GridBoard2D';
+import type { DamaAction } from '../engine/actions';
+import { createInitialState } from '../engine/initialState';
+import { reducer } from '../engine/reducer';
+import { getMovablePositions, getValidMoves, getWinner } from '../engine/selectors';
+import type { DamaState, Piece, Player } from '../engine/state';
 import styles from './DamaGamePage.module.css';
 
-const EMPTY_BOARD_SIZE = 8;
+// Fázis 1: hot-seat only — mindkét oldal ember, közvetlen UI-kattintásból dispatch-elve.
+// A core/controller/HumanController ide kötése (docs/fazis-0a-dama-specifikacio.md §6) csak
+// akkor válik szükségessé, ha egy AIController is megjelenik ugyanabban a munkamenetben.
+const PLAYER_LABEL: Record<Player, string> = { LIGHT: 'Világos', DARK: 'Sötét' };
 
-/**
- * Fázis 0a placeholder: demonstrates that the shared GridBoard2D renderer and the
- * shell/routing wiring work end to end. The Dáma engine (reducer/rules/selectors)
- * is not implemented yet — see docs/fazis-0a-dama-specifikacio.md.
- */
+function renderPiece(piece: Piece) {
+  const pieceClass = piece.player === 'LIGHT' ? styles.lightPiece : styles.darkPiece;
+  return <div className={[styles.piece, pieceClass].join(' ')}>{piece.type === 'KING' ? '♛' : '●'}</div>;
+}
+
 export function DamaGamePage() {
+  const transport = useMemo(() => new LocalGameTransport<DamaState, DamaAction>(reducer, createInitialState()), []);
+  const [state, dispatch] = useGameTransport(transport);
+  const [selected, setSelected] = useState<GridPosition | null>(null);
+
+  const winner = getWinner(state);
+  const effectiveSelected = state.chainCaptureFrom ?? selected;
+  const validMoves = effectiveSelected ? getValidMoves(state, effectiveSelected) : [];
+  // Amíg nincs kiválasztott bábu, a kör elején a léphető bábuk mezőit emeljük ki;
+  // kiválasztás után ugyanez a highlight a célmezőkre vált. Játék végén nincs highlight.
+  const highlightedSquares = winner ? [] : effectiveSelected ? validMoves : getMovablePositions(state);
+
+  function handleSquareClick(position: GridPosition) {
+    if (winner) return;
+
+    const isValidTarget = validMoves.some((move) => move.row === position.row && move.col === position.col);
+    if (effectiveSelected && isValidTarget) {
+      dispatch({ type: 'MOVE', from: effectiveSelected, to: position });
+      setSelected(null);
+      return;
+    }
+
+    const piece = state.board[position.row][position.col];
+    const canSelect = piece && piece.player === state.currentPlayer && !state.chainCaptureFrom;
+    setSelected(canSelect ? position : null);
+  }
+
   return (
     <div className={styles.page}>
       <h1>Dáma</h1>
-      <p className={styles.notice}>Játéklogika hamarosan (Fázis 1) — ez egy üres tábla-előnézet.</p>
+      <p className={styles.notice}>
+        {winner ? `Győztes: ${PLAYER_LABEL[winner]}` : `Soron van: ${PLAYER_LABEL[state.currentPlayer]}`}
+      </p>
       <GridBoard2D<Piece>
-        rows={EMPTY_BOARD_SIZE}
-        cols={EMPTY_BOARD_SIZE}
-        getPieceAt={() => null}
-        renderPiece={() => null}
+        rows={8}
+        cols={8}
+        getPieceAt={(position) => state.board[position.row][position.col]}
+        renderPiece={renderPiece}
+        highlightedSquares={highlightedSquares}
+        onSquareClick={handleSquareClick}
       />
     </div>
   );
