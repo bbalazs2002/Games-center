@@ -1,0 +1,54 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model InviteCode {
+  code      String    @id
+  label     String
+  maxUses   Int?
+  usesCount Int       @default(0)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  users     User[]
+
+  @@map("invite_codes")
+}
+
+model User {
+  id          String              @id @default(uuid())
+  displayName String
+  inviteCode  String
+  invite      InviteCode          @relation(fields: [inviteCode], references: [code])
+  createdAt   DateTime            @default(now())
+  sessions    GameSessionPlayer[]
+
+  @@map("users")
+}
+
+model GameSession {
+  id        String              @id @default(uuid())
+  gameType  String
+  status    String              @default("WAITING")
+  stateJson Json?
+  createdAt DateTime            @default(now())
+  endedAt   DateTime?
+  players   GameSessionPlayer[]
+
+  @@map("game_sessions")
+}
+
+model GameSessionPlayer {
+  gameSessionId String
+  userId        String
+  playerSlot    String
+  gameSession   GameSession @relation(fields: [gameSessionId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+
+  @@id([gameSessionId, userId])
+  @@map("game_session_players")
+}

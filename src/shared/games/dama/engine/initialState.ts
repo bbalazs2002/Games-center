@@ -22,7 +22,7 @@ function createInitialBoard(): Board {
   );
 }
 
-/** Konvenció: LIGHT kezd, mint a sakkban a világos — lásd docs/fazis-0a-dama-specifikacio.md. */
+/** Convention: LIGHT goes first, like White in chess — see docs/fazis-0a-dama-specifikacio.md. */
 export function createInitialState(): DamaState {
   return {
     board: createInitialBoard(),

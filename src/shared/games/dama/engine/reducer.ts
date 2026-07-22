@@ -39,10 +39,11 @@ function applySimpleMove(state: DamaState, from: Position, to: Position): DamaSt
 }
 
 /**
- * Egyszerűsítés (2026-07-22, a spec §3.4-ben nem volt egyértelműen rögzítve):
- * ha egy bábu láncütés közben éri el a promóciós sort, a lépés ott véget ér —
- * a frissen dámává vált bábu NEM folytatja ugyanabban a körben az ütést, a kör átadódik.
- * Ez egy tudatosan dokumentált szabályválasztás, más dáma-variánsok másképp kezelik.
+ * Simplification (2026-07-22, not unambiguously specified in spec §3.4): if a
+ * piece reaches the promotion row mid-chain-capture, the move ends there —
+ * the freshly-crowned king does NOT continue capturing in the same turn, the
+ * turn passes. A deliberately documented rule choice; other Dáma variants
+ * handle this differently.
  */
 function applyCapture(state: DamaState, from: Position, move: CaptureMove): DamaState {
   const board = cloneBoard(state.board);

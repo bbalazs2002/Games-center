@@ -3,13 +3,13 @@ import { findCaptureMoves, findSimpleMoves, hasAnyCapture, hasAnyLegalMove } fro
 import { king, man, pos, stateWith, withPieces } from './testHelpers';
 
 describe('findSimpleMoves', () => {
-  it('a MAN csak átlósan előre léphet üres mezőre', () => {
+  it('a MAN can only move diagonally forward onto an empty square', () => {
     const state = stateWith({ board: withPieces([[pos(5, 0), man('LIGHT')]]) });
     const moves = findSimpleMoves(state, pos(5, 0));
-    expect(moves).toEqual([{ row: 4, col: 1 }]); // (4,-1) tábla szélén kívül esik
+    expect(moves).toEqual([{ row: 4, col: 1 }]); // (4,-1) falls off the board
   });
 
-  it('a MAN-t blokkolja egy másik bábu (sajátja is)', () => {
+  it('a MAN is blocked by another piece (even its own)', () => {
     const state = stateWith({
       board: withPieces([
         [pos(5, 0), man('LIGHT')],
@@ -19,14 +19,14 @@ describe('findSimpleMoves', () => {
     expect(findSimpleMoves(state, pos(5, 0))).toEqual([]);
   });
 
-  it('a KING repülve mozog, amíg üres a mező', () => {
+  it('a KING flies as long as the squares are empty', () => {
     const state = stateWith({ board: withPieces([[pos(4, 4), king('LIGHT')]]) });
     const moves = findSimpleMoves(state, pos(4, 4));
     expect(moves).toContainEqual({ row: 0, col: 0 });
     expect(moves).toContainEqual({ row: 7, col: 7 });
   });
 
-  it('a KING mozgását blokkolja egy útban álló bábu', () => {
+  it("a KING's movement is blocked by a piece in its path", () => {
     const state = stateWith({
       board: withPieces([
         [pos(4, 4), king('LIGHT')],
@@ -40,7 +40,7 @@ describe('findSimpleMoves', () => {
 });
 
 describe('findCaptureMoves', () => {
-  it('a MAN bármely 4 átlós irányban üthet', () => {
+  it('a MAN can capture in any of the 4 diagonal directions', () => {
     const state = stateWith({
       board: withPieces([
         [pos(4, 4), man('LIGHT')],
@@ -50,7 +50,7 @@ describe('findCaptureMoves', () => {
     expect(findCaptureMoves(state, pos(4, 4))).toEqual([{ to: pos(2, 2), captured: pos(3, 3) }]);
   });
 
-  it('nincs ütés, ha a célmező foglalt', () => {
+  it('no capture if the target square is occupied', () => {
     const state = stateWith({
       board: withPieces([
         [pos(4, 4), man('LIGHT')],
@@ -61,7 +61,7 @@ describe('findCaptureMoves', () => {
     expect(findCaptureMoves(state, pos(4, 4))).toEqual([]);
   });
 
-  it('a KING repülő ütéssel több lehetséges landolási mezőt is felkínál', () => {
+  it('a flying KING capture offers multiple possible landing squares', () => {
     const state = stateWith({
       board: withPieces([
         [pos(7, 0), king('LIGHT')],
@@ -73,7 +73,7 @@ describe('findCaptureMoves', () => {
     expect(moves).toContainEqual({ to: pos(2, 5), captured: pos(4, 3) });
   });
 
-  it('a KING nem ugorhat át két bábun egy irányban', () => {
+  it('a KING cannot jump over two pieces in the same direction', () => {
     const state = stateWith({
       board: withPieces([
         [pos(7, 0), king('LIGHT')],
@@ -86,7 +86,7 @@ describe('findCaptureMoves', () => {
 });
 
 describe('hasAnyCapture / hasAnyLegalMove', () => {
-  it('igaz, ha a játékos bármely bábuja üthet', () => {
+  it('true if any of the player pieces can capture', () => {
     const state = stateWith({
       board: withPieces([
         [pos(5, 0), man('LIGHT')],
@@ -97,7 +97,7 @@ describe('hasAnyCapture / hasAnyLegalMove', () => {
     expect(hasAnyCapture(state, 'DARK')).toBe(false);
   });
 
-  it('hasAnyLegalMove hamis, ha a játékosnak nincs bábuja', () => {
+  it('hasAnyLegalMove is false if the player has no pieces', () => {
     const state = stateWith({ board: withPieces([[pos(5, 0), man('LIGHT')]]) });
     expect(hasAnyLegalMove(state, 'DARK')).toBe(false);
   });

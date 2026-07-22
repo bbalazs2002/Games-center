@@ -1,0 +1,61 @@
+@startuml dama-room-class-diagram
+title Szerver-oldali Colyseus réteg — GameRoom absztrakció
+
+class OpaqueGameState <<@colyseus/schema>> {
+  +stateJson: string
+}
+
+abstract class GameRoom<TState, TAction> <<src/server/core, game-agnosztikus>> {
+  #{abstract} reducer: Reducer<TState, TAction>
+  #{abstract} createInitialState: () => TState
+  -gameState: TState
+  +onCreate(): void
+  -syncState(): void
+}
+
+class DamaRoom <<src/server/games/dama, Dáma-specifikus>> {
+  +maxClients = 2
+  #reducer = reducer
+  #createInitialState = createInitialState
+}
+
+class "shared/games/dama/engine" as DamaEngine <<pure TS, kliens ÉS szerver>> {
+  +reducer(state, action): DamaState
+  +createInitialState(): DamaState
+}
+
+interface "GameTransport<TState, TAction>" as GameTransport <<src/client/core, Fázis 0a>>
+
+class ColyseusGameTransport<TState, TAction> <<src/client/core, ÚJ>> {
+  -state: TState
+  -room: Room<OpaqueGameState>
+  +getState(): TState
+  +dispatch(action): void
+  +subscribe(listener): unsubscribe
+}
+
+class LocalGameTransport<TState, TAction> <<src/client/core, Fázis 0a>>
+
+GameRoom o-- OpaqueGameState : this.state
+GameRoom --> "Reducer<TState,TAction>" : reducer(state, action)
+DamaRoom --|> GameRoom
+DamaRoom --> DamaEngine : reducer, createInitialState
+
+ColyseusGameTransport ..|> GameTransport
+LocalGameTransport ..|> GameTransport
+ColyseusGameTransport ..> OpaqueGameState : room.onStateChange\n(stateJson parse)
+
+note bottom of GameRoom
+  Ugyanaz a "működne-e Hotel-lel is,
+  ha csak a típusparaméterek cserélődnek?"
+  teszt, mint a kliens core/-nál
+  (lásd fazis-0a-dama-specifikacio.md §2.5).
+end note
+
+note right of ColyseusGameTransport
+  Drop-in csere a LocalGameTransport-tal
+  szemben — a DamaGamePage komponens
+  nem tud a különbségről.
+end note
+
+@enduml

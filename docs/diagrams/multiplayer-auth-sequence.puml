@@ -1,0 +1,27 @@
+@startuml multiplayer-auth-sequence
+title Meghívó-kód beváltás és bejelentkezés
+
+actor Játékos
+participant "LoginPage" as UI
+participant "AuthContext\n(localStorage)" as Auth
+participant "Express\nPOST /api/auth/redeem-invite" as API
+database "PostgreSQL" as DB
+
+Játékos -> UI : meghívó-kód + megjelenítendő név
+UI -> API : POST { code, displayName }
+API -> DB : SELECT invite_codes WHERE code=...
+DB --> API : kód sora (vagy nincs találat)
+
+alt érvénytelen / lejárt / elfogyott kód
+  API --> UI : 400 Bad Request
+  UI --> Játékos : hibaüzenet
+else érvényes kód
+  API -> DB : INSERT INTO users (display_name, invite_code)
+  API -> DB : UPDATE invite_codes SET uses_count = uses_count + 1
+  API -> API : JWT aláírása { userId, displayName }
+  API --> UI : 200 { token, user }
+  UI -> Auth : token mentése localStorage-ba
+  UI --> Játékos : átirányítás a Lobby-ra
+end
+
+@enduml

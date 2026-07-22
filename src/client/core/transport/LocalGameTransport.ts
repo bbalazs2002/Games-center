@@ -1,4 +1,4 @@
-import type { Reducer } from '../types';
+import type { Reducer } from '../../../shared/core/types';
 import type { GameTransport } from './GameTransport';
 
 export class LocalGameTransport<TState, TAction> implements GameTransport<TState, TAction> {

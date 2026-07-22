@@ -3,8 +3,8 @@ import { createInitialState } from './initialState';
 import { reducer } from './reducer';
 import { king, man, pos, stateWith, withPieces } from './testHelpers';
 
-describe('reducer — kezdőállapot', () => {
-  it('LIGHT kezd, 12-12 bábu a táblán', () => {
+describe('reducer — initial state', () => {
+  it('LIGHT starts, 12-12 pieces on the board', () => {
     const state = createInitialState();
     expect(state.currentPlayer).toBe('LIGHT');
     const pieces = state.board.flat().filter(Boolean);
@@ -14,10 +14,10 @@ describe('reducer — kezdőállapot', () => {
   });
 });
 
-describe('reducer — sima lépés', () => {
-  it('érvényes lépés után a bábu mozog és a kör átadódik', () => {
-    // A távoli DARK bábu csak azért kell, hogy a DARK-nak legyen lépése —
-    // enélkül a teszt véletlenül a győzelem-detektálást is triggerelné.
+describe('reducer — simple move', () => {
+  it('after a valid move the piece moves and the turn passes', () => {
+    // The distant DARK piece only exists so DARK has a move —
+    // without it the test would accidentally trigger win detection too.
     const state = stateWith({
       board: withPieces([
         [pos(5, 0), man('LIGHT')],
@@ -33,18 +33,18 @@ describe('reducer — sima lépés', () => {
     expect(next.status).toBe('IN_PROGRESS');
   });
 
-  it('érvénytelen célmezőre lépés no-op (ugyanaz a state-referencia)', () => {
+  it('moving to an invalid target square is a no-op (same state reference)', () => {
     const state = stateWith({ board: withPieces([[pos(5, 0), man('LIGHT')]]) });
     const next = reducer(state, { type: 'MOVE', from: pos(5, 0), to: pos(3, 0) });
     expect(next).toBe(state);
   });
 
-  it('kötelező ütés szabálya: nem-ütő lépés érvénytelen, ha máshol ütés lehetséges', () => {
+  it('mandatory-capture rule: a non-capturing move is invalid if a capture is available elsewhere', () => {
     const state = stateWith({
       board: withPieces([
         [pos(5, 0), man('LIGHT')],
-        [pos(4, 1), man('DARK')], // (5,0)-nak van ütése
-        [pos(5, 4), man('LIGHT')], // ennek csak sima lépése volna
+        [pos(4, 1), man('DARK')], // (5,0) has a capture available
+        [pos(5, 4), man('LIGHT')], // this one would only have a simple move
       ]),
     });
     const next = reducer(state, { type: 'MOVE', from: pos(5, 4), to: pos(4, 3) });
@@ -52,8 +52,8 @@ describe('reducer — sima lépés', () => {
   });
 });
 
-describe('reducer — ütés', () => {
-  it('ütés eltávolítja a bábut, és kör vált, ha nincs további ütés', () => {
+describe('reducer — capture', () => {
+  it('capturing removes the piece, and the turn passes if no further capture is available', () => {
     const state = stateWith({
       board: withPieces([
         [pos(5, 0), man('LIGHT')],
@@ -68,14 +68,14 @@ describe('reducer — ütés', () => {
     expect(next.chainCaptureFrom).toBeNull();
   });
 
-  it('láncütés: a kör nem vált, amíg ugyanaz a bábu tovább üthet', () => {
+  it('chain capture: the turn does not pass while the same piece can keep capturing', () => {
     const state = stateWith({
       board: withPieces([
         [pos(5, 0), man('LIGHT')],
         [pos(4, 1), man('DARK')],
         [pos(2, 3), man('DARK')],
-        [pos(5, 4), man('LIGHT')], // ne legyen egyedüli LIGHT bábu — mellékszereplő a láncütés-kényszer teszteléséhez
-        [pos(0, 7), man('DARK')], // ne fogyjon el az összes DARK bábu — ez a teszt a láncütésről szól, nem a győzelemről
+        [pos(5, 4), man('LIGHT')], // must not be the only LIGHT piece — a bystander for testing the chain-capture constraint
+        [pos(0, 7), man('DARK')], // DARK must not run out of pieces — this test is about chain capture, not about winning
       ]),
     });
 
@@ -84,7 +84,7 @@ describe('reducer — ütés', () => {
     expect(afterFirstHop.chainCaptureFrom).toEqual(pos(3, 2));
     expect(afterFirstHop.board[4][1]).toBeNull();
 
-    // Lánc közben más bábuval lépni tilos.
+    // Moving a different piece mid-chain is illegal.
     const illegalOtherPiece = reducer(afterFirstHop, { type: 'MOVE', from: pos(5, 4), to: pos(4, 3) });
     expect(illegalOtherPiece).toBe(afterFirstHop);
 
@@ -97,19 +97,19 @@ describe('reducer — ütés', () => {
   });
 });
 
-describe('reducer — promóció', () => {
-  it('sima lépéssel az utolsó sorra érve a bábu dámává válik', () => {
+describe('reducer — promotion', () => {
+  it('reaching the last row with a simple move turns the piece into a king', () => {
     const state = stateWith({ board: withPieces([[pos(1, 0), man('LIGHT')]]) });
     const next = reducer(state, { type: 'MOVE', from: pos(1, 0), to: pos(0, 1) });
     expect(next.board[0][1]).toEqual(king('LIGHT'));
   });
 
-  it('döntés: promóció megszakítja a láncütést, akkor is, ha lenne további ütés', () => {
+  it('rule choice: promotion ends the chain capture even if a further capture would be available', () => {
     const state = stateWith({
       board: withPieces([
         [pos(2, 1), man('LIGHT')],
         [pos(1, 2), man('DARK')],
-        [pos(1, 4), man('DARK')], // (0,3)-ból mint király tudna ütni, de a promóció után nem folytatódik
+        [pos(1, 4), man('DARK')], // a king at (0,3) could capture this, but it doesn't continue after promotion
       ]),
     });
     const next = reducer(state, { type: 'MOVE', from: pos(2, 1), to: pos(0, 3) });
@@ -120,12 +120,12 @@ describe('reducer — promóció', () => {
   });
 });
 
-describe('reducer — győzelem-detektálás', () => {
-  it('ha az ellenfél utolsó bábuját is leütik, a lépő fél nyer', () => {
+describe('reducer — win detection', () => {
+  it('capturing the opponent’s last piece wins the game for the moving side', () => {
     const state = stateWith({
       board: withPieces([
         [pos(5, 0), man('LIGHT')],
-        [pos(4, 1), man('DARK')], // DARK egyetlen bábuja
+        [pos(4, 1), man('DARK')], // DARK's only piece
       ]),
     });
     const next = reducer(state, { type: 'MOVE', from: pos(5, 0), to: pos(3, 2) });

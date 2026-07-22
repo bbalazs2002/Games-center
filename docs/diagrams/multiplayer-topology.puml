@@ -1,0 +1,41 @@
+@startuml multiplayer-topology
+title Fázis 0b — magas szintű topológia
+
+actor Játékos
+
+node "Böngésző" {
+  [React kliens\n(src/client)]
+}
+
+node "Node.js szerver" {
+  [Express REST API\n(auth)]
+  [Colyseus\n(WebSocket real-time)]
+  [Express + Colyseus\nugyanazon http.Server-en]
+}
+
+database "PostgreSQL\n(Prisma)" {
+  [users]
+  [invite_codes]
+  [game_sessions]
+  [game_session_players]
+}
+
+Játékos --> [React kliens\n(src/client)]
+
+[React kliens\n(src/client)] --> [Express REST API\n(auth)] : HTTPS\nPOST /api/auth/redeem-invite
+[React kliens\n(src/client)] --> [Colyseus\n(WebSocket real-time)] : WSS\njoinOrCreate('dama', {token})
+
+[Express REST API\n(auth)] --> [users]
+[Express REST API\n(auth)] --> [invite_codes]
+[Colyseus\n(WebSocket real-time)] --> [game_sessions] : időzített flush a\nRoom memóriájából (Prisma)
+[Colyseus\n(WebSocket real-time)] --> [game_session_players]
+
+note bottom of "Node.js szerver"
+  Egyetlen instance (Fázis 0b),
+  nincs horizontális skálázás/Redis.
+  A GameRoom memóriában tartott
+  állapota a "forró út" — nincs
+  külön cache-szolgáltatás.
+end note
+
+@enduml

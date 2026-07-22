@@ -1,7 +1,7 @@
 import type { DamaState, Player, Position } from './state';
 import { findCaptureMoves, findSimpleMoves, getPieceAt, hasAnyCapture, isSamePosition } from './rules';
 
-/** A soron lévő játékos adott bábujának elérhető célmezői, kötelező ütés szabályát figyelembe véve. */
+/** Reachable target squares for the given piece of the current player, honoring the mandatory-capture rule. */
 export function getValidMoves(state: DamaState, from: Position): Position[] {
   const piece = getPieceAt(state.board, from);
   if (!piece || piece.player !== state.currentPlayer) return [];
@@ -20,7 +20,7 @@ export function getWinner(state: DamaState): Player | null {
   return null;
 }
 
-/** A soron lévő játékos ténylegesen léphető bábuinak mezői — kör elején ezt érdemes kiemelni a UI-n. */
+/** Squares of the current player's actually-movable pieces — worth highlighting in the UI at the start of a turn. */
 export function getMovablePositions(state: DamaState): Position[] {
   const positions: Position[] = [];
   state.board.forEach((row, rowIndex) => {

@@ -1,0 +1,43 @@
+@startuml multiplayer-er-diagram
+title Fázis 0b — PostgreSQL adatmodell
+
+entity invite_codes {
+  * code : text <<PK>>
+  --
+  label : text
+  max_uses : integer
+  uses_count : integer
+  expires_at : timestamptz
+  created_at : timestamptz
+}
+
+entity users {
+  * id : uuid <<PK>>
+  --
+  display_name : text
+  invite_code : text <<FK>>
+  created_at : timestamptz
+}
+
+entity game_sessions {
+  * id : uuid <<PK>>
+  --
+  game_type : text
+  status : text
+  state_json : jsonb
+  created_at : timestamptz
+  ended_at : timestamptz
+}
+
+entity game_session_players {
+  * game_session_id : uuid <<PK, FK>>
+  * user_id : uuid <<PK, FK>>
+  --
+  player_slot : text
+}
+
+invite_codes ||--o{ users : "invite_code"
+users ||--o{ game_session_players : "user_id"
+game_sessions ||--o{ game_session_players : "game_session_id"
+
+@enduml

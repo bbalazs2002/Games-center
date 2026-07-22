@@ -42,7 +42,7 @@ function forwardDirectionsFor(player: Player): ReadonlyArray<{ dr: number; dc: n
   ];
 }
 
-/** Sima (nem ütő) lépések egy adott mezőn álló bábu számára. */
+/** Simple (non-capturing) moves for the piece standing on the given square. */
 export function findSimpleMoves(state: DamaState, from: Position): Position[] {
   const piece = getPieceAt(state.board, from);
   if (!piece) return [];
@@ -79,7 +79,7 @@ function findManCaptureMoves(state: DamaState, from: Position, piece: Piece): Ca
   });
 }
 
-/** A `from`-tól induló diagonálison az első nem üres mező, vagy null, ha a tábla szélén véget ér. */
+/** The first non-empty square along the diagonal starting at `from`, or null if it runs off the board. */
 function findFirstObstacleAlongDiagonal(
   state: DamaState,
   from: Position,
@@ -120,10 +120,10 @@ function findKingCaptureMoves(state: DamaState, from: Position, piece: Piece): C
 }
 
 /**
- * Egy-ugrásos ütési lehetőségek egy adott mezőn álló bábu számára — a láncütés
- * a reducer szintjén, egymást követő MOVE action-ökön keresztül valósul meg
- * (lásd docs/fazis-0a-dama-specifikacio.md §3.4-3.5), nem itt, egy előre
- * kiszámolt teljes szekvenciaként.
+ * Single-hop capture options for the piece standing on the given square —
+ * chain captures happen at the reducer level, through consecutive MOVE
+ * actions (see docs/fazis-0a-dama-specifikacio.md §3.4-3.5), not here as a
+ * pre-computed full sequence.
  */
 export function findCaptureMoves(state: DamaState, from: Position): CaptureMove[] {
   const piece = getPieceAt(state.board, from);

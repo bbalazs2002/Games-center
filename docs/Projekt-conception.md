@@ -1,7 +1,7 @@
 # Társasjáték Digitalizáló Platform — Projekt Koncepció
 
-**Státusz:** Tervezési fázis — alapkérdések lezárva, Fázis 0 architektúra-terv következik
-**Utolsó frissítés:** 2026-07-22
+**Státusz:** Fázis 0a/0b/0c (Dáma) implementálva és élesben ellenőrizve; Fázis 2 (Hotel) tervezés alatt
+**Utolsó frissítés:** 2026-07-24
 
 ## Projekt célja
 
@@ -24,6 +24,7 @@ Fizikailag meglévő, kedvelt társasjátékok digitalizálása egy közös plat
   - további elemek várhatók a gyökérben a projekt előrehaladtával
 - **Diagramok:** PlantUML használandó minden tervezési diagramhoz (`docs/` alá kerülnek).
 - **Kódminőségi elvek:** SOLID alapelvek és Clean Code gyakorlatok követése kötelező az implementáció során.
+- **Komment-nyelv (2026-07-23):** a kódban (src/, prisma/, konfigurációs fájlok) kizárólag angol nyelvű kommentek szerepelhetnek — ez professzionálisabb, és a kód esetleges nyílt forráskódúvá tétele esetén is releváns. A felhasználó felé megjelenő UI-szövegek (gombok, üzenetek, hibaszövegek) továbbra is magyarul maradnak, csak a fejlesztői kommentek angolok. A dokumentáció (`docs/*.md`) is marad magyar.
 - **Munkafolyamat:** implementáció előtt gondos tervezés — specifikáció és diagramok készülnek, mielőtt kód íródik. Nem megyünk bele kódolásba tervezési dokumentáció nélkül egy adott feature/modul esetén.
 
 ## Játéklista (kiindulás)
@@ -90,10 +91,10 @@ Cél: közös motor-komponensek azonosítása, hogy az alapréteget egyszer ép�
 | **C — Gazdasági/dobókockás táblás játékok** | Hotel, Gazdálkodj okosan, Monopoly | pálya körbejárás, kockadobás, pénz/bank kezelés, ingatlan-tulajdon, kártyahúzás mezők |
 | **D — Party/reflex játékok** | Activity, Tabu, Dobble, Jungle Speed | időzítő, gyors reakció, minimális tábla, real-time interakció fókusz |
 | **E — Rejtett információs kooperatív** | Hanabi | aszimmetrikus infó architektúra (saját kéz nem látható) — jó teszt a state-sync számára |
-| **F — Modern hobby társasjátékok** | Catan (kiegészítőkkel), King Arthur, Aqua Romana | hex/moduláris pálya, erőforrás-kezelés, kereskedés — komplexebb, moduláris pálya-builder szükséges |
+| **F — Modern hobby társasjátékok** | Catan (kiegészítőkkel), King Arthur, Aqua Romana | hex/moduláris pálya, erőforrás-kezelés, kereskedés — komplexebb, moduláris pálya-builder szükséges. ⚠️ Multiplayer-integráció előtt lásd a "GameRoom mezőnkénti schema" emlékeztetőt lent. |
 | **G — Egyedi komplex kártyajáték** | Gwent | A) klaszter kártyamotorjára épül, de bonyolultabb szabályrendszer (sorok, frakciók, képességek) |
 | **H — Deduction/logikai játékok** | Cluedo, Színözön (Mastermind) | rejtett állapot + visszajelzés-alapú következtetési hurok (guess & feedback loop); Cluedo-nál vádemelés/rejtett kártyaelosztás, Színözönnél gép által generált rejtett szín-sorrend és találati visszajelzés |
-| **I — Nagy komplexitású kampányos wargame** | Star Trek Fleet Captains | flotta-management, kampány, legösszetettebb — legvégére hagyandó |
+| **I — Nagy komplexitású kampányos wargame** | Star Trek Fleet Captains | flotta-management, kampány, legösszetettebb — legvégére hagyandó. ⚠️ Multiplayer-integráció előtt lásd a "GameRoom mezőnkénti schema" emlékeztetőt lent. |
 
 Minden játék besorolva — nincs függő tétel.
 
@@ -103,11 +104,17 @@ Minden játék besorolva — nincs függő tétel.
 
 1. **Fázis 0a – Local shell**: alkalmazás-váz, közös UI-kit (tábla-komponens, gomb/menü rendszer), moduláris betöltés (dynamic import) — **auth, lobby és online multiplayer nélkül**, csak helyi/hot-seat játékhoz szükséges minimum
 2. **Fázis 1 – Proof of concept**: **Dáma**, teljes vertikum, tisztán helyi (hot-seat) módban — 2 fős, egyszerű szabály, nincs rejtett infó, jól teszteli a core engine / renderer szétválasztást
-3. **Fázis 0b – Multiplayer réteg**: Colyseus-alapú szerver, lobby, fiók/auth, letöltéskezelő SW cache + PWA telepíthetőség; a Fázis 1-ben megépült Dáma motor hálózati Transport-adapterrel bővül (a reducer nem változik)
-4. **Fázis 2**: B) klaszter bővítés (Sakk, Malom) vagy A) klaszter (Snapszer, Römi, Mocsár, Holland kocsma, Bang)
-5. **Fázis 3**: Hanabi (rejtett infó teszt)
-6. **Fázis 4**: C) klaszter (Hotel, Gazdálkodj okosan, Monopoly) — itt dől el a 3D board renderer bevezetése
-7. **Fázis 5+**: D), F), G), H) klaszterek, végül I) (Star Trek Fleet Captains)
+3. **Fázis 0b – Multiplayer réteg**: Colyseus-alapú szerver, lobby, fiók/auth, letöltéskezelő SW cache + PWA telepíthetőség; a Fázis 1-ben megépült Dáma motor hálózati Transport-adapterrel bővül (a reducer nem változik). **Terv és implementáció (lezárva, élesben ellenőrizve):** [fazis-0b-multiplayer-specifikacio.md](./fazis-0b-multiplayer-specifikacio.md) (2026-07-22, utolsó kiegészítés 2026-07-24) — meghívó-kód alapú auth, PostgreSQL+Prisma, `src/` átrendezése `shared`/`client`/`server` alá, valós idejű lobby, újracsatlakozás.
+3b. **Fázis 0c – AI ellenfél**: szoba létrehozásakor választható Ember/AI ellenfél, szerver-oldali "virtuális kliens" AI (ugyanazon a validáció/reducer-csövön megy át, mint egy emberi lépés), szoba-jelszó és csatlakozási kérelem. **Terv és implementáció (lezárva, élesben ellenőrizve):** [fazis-0c-dama-ai-specifikacio.md](./fazis-0c-dama-ai-specifikacio.md) (2026-07-23).
+4. **Fázis 2 (átsorolva, 2026-07-24) — Hotel, a C) klaszter első tagja.** A te döntésed alapján a Dáma után **nem** a soron következő legkisebb lépés (B/A klaszter bővítés) jön, hanem tudatosan a legnagyobb architekturális ugrás: a Hotel egyszerre igényel 3+ fős szobalogikát, 3D board renderert és (a state mérete miatt) a `GameRoom` mezőnkénti `@colyseus/schema`-ra váltását — ezekkel korán, egy alaposan letesztelt vertikumban érdemes megbirkózni, mielőtt sok játékra szétterítenénk a kockázatot. A korábbi Fázis 2/3 (B/A klaszter bővítés, Hanabi) **nem törölve, csak hátrébb sorolva** — lásd lent.
+   - **Hotel-0a — helyi vertikum:** játékmotor (reducer/state, N-fős, pálya-bejárás/ingatlan-vásárlás/bérleti díj/részvény-mechanika), 3D "loop-track" board renderer (Three.js/R3F, geometriai placeholder assetekkel), N-fős hot-seat mód (egy gépen körbeadva) — multiplayer és végleges assetek nélkül.
+   - **Hotel-0b — multiplayer réteg:** a `GameRoom` N-fősre általánosítása (jelenleg 2 fixre/2 slotra épül), a mezőnkénti `@colyseus/schema`-refaktor, a Fázis 0c-ben megépült szoba-jelszó/kérelem-rendszer élesben tesztelve 3+ fővel is.
+   - **Hotel-0c — assets és textúrák:** a placeholder geometriai primitívek lecserélése a hibrid asset-stratégia szerint (kész CC0 elemek + egyedi/AI-generált ikonikus darabok, lásd fent).
+   - **Hotel-0d — AI ellenfél:** a Fázis 0c-ben megépült szerver-oldali "virtuális kliens" AI-minta kiterjesztése Hotelre (N-fős szobában bármelyik/több slot lehet AI).
+5. **Fázis 3 (korábbi Fázis 2, hátrébb sorolva)**: B) klaszter bővítés (Sakk, Malom) vagy A) klaszter (Snapszer, Römi, Mocsár, Holland kocsma, Bang)
+6. **Fázis 4 (korábbi Fázis 3, hátrébb sorolva)**: Hanabi (rejtett infó teszt)
+7. **Fázis 5**: C) klaszter maradék tagjai (Gazdálkodj okosan, Monopoly) — ezekhez a Hotel-en megépült 3D/N-fős/AI infrastruktúra nagyrészt újrafelhasználható lesz
+8. **Fázis 6+**: D), F), G), H) klaszterek, végül I) (Star Trek Fleet Captains)
 
 ---
 
@@ -118,11 +125,12 @@ Minden játék besorolva — nincs függő tétel.
 - [x] 3D asset-beszerzési stratégia — **2026-07-22:** hibrid (kész CC0 asset generikus elemekhez + egyedi/AI-generált ikonikus darabokhoz); Fázis 0/1-ben egyszerű geometriai placeholder assetek
 - [x] Godot alternatíva mérlegelése — **2026-07-22:** elhalasztva véglegesen, csak akkor kerül elő újra, ha a natív store jelenlét kritikus szemponttá válik
 - [x] Multiplayer szerver-architektúra alapdöntés — **2026-07-22:** Colyseus mellett döntöttünk (kész szoba/state-sync keretrendszer, sématalapú állapot-szinkronizáció)
-- [ ] Fázis 0 (shell) részletes architektúra-terv: mappastruktúra, komponens-hierarchia, tech stack pontos verziói — **következő munkamenet témája**
-- [ ] Multiplayer szerver-architektúra részletes kidolgozása Colyseus-szal: szoba-modell, state schema, reconnect-kezelés
+- [x] Fázis 0 (shell) részletes architektúra-terve, valamint a Colyseus-alapú multiplayer szerver-architektúra részletes kidolgozása — **elkészült és implementálva**, lásd [fazis-0a-dama-specifikacio.md](./fazis-0a-dama-specifikacio.md) és [fazis-0b-multiplayer-specifikacio.md](./fazis-0b-multiplayer-specifikacio.md)
+- [ ] **A `GameRoom` mezőnkénti `@colyseus/schema`-ra váltása (eredetileg 2026-07-23-i emlékeztető) — most a Hotel-0b feladata**, lásd fent a fejlesztési sorrendben. A jelenlegi Dáma-implementáció opaque JSON state-et küld (egyszerű, de nem hálózat-hatékony 3+ fős/nagy state-ű játékokhoz), és a `GameRoom` alaposztály jelenleg **nincs felkészítve** arra, hogy egy leszármazott játék ezt felülírja (a Colyseus state-típus hardcode-olva van). Részletek: [fazis-0b-multiplayer-specifikacio.md §6.1](./fazis-0b-multiplayer-specifikacio.md).
+- [ ] Hotel pontos szabályai (pálya, kezdőtőke, bérleti díjak, részvény-mechanika stb.) — **2026-07-24:** egyelőre egy általánosan ismert Hotel-változatból indulunk (lásd [hotel-0a-specifikacio.md](./hotel-0a-specifikacio.md) "Feltételezett szabályváltozat" szakasza), pontosításra vár a ti konkrét példányotok alapján.
 
 ---
 
 ## Beszélgetés kontextusa
 
-Ez a dokumentum az eddigi tervezési beszélgetés összefoglalója. A 2026-07-22-i munkamenetben az alapvető nyitott kérdések lezárultak (3D-s játékok köre, klaszterbe sorolás, asset-stratégia, Godot, szerver-architektúra alapdöntés). Következő session-ben ebből kiindulva folytatható a munka — javasolt kezdőpont: a Fázis 0 (shell) részletes architektúra-terve (mappastruktúra, komponens-hierarchia, tech stack pontos verziói), illetve a Colyseus-alapú multiplayer szerver-architektúra részletes kidolgozása.
+Ez a dokumentum az eddigi tervezési beszélgetés összefoglalója, folyamatosan frissítve. Állapot 2026-07-24: Fázis 0a/0b/0c (Dáma — helyi vertikum, multiplayer réteg, AI ellenfél) lezárva, implementálva, élesben ellenőrizve. Folyamatban: Fázis 2 (Hotel) — a fejlesztési sorrendben tudatosan előre hozva, mert a legnagyobb architekturális ugrást jelenti (3+ fő, 3D renderer, schema-refaktor), lásd a fejlesztési sorrend 4. pontját és [hotel-0a-specifikacio.md](./hotel-0a-specifikacio.md).

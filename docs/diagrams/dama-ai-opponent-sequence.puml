@@ -1,0 +1,92 @@
+@startuml dama-ai-opponent-sequence
+title AI ellenfél + szoba-jelszó + csatlakozási kérelem
+
+actor "Létrehozó\n(host)" as Creator
+participant "LobbyPage\n(Modal: Ember/AI,\nJelszó nincs/generált/megadott)" as Lobby
+participant "DamaOnlineGamePage" as OnlinePage
+participant "DamaRoom" as Room
+participant "shared reducer\n+ AI stratégia" as Logic
+database "PostgreSQL" as DB
+
+Creator -> Lobby : "Új szoba" → Modal\nAI + Jelszó: generáltatva
+Lobby -> OnlinePage : navigate(/games/dama/online/new\n?opponent=ai&password=GENERATE)
+OnlinePage -> Room : client.create('dama',\n{ token, opponentType:'AI', password:'GENERATE' })
+
+Room -> Room : onCreate(options)\naiOpponentRequested = true\nroomPassword = generateRoomPassword()
+Room -> Room : setMetadata({ hasPassword: true })\n(a szoba TOVÁBBRA IS listázva marad — csak lakat jelzi)
+Room -> DB : gameSessions INSERT (status=WAITING)
+
+Room -> Room : onAuth(creator, {token})\n— requestOnly hiányzik, de a host nem küld password-öt sem;\nő az első onJoin, sorrendileg ő állítja be a jelszót onCreate-ben
+Room -> Room : onJoin(creator) — joinCount==0 → creatorSessionId = creator\nadmitPlayer(creator) → assignPlayerSlot(0) = LIGHT
+Room -> DB : gameSessionPlayers INSERT (LIGHT, creator.userId)
+Room -> OnlinePage : send('yourSlot', 'LIGHT')
+Room -> OnlinePage : send('roomPassword', 'K3F9QX')
+
+Room -> Room : registerAiOpponent()\nensureAiUser(1) → 'ai-opponent-1'\nassignPlayerSlot(1) = DARK, aiSlots.add('DARK')
+Room -> DB : users UPSERT ('ai-opponent-1', 'AI ellenfél 1')
+Room -> DB : gameSessionPlayers INSERT (DARK, 'ai-opponent-1')
+
+Room -> Room : joinCount(2) >= maxClients(2)\n→ setPrivate(true) (KAPACITÁS miatt, nem a jelszó miatt)\nstate.ready = true
+Room -> DB : gameSessions UPDATE (status=IN_PROGRESS)
+
+Room --> OnlinePage : onStateChange (ready=true)
+OnlinePage --> Creator : Tábla megjelenik,\nnincs "várakozás" képernyő
+
+== Egy emberi lépés (a folyamat innentől azonos minden esetben) ==
+
+Creator -> OnlinePage : bábura kattint, majd célmezőre
+OnlinePage -> Room : room.send('action', { type:'MOVE', ... })
+Room -> Room : isValidAction + isPlayersTurn(LIGHT) ✓
+Room -> Logic : reducer(state, action)
+Logic --> Room : newState (currentPlayer = DARK)
+Room -> Room : syncState() — broadcast
+
+Room -> Room : maybeTriggerAiMove()\nisPlayersTurn(DARK) ✓ (aiSlots-ban van)
+Room -> Logic : computeAiMove(state) → pickRandomMove
+Logic --> Room : DamaAction (AI lépése)
+Room -> Room : applyAction(action)
+Room -> Room : maybeTriggerAiMove() újra (láncütés esetén)
+
+Room --> OnlinePage : onStateChange (currentPlayer = LIGHT)
+OnlinePage --> Creator : Tábla frissül
+
+== Alternatív: emberi ellenfél, jelszavas szoba — barát csatlakozik JELSZÓVAL a listából ==
+
+actor "Barát" as Friend
+
+Friend -> Lobby : látja a listában: 🔒 "Balázs szobája"\nrákattint → jelszó-mező + [Csatlakozás jelszóval] [Kérés küldése]
+Friend -> Lobby : beírja a jelszót → [Csatlakozás jelszóval]
+Lobby -> Room : client.joinById(roomId, { token, password })
+Room -> Room : onAuth(friend, {token, password})\npassword === this.roomPassword ✓
+Room -> Room : onJoin(friend) — requestOnly hiányzik → admitPlayer(friend)\nassignPlayerSlot(1) = DARK
+Room -> Room : joinCount(2) >= maxClients(2) → setPrivate(true), ready=true
+note right : ez az ág csak akkor futna,\nha NEM AI-t választott volna a host —\na kettő kizárja egymást
+
+== Alternatív: barát NEM ismeri a jelszót — csatlakozási kérelmet küld ==
+
+Friend -> Lobby : ugyanaz a 🔒 párbeszédablak,\njelszó nélkül → [Kérés küldése]
+Lobby -> Room : client.joinById(roomId, { token, requestOnly: true })
+Room -> Room : onAuth(friend, {token, requestOnly:true})\n— jelszó-ellenőrzés kihagyva
+Room -> Room : onJoin(friend) — requestOnly && roomPassword van\n→ pendingRequests.push({sessionId, userId, displayName})\n(NINCS slot, NINCS DB-írás még)
+Room --> OnlinePage : state.pendingRequests frissül (schema sync)
+OnlinePage --> Creator : "Anna szeretne csatlakozni"\n[Elfogad] [Elutasít]
+Room --> Friend : "Kérelem elküldve,\nvárakozás a jóváhagyásra…" [Mégse]
+
+alt Host elfogadja
+  Creator -> OnlinePage : [Elfogad] gomb
+  OnlinePage -> Room : room.send('respondToJoinRequest',\n{ sessionId, accept: true })
+  Room -> Room : client.sessionId === creatorSessionId ✓\npendingRequests.deleteAt(index)
+  Room -> Room : admitPlayer(friendClient)\nassignPlayerSlot(1) = DARK
+  Room -> DB : gameSessionPlayers INSERT (DARK, friend.userId)
+  Room -> Room : joinCount(2) >= maxClients(2) → setPrivate(true), ready=true
+  Room --> Friend : send('yourSlot', 'DARK') → tábla megjelenik
+else Host elutasítja
+  Creator -> OnlinePage : [Elutasít] gomb
+  OnlinePage -> Room : room.send('respondToJoinRequest',\n{ sessionId, accept: false })
+  Room -> Room : pendingRequests.deleteAt(index)
+  Room -> Friend : send('joinRejected', { reason })
+  Room -> Room : client.leave()
+  Friend --> Friend : visszairányítás a lobby-listára
+end
+
+@enduml

@@ -9,6 +9,9 @@ build/
 temp/**
 !temp/.gitkeep
 
+# assets contains large files that are not versioned yet
+assets/**
+
 # OS
 .DS_Store
 Thumbs.db

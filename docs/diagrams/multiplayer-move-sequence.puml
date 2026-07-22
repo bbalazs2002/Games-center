@@ -1,0 +1,33 @@
+@startuml multiplayer-move-sequence
+title Egy lépés folyamata multiplayer módban (két kliens)
+
+actor "Játékos A\n(LIGHT)" as A
+actor "Játékos B\n(DARK)" as B
+participant "ColyseusGameTransport\n(A oldalán)" as TransportA
+participant "DamaRoom" as Room
+participant "shared reducer" as Reducer
+participant "ColyseusGameTransport\n(B oldalán)" as TransportB
+
+A -> TransportA : dispatch({ type: 'MOVE', from, to })
+TransportA -> Room : room.send('action', action)\n(WebSocket)
+Room -> Reducer : reducer(gameState, action)
+Reducer --> Room : newState (vagy változatlan,\nha érvénytelen)
+Room -> Room : syncState()\n(state.stateJson = JSON.stringify(newState))
+
+Room -> TransportA : onStateChange broadcast
+Room -> TransportB : onStateChange broadcast
+
+TransportA -> TransportA : JSON.parse(stateJson)\nlisteners értesítése
+TransportB -> TransportB : JSON.parse(stateJson)\nlisteners értesítése
+
+TransportA --> A : useGameTransport\nújra-renderel
+TransportB --> B : useGameTransport\nújra-renderel
+
+note over Reducer
+  Ugyanaz a reducer fut itt,
+  mint a Fázis 1 hot-seat módban —
+  nincs külön szerver-oldali
+  szabályellenőrző kód.
+end note
+
+@enduml

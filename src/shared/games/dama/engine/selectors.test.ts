@@ -3,12 +3,12 @@ import { getMovablePositions } from './selectors';
 import { man, pos, stateWith, withPieces } from './testHelpers';
 
 describe('getMovablePositions', () => {
-  it('minden léphető saját bábu mezőjét visszaadja, ha nincs kötelező ütés', () => {
+  it('returns every movable own-piece square when there is no mandatory capture', () => {
     const state = stateWith({
       board: withPieces([
-        [pos(5, 0), man('LIGHT')], // tud lépni
-        [pos(5, 2), man('LIGHT')], // tud lépni
-        [pos(0, 1), man('DARK')], // ellenfél bábuja, nem számít
+        [pos(5, 0), man('LIGHT')], // can move
+        [pos(5, 2), man('LIGHT')], // can move
+        [pos(0, 1), man('DARK')], // opponent's piece, doesn't count
       ]),
     });
     const movable = getMovablePositions(state);
@@ -17,20 +17,21 @@ describe('getMovablePositions', () => {
     expect(movable).toHaveLength(2);
   });
 
-  it('kötelező ütés esetén csak az ütni tudó bábu mezője léphető', () => {
+  it('when a capture is mandatory, only the capturing piece is movable', () => {
     const state = stateWith({
       board: withPieces([
-        [pos(5, 0), man('LIGHT')], // tud ütni
+        [pos(5, 0), man('LIGHT')], // can capture
         [pos(4, 1), man('DARK')],
-        [pos(5, 4), man('LIGHT')], // csak sima lépése volna — kötelező ütés miatt nem léphető
+        [pos(5, 4), man('LIGHT')], // would only have a simple move — not movable due to mandatory capture
       ]),
     });
     expect(getMovablePositions(state)).toEqual([pos(5, 0)]);
   });
 
-  it('teljesen blokkolt bábu mezője nem szerepel az eredményben', () => {
-    // (7,7)-nek egyetlen előre-átlója van a sarok miatt: (6,6) — azt egy ellenfél-bábu
-    // foglalja, az ütéshez szükséges landolómező (5,5) pedig szintén foglalt.
+  it('a fully blocked piece does not show up in the result', () => {
+    // (7,7) has only one forward diagonal because of the corner: (6,6) — occupied
+    // by an opponent piece, and the landing square needed for a capture, (5,5), is
+    // also occupied.
     const state = stateWith({
       board: withPieces([
         [pos(7, 7), man('LIGHT')],
