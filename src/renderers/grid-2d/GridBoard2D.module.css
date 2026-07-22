@@ -1,0 +1,23 @@
+.board {
+  width: 100%;
+  max-width: 32rem;
+  aspect-ratio: 1 / 1;
+}
+
+.square {
+  cursor: pointer;
+}
+
+.lightSquare {
+  fill: #eeeed2;
+}
+
+.darkSquare {
+  fill: #769656;
+}
+
+.highlight {
+  fill: #f6f669;
+  opacity: 0.6;
+  pointer-events: none;
+}

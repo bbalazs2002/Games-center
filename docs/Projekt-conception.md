@@ -67,6 +67,10 @@ Hotel, Gazdálkodj okosan, Bang, Hanabi, Sakk, Malom, Dáma, Connect 4 (4 in a r
 
 **Architekturális elv:** a tábla-renderelő réteg cserélhető — külön 2D (SVG/Canvas) és 3D (R3F) "board renderer" implementáció, játékonként kiválasztva. A játéklogika (state, szabályok, hálózati sync) teljesen független a megjelenítéstől.
 
+**Kiegészítő elv (2026-07-22):** a játéklogika (core engine) emellett a *bemenet forrásától* is független — tiszta `(state, action) → new state` reducer, ami nem tudja, hogy az action helyi kattintásból vagy hálózati üzenetből származik. Ez teszi lehetővé, hogy előbb helyi (single-player/hot-seat) módban épüljön fel egy játék, és a multiplayer réteg utólag, a reducer módosítása nélkül csatlakozzon rá (lásd `docs/fazis-0a-dama-specifikacio.md`, Transport absztrakció).
+
+**Termékkövetelmény (2026-07-22):** hosszú távon minden játékban keverhető legyen ember és AI játékos (pl. 1 ember vs. 1 AI, vagy vegyes összeállítás). Ez architekturálisan egy `PlayerController` absztrakcióként jelenik meg minden játék motorja fölött (lásd `docs/fazis-0a-dama-specifikacio.md`, 6. szakasz) — Fázis 1-ben csak `HumanController` készül el, de az illesztési pont a kezdetektől adott.
+
 **Döntés (2026-07-22, eldöntve):** mely játékok legyenek 3D-sek
 
 - 2D/SVG: kártyajáték-klaszter (Snapszer, Römi, Mocsár, Holland kocsma, Bang stb.) és a party/reflex, deduction, kirakós jellegű játékok (Activity, Tabu, Dobble, Jungle Speed, Cluedo, Színözön, Connect 4)
@@ -95,12 +99,15 @@ Minden játék besorolva — nincs függő tétel.
 
 ### Javasolt fejlesztési sorrend
 
-1. **Fázis 0 – Shell**: alkalmazás-váz, lobby, fiók/auth, letöltéskezelő (code-splitting + SW cache), közös UI-kit (kártya-komponens, tábla-komponens, gomb/menü rendszer)
-2. **Fázis 1 – Proof of concept**: egy egyszerű játék teljes vertikuma (javaslat: **Dáma** — 2 fős, egyszerű szabály, nincs rejtett infó, jól teszteli a multiplayer sync-et)
-3. **Fázis 2**: B) klaszter bővítés (Sakk, Malom) vagy A) klaszter (Snapszer, Römi, Mocsár, Holland kocsma)
-4. **Fázis 3**: Hanabi (rejtett infó teszt)
-5. **Fázis 4**: C) klaszter (Hotel, Gazdálkodj okosan, Monopoly) — itt dől el a 3D board renderer bevezetése
-6. **Fázis 5+**: D), F), G), H) klaszterek, végül I) (Star Trek Fleet Captains)
+**Döntés (2026-07-22):** a multiplayer réteg építését későbbre halasztjuk. Előbb egy tisztán helyi (single-player/hot-seat) vertikumot építünk fel, és csak utána csatlakoztatjuk rá a hálózati réteget. Ez csak akkor biztonságos, ha a játéklogika a kezdetektől **framework- és transport-agnosztikus reducer/state-machine** mintában készül (lásd `docs/fazis-0a-dama-specifikacio.md`) — így a helyi és a hálózati futtatás ugyanazt a motort használja, nincs újraírás.
+
+1. **Fázis 0a – Local shell**: alkalmazás-váz, közös UI-kit (tábla-komponens, gomb/menü rendszer), moduláris betöltés (dynamic import) — **auth, lobby és online multiplayer nélkül**, csak helyi/hot-seat játékhoz szükséges minimum
+2. **Fázis 1 – Proof of concept**: **Dáma**, teljes vertikum, tisztán helyi (hot-seat) módban — 2 fős, egyszerű szabály, nincs rejtett infó, jól teszteli a core engine / renderer szétválasztást
+3. **Fázis 0b – Multiplayer réteg**: Colyseus-alapú szerver, lobby, fiók/auth, letöltéskezelő SW cache + PWA telepíthetőség; a Fázis 1-ben megépült Dáma motor hálózati Transport-adapterrel bővül (a reducer nem változik)
+4. **Fázis 2**: B) klaszter bővítés (Sakk, Malom) vagy A) klaszter (Snapszer, Römi, Mocsár, Holland kocsma, Bang)
+5. **Fázis 3**: Hanabi (rejtett infó teszt)
+6. **Fázis 4**: C) klaszter (Hotel, Gazdálkodj okosan, Monopoly) — itt dől el a 3D board renderer bevezetése
+7. **Fázis 5+**: D), F), G), H) klaszterek, végül I) (Star Trek Fleet Captains)
 
 ---
 

@@ -1,0 +1,68 @@
+@startuml component-architecture
+title Réteg-architektúra — Fázis 0a (local shell)
+
+package "Shell (src/shell/)" {
+  [App / Routing]
+  [GameLoader\n(dynamic import per game)]
+}
+
+package "UI (src/ui-kit/, src/renderers/, src/games/dama/ui/)" {
+  [DamaGamePage]
+  [GridBoard2D\n(shared 2D renderer)]
+  [UI-kit\n(Button, Menu, Modal...)]
+}
+
+package "src/core/ — game-agnosztikus" {
+  interface GameTransport
+  [LocalGameTransport]
+  [useGameTransport]
+  interface PlayerController
+  [HumanController]
+}
+
+package "src/games/dama/ — Dáma-specifikus" {
+  [Dama Engine\n(state, actions, reducer, selectors)]
+  [DamaAIController]  #line.dashed
+}
+
+[App / Routing] --> [GameLoader]
+[GameLoader] ..> [DamaGamePage] : dynamic import()
+
+[DamaGamePage] --> [GridBoard2D]
+[DamaGamePage] --> [UI-kit]
+[DamaGamePage] --> [useGameTransport]
+
+[useGameTransport] --> GameTransport
+[LocalGameTransport] ..|> GameTransport
+[useGameTransport] --> [LocalGameTransport]
+
+[LocalGameTransport] --> [Dama Engine] : reducer(state, action)
+
+[HumanController] ..|> PlayerController
+[DamaAIController] ..|> PlayerController
+[DamaAIController] --> [Dama Engine] : selectors, reducer\n(csak a saját játékának motorját ismeri)
+[DamaGamePage] --> PlayerController : onStateChange minden\nsubscribe-nál
+
+note right of GameTransport
+  Fázis 0b-ben egy ColyseusGameTransport
+  is implementálja ezt az interfészt —
+  a Dama Engine nem változik.
+end note
+
+note bottom of [DamaAIController]
+  Fázis 1-ben nincs implementálva,
+  csak a jövőbeli helye van kijelölve.
+  Szándékosan NEM a core-ban él:
+  a Hotel AI-ja egy teljesen külön
+  osztály lesz a src/games/hotel/ alatt,
+  semmit nem oszt meg ezzel a kóddal
+  az interfészen kívül.
+end note
+
+note bottom of [Dama Engine]
+  Nulla külső függőség:
+  nincs React, nincs hálózat.
+  Vitest-tel önállóan tesztelhető.
+end note
+
+@enduml

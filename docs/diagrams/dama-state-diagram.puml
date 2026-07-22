@@ -1,0 +1,27 @@
+@startuml dama-state-diagram
+title Dáma — játékmenet állapotgép
+
+[*] --> IN_PROGRESS : createInitialState()
+
+state IN_PROGRESS {
+  [*] --> WaitingForMove
+  WaitingForMove --> WaitingForMove : MOVE (nem-ütő lépés,\nnincs kötelező ütés)
+  WaitingForMove --> ChainCapture : MOVE (ütés,\ntovábbi ütés lehetséges)
+  ChainCapture --> ChainCapture : MOVE (láncütés\nfolytatása)
+  ChainCapture --> WaitingForMove : MOVE (ütés,\nnincs több ütés\n-> currentPlayer vált)
+  WaitingForMove --> WaitingForMove : MOVE (lépés/ütés\n-> currentPlayer vált)
+}
+
+IN_PROGRESS --> LIGHT_WON : DARK-nak nincs\nléphető bábuja
+IN_PROGRESS --> DARK_WON : LIGHT-nak nincs\nléphető bábuja
+
+LIGHT_WON --> [*]
+DARK_WON --> [*]
+
+note right of ChainCapture
+  chainCaptureFrom rögzítve —
+  a soron lévő játékos ugyanazzal
+  a bábuval köteles folytatni.
+end note
+
+@enduml

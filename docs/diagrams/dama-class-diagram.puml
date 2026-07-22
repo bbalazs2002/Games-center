@@ -1,0 +1,90 @@
+@startuml dama-class-diagram
+title Dáma Core Engine — osztály/típus diagram
+
+enum Player {
+  LIGHT
+  DARK
+}
+
+enum PieceType {
+  MAN
+  KING
+}
+
+class Piece {
+  +player: Player
+  +type: PieceType
+}
+
+class Position {
+  +row: number
+  +col: number
+}
+
+class DamaState {
+  +board: (Piece | null)[][]
+  +currentPlayer: Player
+  +status: GameStatus
+  +chainCaptureFrom: Position | null
+}
+
+enum GameStatus {
+  IN_PROGRESS
+  LIGHT_WON
+  DARK_WON
+  DRAW
+}
+
+class MoveAction {
+  +type: "MOVE"
+  +from: Position
+  +to: Position
+}
+
+interface GameTransport<TState, TAction> {
+  +getState(): TState
+  +dispatch(action: TAction): void
+  +subscribe(listener): unsubscribe
+}
+
+class LocalGameTransport<TState, TAction> {
+  -state: TState
+  -reducer: Reducer<TState, TAction>
+  -listeners: Set<listener>
+  +getState(): TState
+  +dispatch(action: TAction): void
+  +subscribe(listener): unsubscribe
+}
+
+class DamaReducer <<function>> {
+  +reducer(state: DamaState, action: MoveAction): DamaState
+}
+
+class DamaSelectors <<functions>> {
+  +getValidMoves(state, from): Position[]
+  +getWinner(state): Player | null
+}
+
+class DamaRules <<functions>> {
+  +findCaptureSequences(state, from): Position[][]
+  +hasAnyCapture(state, player): boolean
+  +isPromotionRow(player, row): boolean
+}
+
+DamaState *-- "64" Piece : board cells (nullable)
+Piece --> Player
+Piece --> PieceType
+DamaState --> GameStatus
+DamaState --> Position : chainCaptureFrom
+
+LocalGameTransport ..|> GameTransport
+LocalGameTransport --> DamaReducer : uses
+
+DamaReducer --> DamaRules : uses
+DamaReducer ..> DamaState : produces new
+DamaSelectors ..> DamaState : reads
+DamaSelectors --> DamaRules : uses
+
+MoveAction --> Position
+
+@enduml

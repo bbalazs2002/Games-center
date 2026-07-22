@@ -1,0 +1,29 @@
+@startuml move-sequence-diagram
+title Egy lépés folyamata — kattintástól az újra-renderelésig (Fázis 0a, helyi mód)
+
+actor Játékos
+participant "GridBoard2D" as Board
+participant "DamaGamePage\n(UI-lokális selection state)" as Page
+participant "useGameTransport" as Hook
+participant "LocalGameTransport" as Transport
+participant "Dama reducer" as Reducer
+participant "DamaSelectors" as Selectors
+
+Játékos -> Board : kattintás saját bábun
+Board -> Page : onSquareClick(position)
+Page -> Selectors : getValidMoves(state, position)
+Selectors --> Page : Position[]
+Page -> Board : highlightedSquares = [...]
+
+Játékos -> Board : kattintás kiemelt célmezőn
+Board -> Page : onSquareClick(target)
+Page -> Hook : dispatch({ type: 'MOVE', from, to })
+Hook -> Transport : dispatch(action)
+Transport -> Reducer : reducer(state, action)
+Reducer --> Transport : newState
+Transport -> Transport : listeners.forEach(notify)
+Transport --> Hook : subscribe callback(newState)
+Hook --> Page : re-render új state-tel
+Page -> Board : board=newState.board
+
+@enduml

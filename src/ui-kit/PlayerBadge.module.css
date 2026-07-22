@@ -1,0 +1,13 @@
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #1a202c;
+  font-size: 0.875rem;
+}
+
+.active {
+  background: #3b6ea5;
+  color: white;
+}
