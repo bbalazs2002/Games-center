@@ -1,0 +1,14 @@
+# Node / build output
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# temp/ is a working/scratch area (see docs/Projekt-conception.md) — not versioned
+temp/*
+!temp/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
