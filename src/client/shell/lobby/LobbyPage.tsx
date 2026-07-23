@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { Room, RoomAvailable } from 'colyseus.js';
 import { generateRoomPassword } from '../../../shared/core/generateRoomPassword';
 import type { RoomMetadata } from '../../../shared/core/RoomMetadata';
-import { NEW_ROOM_PARAM } from '../../games/dama/onlineRoomConstants';
 import { colyseusClient } from '../../core/transport/colyseusClient';
+import { NEW_ROOM_PARAM } from '../../core/transport/onlineRoomConstants';
 import { Button } from '../../ui-kit/Button';
 import { Modal } from '../../ui-kit/Modal';
 import { useAuth } from '../auth/AuthContext';
@@ -13,6 +13,95 @@ import styles from './LobbyPage.module.css';
 
 type OpponentType = 'HUMAN' | 'AI';
 type PasswordMode = 'none' | 'generate' | 'custom';
+
+function playerCountOptions([min, max]: [number, number]): number[] {
+  return Array.from({ length: max - min + 1 }, (_, i) => min + i);
+}
+
+function OpponentTypeFieldset({
+  opponentType,
+  onChange,
+}: {
+  opponentType: OpponentType;
+  onChange: (type: OpponentType) => void;
+}) {
+  return (
+    <fieldset className={styles.fieldset}>
+      <legend>Ellenfél</legend>
+      <label>
+        <input type="radio" checked={opponentType === 'HUMAN'} onChange={() => onChange('HUMAN')} />
+        Ember
+      </label>
+      <label>
+        <input type="radio" checked={opponentType === 'AI'} onChange={() => onChange('AI')} />
+        AI
+      </label>
+    </fieldset>
+  );
+}
+
+function PlayerCountFieldset({
+  range,
+  playerCount,
+  onChange,
+}: {
+  range: [number, number];
+  playerCount: number;
+  onChange: (count: number) => void;
+}) {
+  return (
+    <fieldset className={styles.fieldset}>
+      <legend>Játékosok száma</legend>
+      <label>
+        <select value={playerCount} onChange={(event) => onChange(Number(event.target.value))}>
+          {playerCountOptions(range).map((count) => (
+            <option key={count} value={count}>
+              {count} fő
+            </option>
+          ))}
+        </select>
+      </label>
+    </fieldset>
+  );
+}
+
+function PasswordModeFieldset({
+  passwordMode,
+  generatedPassword,
+  customPassword,
+  onModeChange,
+  onCustomPasswordChange,
+}: {
+  passwordMode: PasswordMode;
+  generatedPassword: string;
+  customPassword: string;
+  onModeChange: (mode: PasswordMode) => void;
+  onCustomPasswordChange: (value: string) => void;
+}) {
+  return (
+    <fieldset className={styles.fieldset}>
+      <legend>Jelszó</legend>
+      <label>
+        <input type="radio" checked={passwordMode === 'none'} onChange={() => onModeChange('none')} />
+        Nincs (publikus szoba)
+      </label>
+      <label>
+        <input type="radio" checked={passwordMode === 'generate'} onChange={() => onModeChange('generate')} />
+        Generálja a rendszer{passwordMode === 'generate' && `: ${generatedPassword}`}
+      </label>
+      <label>
+        <input type="radio" checked={passwordMode === 'custom'} onChange={() => onModeChange('custom')} />
+        Megadom:{' '}
+        <input
+          type="text"
+          value={customPassword}
+          disabled={passwordMode !== 'custom'}
+          onChange={(event) => onCustomPasswordChange(event.target.value)}
+        />
+      </label>
+    </fieldset>
+  );
+}
 
 export function LobbyPage() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -23,6 +112,7 @@ export function LobbyPage() {
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [opponentType, setOpponentType] = useState<OpponentType>('HUMAN');
+  const [playerCount, setPlayerCount] = useState(2);
   const [passwordMode, setPasswordMode] = useState<PasswordMode>('none');
   const [customPassword, setCustomPassword] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
@@ -74,6 +164,7 @@ export function LobbyPage() {
 
   function openCreateModal(): void {
     setOpponentType('HUMAN');
+    setPlayerCount(game?.online?.playerCountRange?.[0] ?? 2);
     setPasswordMode('none');
     setCustomPassword('');
     setGeneratedPassword(generateRoomPassword());
@@ -86,7 +177,9 @@ export function LobbyPage() {
   }
 
   function handleConfirmCreate(): void {
-    const params = new URLSearchParams({ opponent: opponentType.toLowerCase() });
+    const params = new URLSearchParams();
+    if (game?.online?.supportsAiOpponent) params.set('opponent', opponentType.toLowerCase());
+    if (game?.online?.playerCountRange) params.set('playerCount', String(playerCount));
     if (passwordMode === 'generate') {
       params.set('password', generatedPassword);
     } else if (passwordMode === 'custom' && customPassword.trim()) {
@@ -170,55 +263,25 @@ export function LobbyPage() {
       <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)}>
         <h2>Új szoba</h2>
 
-        <fieldset className={styles.fieldset}>
-          <legend>Ellenfél</legend>
-          <label>
-            <input
-              type="radio"
-              checked={opponentType === 'HUMAN'}
-              onChange={() => setOpponentType('HUMAN')}
-            />
-            Ember
-          </label>
-          <label>
-            <input type="radio" checked={opponentType === 'AI'} onChange={() => setOpponentType('AI')} />
-            AI
-          </label>
-        </fieldset>
+        {game.online?.supportsAiOpponent && (
+          <OpponentTypeFieldset opponentType={opponentType} onChange={setOpponentType} />
+        )}
 
-        <fieldset className={styles.fieldset}>
-          <legend>Jelszó</legend>
-          <label>
-            <input
-              type="radio"
-              checked={passwordMode === 'none'}
-              onChange={() => handlePasswordModeChange('none')}
-            />
-            Nincs (publikus szoba)
-          </label>
-          <label>
-            <input
-              type="radio"
-              checked={passwordMode === 'generate'}
-              onChange={() => handlePasswordModeChange('generate')}
-            />
-            Generálja a rendszer{passwordMode === 'generate' && `: ${generatedPassword}`}
-          </label>
-          <label>
-            <input
-              type="radio"
-              checked={passwordMode === 'custom'}
-              onChange={() => handlePasswordModeChange('custom')}
-            />
-            Megadom:{' '}
-            <input
-              type="text"
-              value={customPassword}
-              disabled={passwordMode !== 'custom'}
-              onChange={(event) => setCustomPassword(event.target.value)}
-            />
-          </label>
-        </fieldset>
+        {game.online?.playerCountRange && (
+          <PlayerCountFieldset
+            range={game.online.playerCountRange}
+            playerCount={playerCount}
+            onChange={setPlayerCount}
+          />
+        )}
+
+        <PasswordModeFieldset
+          passwordMode={passwordMode}
+          generatedPassword={generatedPassword}
+          customPassword={customPassword}
+          onModeChange={handlePasswordModeChange}
+          onCustomPasswordChange={setCustomPassword}
+        />
 
         <div className={styles.modalActions}>
           <Button variant="secondary" onClick={() => setCreateModalOpen(false)}>

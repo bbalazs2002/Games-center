@@ -109,12 +109,9 @@ export function resolveLandingPosition(
   return { position, totalSteps };
 }
 
-export function findAvailableStaircaseSpace(state: HotelState, lotId: string): BoardSpace | undefined {
-  return state.board.find((space) => space.adjacentLotIds.includes(lotId) && space.staircaseForLotId === null);
-}
-
-export function hasAvailableStaircaseSpace(state: HotelState, lotId: string): boolean {
-  return findAvailableStaircaseSpace(state, lotId) !== undefined;
+/** Spaces adjacent to `lotId` with no staircase yet — the candidate spots a player could place one on, for either the paid or free flow. */
+export function getStaircaseSpaceOptions(state: HotelState, lotId: string): BoardSpace[] {
+  return state.board.filter((space) => space.adjacentLotIds.includes(lotId) && space.staircaseForLotId === null);
 }
 
 /** nights is 1-6, matching the printed table's columns. */
@@ -260,18 +257,47 @@ export function isValidConstructionPlan(state: HotelState, playerId: PlayerId, p
   });
 }
 
-export function canBuyStaircaseRight(state: HotelState, lotId: string): boolean {
+/** Everything except the specific space choice — shared by canBuyStaircaseRight and getStaircaseEligibleLots so "is this lot eligible at all" and "is this exact space valid" can't drift apart. */
+function canBuyStaircaseRightForLot(state: HotelState, lotId: string): boolean {
   if (!state.staircasePurchaseRightActive) return false;
   const player = getCurrentPlayer(state);
   const lot = getLot(state, lotId);
   if (lot.ownerId !== player.id) return false;
   if (state.lotsWithStaircasePurchasedThisTurn.includes(lotId)) return false;
   if (player.cash < lot.staircasePrice) return false;
-  return hasAvailableStaircaseSpace(state, lotId);
+  return getStaircaseSpaceOptions(state, lotId).length > 0;
+}
+
+export function canBuyStaircaseRight(state: HotelState, lotId: string, spaceId: string): boolean {
+  if (!canBuyStaircaseRightForLot(state, lotId)) return false;
+  return getStaircaseSpaceOptions(state, lotId).some((space) => space.id === spaceId);
 }
 
 export function getStaircaseEligibleLots(state: HotelState, playerId: PlayerId): HotelLot[] {
-  return ownedLotsOf(state, playerId).filter((lot) => canBuyStaircaseRight(state, lot.id));
+  return ownedLotsOf(state, playerId).filter((lot) => canBuyStaircaseRightForLot(state, lot.id));
+}
+
+export interface FreeStaircaseCandidate {
+  lotId: string;
+  spaceId: string;
+}
+
+/**
+ * Every (lot, space) pair the current player could place a free staircase on
+ * right now, combined across ALL their owned lots with room — the player
+ * picks any one of these (docs/hotel-0a-specifikacio.md §9.2), unlike the
+ * older auto-pick-the-first-one behavior.
+ */
+export function getFreeStaircaseCandidates(state: HotelState, playerId: PlayerId): FreeStaircaseCandidate[] {
+  return ownedLotsOf(state, playerId).flatMap((lot) =>
+    getStaircaseSpaceOptions(state, lot.id).map((space) => ({ lotId: lot.id, spaceId: space.id })),
+  );
+}
+
+export function canChooseFreeStaircaseSpace(state: HotelState, lotId: string, spaceId: string): boolean {
+  if (state.turnPhase !== 'AWAITING_FREE_STAIRCASE_CHOICE') return false;
+  if (getLot(state, lotId).ownerId !== getCurrentPlayer(state).id) return false;
+  return getStaircaseSpaceOptions(state, lotId).some((space) => space.id === spaceId);
 }
 
 export function canStartAuction(state: HotelState, lotId: string): boolean {

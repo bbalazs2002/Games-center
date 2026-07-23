@@ -10,11 +10,17 @@ export type HotelAction =
   | { type: 'BUY_LOT'; lotId: string }
   | { type: 'START_CONSTRUCTION'; plan: ConstructionPlanItem[] }
   | { type: 'ROLL_BUILDING_PERMIT'; value: BuildingPermitResult }
-  // No TAKE_FREE_STAIRCASE/TAKE_FREE_BUILDING — FREE_STAIRCASE/FREE_BUILDING
-  // spaces resolve automatically on landing (see reducer.ts's
-  // resolveFreeStaircase/resolveFreeBuilding), there's nothing to choose.
+  // No TAKE_FREE_BUILDING — FREE_BUILDING resolves automatically on landing
+  // (see reducer.ts's resolveFreeBuilding), there's nothing to choose (a
+  // building isn't placed on a specific board space the way a staircase is).
   | { type: 'ROLL_NIGHTS'; value: number }
-  | { type: 'BUY_STAIRCASE_RIGHT'; lotId: string }
+  | { type: 'BUY_STAIRCASE_RIGHT'; lotId: string; spaceId: string }
+  // Landing on FREE_STAIRCASE with somewhere to put it parks the turn in
+  // AWAITING_FREE_STAIRCASE_CHOICE instead of auto-picking — the player
+  // chooses which of their own lots, and which of ITS available spaces (see
+  // docs/hotel-0a-specifikacio.md §9.2). Only auto-resolves (no action needed)
+  // when there's genuinely nothing to choose from (no lots, or no room anywhere).
+  | { type: 'CHOOSE_FREE_STAIRCASE_SPACE'; lotId: string; spaceId: string }
   | { type: 'START_AUCTION'; lotId: string }
   // During an auction it's NOT the current player acting — any other player
   // can bid, so unlike every other action here (which implicitly targets

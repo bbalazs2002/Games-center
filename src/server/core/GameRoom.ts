@@ -1,6 +1,7 @@
 import { Room, type Client } from 'colyseus';
 import type { Prisma } from '@prisma/client';
-import { ArraySchema } from '@colyseus/schema';
+import { ArraySchema, type Schema } from '@colyseus/schema';
+import type { GameRoomState } from '../../shared/core/GameRoomState';
 import { OpaqueGameStateSchema } from '../../shared/core/OpaqueGameStateSchema';
 import { PendingJoinRequest } from '../../shared/core/PendingJoinRequestSchema';
 import type { RoomMetadata } from '../../shared/core/RoomMetadata';
@@ -15,14 +16,17 @@ const FLUSH_INTERVAL_MS = 5000;
 const MAX_AI_MOVES_PER_TRIGGER = 40;
 // How long an unexpectedly-dropped admitted player's seat stays reserved —
 // generous on purpose (flaky WiFi, a phone lock screen, a laptop lid) since
-// this is a casual family app, not a competitive one.
-const RECONNECTION_WINDOW_SECONDS = 120;
+// this is a casual family app, not a competitive one. Widened 120s -> 300s
+// (2026-07-24, Hotel-0b planning) — same reasoning, just more generous.
+const RECONNECTION_WINDOW_SECONDS = 300;
 
 export interface GameRoomCreateOptions {
   token?: string;
   opponentType?: 'HUMAN' | 'AI';
   /** Already-resolved plain-text password (typed or client-generated) — omitted/empty means a public room. */
   password?: string;
+  /** Hotel-only (2-4, chosen at creation) — meaningless/ignored for a fixed-player-count game like Dáma. */
+  playerCount?: number;
 }
 
 export interface GameRoomJoinOptions {
@@ -37,30 +41,44 @@ export interface GameRoomJoinOptions {
  * initial state — nothing about the game itself. See
  * docs/fazis-0b-multiplayer-specifikacio.md §6.
  *
- * State sync deliberately goes through a single opaque JSON field (not a
- * per-field @colyseus/schema) so the state shape is described in exactly one
- * place (shared/games/<game>/engine).
+ * State sync strategy is a per-game choice via `TColyseusState` (default
+ * `OpaqueGameStateSchema`, a single opaque JSON field — simple, but resends
+ * the whole state on every change) or a real per-field `@colyseus/schema`
+ * (binary diff sync — Hotel's choice, see docs/hotel-0b-multiplayer-specifikacio.md
+ * §6). Either way, `TState`'s shape is still described in exactly one place
+ * (shared/games/<game>/engine) — `TColyseusState` only describes the wire
+ * envelope, never duplicates game logic.
  *
  * Room-access control (password, lobby visibility, join requests) and the
  * AI-opponent "virtual client" both live here, not in a per-game subclass —
  * see docs/fazis-0c-dama-ai-specifikacio.md's opening note: every future
  * game's room inherits this behavior unchanged.
  */
-export abstract class GameRoom<TState, TAction, TPlayerSlot extends string = string> extends Room<
-  OpaqueGameStateSchema,
-  RoomMetadata,
-  unknown,
-  AuthPayload
-> {
+export abstract class GameRoom<
+  TState,
+  TAction,
+  TPlayerSlot extends string = string,
+  TColyseusState extends Schema & GameRoomState = OpaqueGameStateSchema,
+> extends Room<TColyseusState, RoomMetadata, unknown, AuthPayload> {
   protected abstract readonly gameType: string;
   protected abstract reducer: Reducer<TState, TAction>;
   protected abstract createInitialState: () => TState;
 
+  /** Fresh, empty Colyseus state instance — replaces the old hardcoded `new OpaqueGameStateSchema()`. */
+  protected abstract createColyseusState(): TColyseusState;
+
   /** Which player slot the joinIndex-th (0-based) connecting client gets. */
   protected abstract assignPlayerSlot(joinIndex: number): TPlayerSlot;
 
-  /** True if this player slot may move right now — this is what stops a client from moving on behalf of their opponent. */
-  protected abstract isPlayersTurn(state: TState, playerSlot: TPlayerSlot): boolean;
+  /**
+   * May `playerSlot` legally send exactly this `action` right now? For most
+   * games this only depends on whose turn it is (the `action` param goes
+   * unused) — Hotel's auction bidding is the one exception in this codebase
+   * (any non-auctioneer player may PLACE_BID/PASS_BID, not just the current
+   * player), which is why this takes the action too, not just the slot. See
+   * docs/hotel-0b-multiplayer-specifikacio.md §6.4.
+   */
+  protected abstract isActionAllowed(state: TState, playerSlot: TPlayerSlot, action: TAction): boolean;
 
   /** Runtime shape check for incoming actions — the network is not trusted input. */
   protected abstract isValidAction(action: unknown): action is TAction;
@@ -68,7 +86,25 @@ export abstract class GameRoom<TState, TAction, TPlayerSlot extends string = str
   /** Server-side "virtual client" AI move, or null if the AI has no legal move — see docs/fazis-0c-dama-ai-specifikacio.md §2. */
   protected abstract computeAiMove(state: TState): TAction | null;
 
-  private gameState!: TState;
+  /** Writes the current `gameState` into `this.state` (the live Colyseus Schema) — game-specific because the mapping depends entirely on TColyseusState's shape. */
+  protected abstract syncState(): void;
+
+  /**
+   * Optional hook, called right after a slot is admitted (fresh join or an
+   * accepted join request) — default no-op. Dáma doesn't need this (its
+   * players are just anonymous LIGHT/DARK). Hotel does: `HotelState.Player.name`
+   * isn't known until a real client actually joins with their `auth.displayName`,
+   * unlike `createInitialState()` (called once, before anyone has joined) —
+   * this is where a game can react to a newly-known player identity, e.g. by
+   * mutating `this.gameState` directly (not through the reducer, since this
+   * isn't player-initiated game logic) and calling `this.syncState()`.
+   */
+  protected onPlayerAdmitted(_slot: TPlayerSlot, _auth: AuthPayload): void {
+    // Intentionally empty default — most games don't need this.
+  }
+
+  /** protected, not private — game-specific `syncState()` implementations need to read the current state to write it into `this.state`. */
+  protected gameState!: TState;
   private dbSessionId!: string;
   private dirty = false;
   private flushInterval?: ReturnType<typeof setInterval>;
@@ -87,7 +123,7 @@ export abstract class GameRoom<TState, TAction, TPlayerSlot extends string = str
   }
 
   async onCreate(options: GameRoomCreateOptions): Promise<void> {
-    this.state = new OpaqueGameStateSchema();
+    this.state = this.createColyseusState();
     this.state.ready = false;
     this.state.pendingRequests = new ArraySchema<PendingJoinRequest>();
     this.gameState = this.createInitialState();
@@ -106,7 +142,7 @@ export abstract class GameRoom<TState, TAction, TPlayerSlot extends string = str
 
     this.onMessage('action', (client: Client, action: unknown) => {
       const slot = this.clientSlots.get(client.sessionId);
-      if (!slot || !this.isValidAction(action) || !this.isPlayersTurn(this.gameState, slot)) return;
+      if (!slot || !this.isValidAction(action) || !this.isActionAllowed(this.gameState, slot, action)) return;
       this.applyAction(action);
       this.maybeTriggerAiMove();
     });
@@ -114,6 +150,15 @@ export abstract class GameRoom<TState, TAction, TPlayerSlot extends string = str
     this.onMessage('respondToJoinRequest', (client: Client, msg: { sessionId: string; accept: boolean }) => {
       if (client.sessionId !== this.creatorSessionId) return; // only the host may decide
       void this.respondToJoinRequest(msg.sessionId, msg.accept);
+    });
+
+    // Safety net for the per-field Schema games (Hotel-0b onward) — a client
+    // can ask for a fresh full snapshot at any time, reconciling away any
+    // hypothetical missed/corrupted delta. Game-agnostic and harmless for
+    // OpaqueGameStateSchema games too (every one of their syncs is already a
+    // full snapshot). See docs/hotel-0b-multiplayer-specifikacio.md §5.1/2.
+    this.onMessage('requestFullSync', (client: Client) => {
+      client.send('fullSync', JSON.stringify(this.gameState));
     });
 
     this.flushInterval = setInterval(() => {
@@ -170,6 +215,8 @@ export abstract class GameRoom<TState, TAction, TPlayerSlot extends string = str
     this.joinCount += 1;
     this.clientSlots.set(client.sessionId, slot);
     client.send('yourSlot', slot);
+    this.onPlayerAdmitted(slot, auth);
+    this.syncState();
 
     await prisma.gameSessionPlayer.create({
       data: { gameSessionId: this.dbSessionId, userId: auth.userId, playerSlot: slot },
@@ -231,19 +278,24 @@ export abstract class GameRoom<TState, TAction, TPlayerSlot extends string = str
     this.dirty = true;
   }
 
-  /** Runs the AI's virtual-client move(s) through the exact same reducer path a human action would use. */
+  /**
+   * Runs the AI's virtual-client move(s) through the exact same reducer path
+   * a human action would use. Computes a candidate move first, THEN checks
+   * whether any AI slot is actually allowed to make it — the reverse order
+   * from a naive "find whose turn it is, then compute their move," but
+   * necessary now that turn-ownership is folded into the action-aware
+   * `isActionAllowed` (no more standalone "whose general turn is it" check).
+   * Cheap even when it's a human's turn (the computed move is just discarded
+   * once no AI slot matches it).
+   */
   private maybeTriggerAiMove(): void {
     for (let guard = 0; guard < MAX_AI_MOVES_PER_TRIGGER; guard += 1) {
-      const actingSlot = [...this.aiSlots].find((slot) => this.isPlayersTurn(this.gameState, slot));
-      if (!actingSlot) return;
       const action = this.computeAiMove(this.gameState);
       if (!action) return;
+      const actingSlot = [...this.aiSlots].find((slot) => this.isActionAllowed(this.gameState, slot, action));
+      if (!actingSlot) return;
       this.applyAction(action);
     }
-  }
-
-  private syncState(): void {
-    this.state.stateJson = JSON.stringify(this.gameState);
   }
 
   private async flushToDatabase(): Promise<void> {

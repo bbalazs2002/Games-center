@@ -6,6 +6,7 @@ import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { authRouter } from './auth/authRoutes';
 import { DamaRoom } from './games/dama/DamaRoom';
+import { HotelRoom } from './games/hotel/HotelRoom';
 
 const app = express();
 app.use(cors());
@@ -29,6 +30,7 @@ gameServer.define('lobby', LobbyRoom);
 // without it, LobbyPage only ever sees the one-time snapshot from the moment
 // it joined the lobby room, never anything that happens afterwards.
 gameServer.define('dama', DamaRoom).enableRealtimeListing();
+gameServer.define('hotel', HotelRoom).enableRealtimeListing();
 
 const port = Number(process.env.PORT ?? 2567);
 

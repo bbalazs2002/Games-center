@@ -4,6 +4,7 @@ import {
   appendLog,
   canBuyLot,
   canBuyStaircaseRight,
+  canChooseFreeStaircaseSpace,
   canEndTurn,
   canForfeit,
   canPassBid,
@@ -19,12 +20,11 @@ import {
   computeNightlyRent,
   crossedLanes,
   eligibleBidderIds,
-  findAvailableStaircaseSpace,
   getConstructionEligibleLots,
   getCurrentPlayer,
+  getFreeStaircaseCandidates,
   getLot,
   getPlayer,
-  hasAvailableStaircaseSpace,
   isValidConstructionPlan,
   nextActivePlayerIndex,
   ownedLotsOf,
@@ -126,12 +126,15 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
     return { ...next, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: space.staircaseForLotId };
   }
   if (space.type === 'START') return finishTurn(next);
-  // FREE_STAIRCASE/FREE_BUILDING resolve automatically on landing — there's
-  // nothing for the player to decide (docs/hotel-0a-specifikacio.md §2 says
-  // "valamelyik hoteled", i.e. the game's own pick), so there's no repeatable
-  // "claim reward" button that could be clicked more than once.
+  // FREE_BUILDING resolves automatically on landing — there's nothing for the
+  // player to decide (docs/hotel-0a-specifikacio.md §2 says "valamelyik
+  // hoteled", i.e. the game's own pick, and unlike a staircase a building
+  // isn't placed on a specific board space), so no repeatable "claim reward"
+  // button that could be clicked more than once. FREE_STAIRCASE, in
+  // contrast, DOES let the player choose which lot/space (§9.2) — see
+  // resolveFreeStaircaseLanding.
   if (space.type === 'FREE_STAIRCASE') {
-    return { ...resolveFreeStaircase(next, player.id), turnPhase: 'RESOLVING_SPACE' };
+    return resolveFreeStaircaseLanding(next, player.id);
   }
   if (space.type === 'FREE_BUILDING') {
     return { ...resolveFreeBuilding(next, player.id), turnPhase: 'RESOLVING_SPACE' };
@@ -195,26 +198,36 @@ function applyRollBuildingPermit(state: HotelState, value: BuildingPermitResult)
   return chargePlayer(next, player.id, totalCost, null);
 }
 
-/** Auto-picks the first eligible owned lot — see the "resolves automatically" note in applyRollMoveDice. */
-function resolveFreeStaircase(state: HotelState, playerId: PlayerId): HotelState {
+/**
+ * Only auto-resolves the cash fallback, when there's genuinely nothing to
+ * choose from (no lots, or no room anywhere); otherwise parks the turn in
+ * AWAITING_FREE_STAIRCASE_CHOICE for the player to pick which lot/space —
+ * see docs/hotel-0a-specifikacio.md §9.2 and applyChooseFreeStaircaseSpace.
+ */
+function resolveFreeStaircaseLanding(state: HotelState, playerId: PlayerId): HotelState {
   const owned = ownedLotsOf(state, playerId);
   if (owned.length === 0) {
     const next = payFromBank(state, playerId, 100);
-    return appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId, lotId: null, payoutReceived: 100 });
+    const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId, lotId: null, payoutReceived: 100 });
+    return { ...logged, turnPhase: 'RESOLVING_SPACE' };
   }
 
-  const withRoom = owned.filter((lot) => hasAvailableStaircaseSpace(state, lot.id));
-  if (withRoom.length === 0) {
+  if (getFreeStaircaseCandidates(state, playerId).length === 0) {
     const maxPrice = Math.max(...owned.map((lot) => lot.staircasePrice));
     const next = payFromBank(state, playerId, maxPrice);
-    return appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId, lotId: null, payoutReceived: maxPrice });
+    const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId, lotId: null, payoutReceived: maxPrice });
+    return { ...logged, turnPhase: 'RESOLVING_SPACE' };
   }
 
-  const target = withRoom[0];
-  const availableSpace = findAvailableStaircaseSpace(state, target.id);
-  if (!availableSpace) return state; // defensive — withRoom already guarantees one exists
-  const next = updateSpace(state, availableSpace.id, { staircaseForLotId: target.id });
-  return appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId, lotId: target.id, payoutReceived: 0 });
+  return { ...state, turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+}
+
+function applyChooseFreeStaircaseSpace(state: HotelState, lotId: string, spaceId: string): HotelState {
+  if (!canChooseFreeStaircaseSpace(state, lotId, spaceId)) return state;
+  const player = getCurrentPlayer(state);
+  const next = updateSpace(state, spaceId, { staircaseForLotId: lotId });
+  const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId: player.id, lotId, payoutReceived: 0 });
+  return { ...logged, turnPhase: 'RESOLVING_SPACE' };
 }
 
 /** Auto-picks the first eligible owned lot — see the "resolves automatically" note in applyRollMoveDice. */
@@ -264,15 +277,13 @@ function applyRollNights(state: HotelState, value: number): HotelState {
   return { ...next, turnPhase: 'RESOLVING_SPACE' };
 }
 
-function applyBuyStaircaseRight(state: HotelState, lotId: string): HotelState {
-  if (!canBuyStaircaseRight(state, lotId)) return state;
+function applyBuyStaircaseRight(state: HotelState, lotId: string, spaceId: string): HotelState {
+  if (!canBuyStaircaseRight(state, lotId, spaceId)) return state;
   const player = getCurrentPlayer(state);
   const lot = getLot(state, lotId);
-  const availableSpace = findAvailableStaircaseSpace(state, lotId);
-  if (!availableSpace) return state; // defensive — canBuyStaircaseRight already guarantees one exists
 
   let next = updatePlayer(state, player.id, { cash: player.cash - lot.staircasePrice });
-  next = updateSpace(next, availableSpace.id, { staircaseForLotId: lotId });
+  next = updateSpace(next, spaceId, { staircaseForLotId: lotId });
   next = { ...next, lotsWithStaircasePurchasedThisTurn: [...next.lotsWithStaircasePurchasedThisTurn, lotId] };
   return appendLog(next, { type: 'STAIRCASE_RIGHT_BOUGHT', playerId: player.id, lotId, price: lot.staircasePrice });
 }
@@ -386,7 +397,9 @@ function dispatchMovementAndProperty(state: HotelState, action: HotelAction): Ho
 function dispatchStaircaseAuctionAndTurn(state: HotelState, action: HotelAction): HotelState | undefined {
   switch (action.type) {
     case 'BUY_STAIRCASE_RIGHT':
-      return applyBuyStaircaseRight(state, action.lotId);
+      return applyBuyStaircaseRight(state, action.lotId, action.spaceId);
+    case 'CHOOSE_FREE_STAIRCASE_SPACE':
+      return applyChooseFreeStaircaseSpace(state, action.lotId, action.spaceId);
     case 'START_AUCTION':
       return applyStartAuction(state, action.lotId);
     case 'PLACE_BID':

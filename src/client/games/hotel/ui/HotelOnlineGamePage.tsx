@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { OpaqueGameStateSchema } from '../../../core/transport/colyseusClient';
+import { HotelStateSchema } from '../../../../shared/games/hotel/colyseus/HotelStateSchema';
+import { decodeHotelStateSchema } from '../../../../shared/games/hotel/colyseus/hotelStateCodec';
+import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
+import { createInitialState } from '../../../../shared/games/hotel/engine/initialState';
+import type { HotelState, PlayerId } from '../../../../shared/games/hotel/engine/state';
 import { NEW_ROOM_PARAM } from '../../../core/transport/onlineRoomConstants';
 import {
   useOnlineGameRoom,
@@ -9,23 +13,15 @@ import {
 } from '../../../core/transport/useOnlineGameRoom';
 import { Button } from '../../../ui-kit/Button';
 import { useAuth } from '../../../shell/auth/AuthContext';
-import type { DamaAction } from '../../../../shared/games/dama/engine/actions';
-import { createInitialState } from '../../../../shared/games/dama/engine/initialState';
-import type { DamaState, Player } from '../../../../shared/games/dama/engine/state';
-import { DamaGamePage } from './DamaGamePage';
+import { HotelGamePage } from './HotelGamePage';
 
-function decodeDamaState(colyseusState: OpaqueGameStateSchema): DamaState {
-  return JSON.parse(colyseusState.stateJson) as DamaState;
+function decodeHotelState(colyseusState: HotelStateSchema): HotelState {
+  return decodeHotelStateSchema(colyseusState);
 }
 
-function OpponentStatusBanner({ status }: { status: PlayerConnectionStatus }) {
-  if (status === 'disconnected') {
-    return <p>Az ellenfél kapcsolata megszakadt — várakozás az újracsatlakozására…</p>;
-  }
-  if (status === 'left') {
-    return <p>Az ellenfél véglegesen lecsatlakozott.</p>;
-  }
-  return null;
+/** A single throwaway placeholder — real names arrive via GameRoom.onPlayerAdmitted, this is only ever rendered for the instant before the first real sync. */
+function placeholderInitialState(): HotelState {
+  return createInitialState(['', '']);
 }
 
 function PendingRequestsList({
@@ -52,7 +48,14 @@ function PendingRequestsList({
   );
 }
 
-function WaitingForOpponentScreen({
+/** Unlike Dáma's single "opponent," Hotel can have up to 3 other participants — just flags whether ANY of them is currently disconnected, without naming which (the wheel/board stay fully visible regardless — see docs/hotel-0b-multiplayer-specifikacio.md §5/4). */
+function AnyDisconnectedBanner({ playerStatuses }: { playerStatuses: Partial<Record<PlayerId, PlayerConnectionStatus>> }) {
+  const anyDisconnected = Object.values(playerStatuses).some((status) => status === 'disconnected');
+  if (!anyDisconnected) return null;
+  return <p>Egy játékos kapcsolata megszakadt — várakozás az újracsatlakozására…</p>;
+}
+
+function WaitingForPlayersScreen({
   connectedRoomId,
   displayPassword,
   pendingRequests,
@@ -66,7 +69,7 @@ function WaitingForOpponentScreen({
   return (
     <div>
       <p>
-        Várakozás az ellenfélre… Szoba azonosítója: <strong>{connectedRoomId}</strong>
+        Várakozás a többi játékosra… Szoba azonosítója: <strong>{connectedRoomId}</strong>
       </p>
       {displayPassword && (
         <p>
@@ -78,34 +81,23 @@ function WaitingForOpponentScreen({
   );
 }
 
-/** Dáma only ever has one other participant — derives its single "opponent status" from the hook's more general per-slot map. */
-function opponentStatusOf(myPlayer: Player | null, playerStatuses: Partial<Record<Player, PlayerConnectionStatus>>): PlayerConnectionStatus {
-  if (!myPlayer) return 'connected';
-  const opponentSlot: Player = myPlayer === 'LIGHT' ? 'DARK' : 'LIGHT';
-  return playerStatuses[opponentSlot] ?? 'connected';
-}
-
 /**
- * Connects to a Colyseus Dáma room (or creates a new one), and renders the
- * same DamaGamePage as hot-seat mode with the resulting transport — see
- * docs/fazis-0b-multiplayer-specifikacio.md §6.2. The room-connection
- * lifecycle itself (password/join-request UI, reconnection, per-slot
- * connection status) now lives in the game-agnostic `useOnlineGameRoom` hook
- * (extracted in Hotel-0b, once a second multiplayer game needed the exact
- * same thing — see docs/hotel-0b-multiplayer-specifikacio.md §5/3). This
- * component is now just the Dáma-specific glue: option-building, decoding,
+ * Connects to a Colyseus Hotel room (or creates a new one) and renders the
+ * same HotelGamePage as hot-seat mode with the resulting transport — the
+ * Hotel-0b counterpart to DamaOnlineGamePage, sharing the exact same
+ * game-agnostic `useOnlineGameRoom` connection lifecycle (see
+ * docs/hotel-0b-multiplayer-specifikacio.md §5/3). This component is only
+ * the Hotel-specific glue: option-building (playerCount instead of Dáma's
+ * opponentType, no AI in Hotel-0b), decoding via the per-field schema codec,
  * and rendering.
  */
-export function DamaOnlineGamePage() {
+export function HotelOnlineGamePage() {
   const { roomId } = useParams<{ roomId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { auth } = useAuth();
 
   const isCreating = roomId === NEW_ROOM_PARAM;
-  // Captured once at mount — shown on the waiting screen so the creator can share it.
-  // The URL itself gets replaced (without the query string) right after create()
-  // resolves, so this can't just be re-read from searchParams later.
   const [displayPassword] = useState(() => (isCreating ? searchParams.get('password') : null));
 
   const {
@@ -120,15 +112,15 @@ export function DamaOnlineGamePage() {
     rejectedReason,
     error,
     respondToJoinRequest,
-  } = useOnlineGameRoom<DamaState, DamaAction, OpaqueGameStateSchema, Player>({
-    gameId: 'dama',
+  } = useOnlineGameRoom<HotelState, HotelAction, HotelStateSchema, PlayerId>({
+    gameId: 'hotel',
     roomId,
     token: auth?.token,
-    rootSchema: OpaqueGameStateSchema,
-    createInitialState,
-    decode: decodeDamaState,
+    rootSchema: HotelStateSchema,
+    createInitialState: placeholderInitialState,
+    decode: decodeHotelState,
     buildCreateOptions: () => ({
-      opponentType: searchParams.get('opponent') === 'ai' ? 'AI' : 'HUMAN',
+      playerCount: Number(searchParams.get('playerCount')) || 2,
       password: searchParams.get('password') ?? undefined,
     }),
     buildJoinOptions: () => ({
@@ -142,7 +134,7 @@ export function DamaOnlineGamePage() {
     return (
       <div>
         <p>A csatlakozási kérelmedet elutasították: {rejectedReason}</p>
-        <Button onClick={() => navigate('/games/dama/lobby')}>Vissza a lobbyba</Button>
+        <Button onClick={() => navigate('/games/hotel/lobby')}>Vissza a lobbyba</Button>
       </div>
     );
   }
@@ -154,7 +146,7 @@ export function DamaOnlineGamePage() {
           variant="secondary"
           onClick={() => {
             void room?.leave();
-            navigate('/games/dama/lobby');
+            navigate('/games/hotel/lobby');
           }}
         >
           Mégse
@@ -165,7 +157,7 @@ export function DamaOnlineGamePage() {
   if (!transport) return <p>Csatlakozás a szobához…</p>;
   if (!ready) {
     return (
-      <WaitingForOpponentScreen
+      <WaitingForPlayersScreen
         connectedRoomId={connectedRoomId}
         displayPassword={displayPassword}
         pendingRequests={pendingRequests}
@@ -176,10 +168,10 @@ export function DamaOnlineGamePage() {
 
   return (
     <div>
-      <OpponentStatusBanner status={opponentStatusOf(myPlayer, playerStatuses)} />
-      <DamaGamePage transport={transport} myPlayer={myPlayer ?? undefined} />
+      <AnyDisconnectedBanner playerStatuses={playerStatuses} />
+      <HotelGamePage transport={transport} myPlayer={myPlayer ?? undefined} />
     </div>
   );
 }
 
-export default DamaOnlineGamePage;
+export default HotelOnlineGamePage;

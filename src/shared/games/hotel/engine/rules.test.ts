@@ -4,6 +4,7 @@ import { createInitialState } from './initialState';
 import {
   canBuyLot,
   canBuyStaircaseRight,
+  canChooseFreeStaircaseSpace,
   canForceBuyFromOwner,
   canPassBid,
   canPlaceBid,
@@ -14,11 +15,13 @@ import {
   computeLotPurchasePrice,
   computeNightlyRent,
   crossedLanes,
+  getFreeStaircaseCandidates,
   getNextConstructionStep,
   isValidConstructionPlan,
   resolveLandingPosition,
   updateLot,
   updatePlayer,
+  updateSpace,
 } from './rules';
 import type { HotelLot, HotelState } from './state';
 
@@ -216,7 +219,7 @@ describe('canBuyLot / canStartConstruction — action legality mirrors what the 
   });
 });
 
-describe('canBuyStaircaseRight', () => {
+describe('canBuyStaircaseRight — the player picks the space, not just the lot', () => {
   function stateWithRightActive(): HotelState {
     const state = updateLot(createInitialState(['Alice', 'Bob']), 'fujiyama', { ownerId: 'player-1' });
     return { ...state, staircasePurchaseRightActive: true };
@@ -224,26 +227,76 @@ describe('canBuyStaircaseRight', () => {
 
   it('is false when the right is not active, even on an owned lot', () => {
     const state = updateLot(createInitialState(['Alice', 'Bob']), 'fujiyama', { ownerId: 'player-1' });
-    expect(canBuyStaircaseRight(state, 'fujiyama')).toBe(false);
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-2')).toBe(false);
   });
 
-  it('is true on an owned lot while the right is active', () => {
-    expect(canBuyStaircaseRight(stateWithRightActive(), 'fujiyama')).toBe(true);
+  it('is true for any space adjacent to the owned lot while the right is active', () => {
+    const state = stateWithRightActive();
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-2')).toBe(true); // CONSTRUCTION [fujiyama]
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-3')).toBe(true); // PURCHASE [fujiyama, boomerang]
+  });
+
+  it('is false for a space not adjacent to the chosen lot', () => {
+    const state = stateWithRightActive();
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-9')).toBe(false); // PURCHASE [letoile] only
+  });
+
+  it('is false for a space that already has a staircase', () => {
+    const state = updateSpace(stateWithRightActive(), 'space-2', { staircaseForLotId: 'fujiyama' });
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-2')).toBe(false);
   });
 
   it("is false for a lot the player doesn't own", () => {
     const state = { ...createInitialState(['Alice', 'Bob']), staircasePurchaseRightActive: true };
-    expect(canBuyStaircaseRight(state, 'fujiyama')).toBe(false); // still bank-owned
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-2')).toBe(false); // still bank-owned
   });
 
   it('is false once already purchased for that lot this turn', () => {
     const state = { ...stateWithRightActive(), lotsWithStaircasePurchasedThisTurn: ['fujiyama'] };
-    expect(canBuyStaircaseRight(state, 'fujiyama')).toBe(false);
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-2')).toBe(false);
   });
 
   it("is false when the player can't afford the staircase price", () => {
     const state = updatePlayer(stateWithRightActive(), 'player-1', { cash: 0 });
-    expect(canBuyStaircaseRight(state, 'fujiyama')).toBe(false);
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-2')).toBe(false);
+  });
+});
+
+describe('getFreeStaircaseCandidates / canChooseFreeStaircaseSpace', () => {
+  it('lists every (lot, space) pair across all owned lots with room', () => {
+    let state = createInitialState(['Alice', 'Bob']);
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' }); // adjacent to space-2, space-3, space-4, space-5, space-6, space-7
+    const candidates = getFreeStaircaseCandidates(state, 'player-1');
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(candidates.every((c) => c.lotId === 'fujiyama')).toBe(true);
+  });
+
+  it('returns nothing for a player who owns no lots', () => {
+    const state = createInitialState(['Alice', 'Bob']);
+    expect(getFreeStaircaseCandidates(state, 'player-1')).toEqual([]);
+  });
+
+  it('excludes a lot with no available adjacent space left', () => {
+    let state = createInitialState(['Alice', 'Bob']);
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
+    // Occupy every fujiyama-adjacent space with a staircase (for other lots, just to fill the slot).
+    for (const space of state.board.filter((s) => s.adjacentLotIds.includes('fujiyama'))) {
+      state = updateSpace(state, space.id, { staircaseForLotId: 'fujiyama' });
+    }
+    expect(getFreeStaircaseCandidates(state, 'player-1')).toEqual([]);
+  });
+
+  it('canChooseFreeStaircaseSpace requires the AWAITING_FREE_STAIRCASE_CHOICE phase', () => {
+    let state = createInitialState(['Alice', 'Bob']);
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
+    expect(canChooseFreeStaircaseSpace(state, 'fujiyama', 'space-2')).toBe(false); // still AWAITING_ROLL
+    state = { ...state, turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+    expect(canChooseFreeStaircaseSpace(state, 'fujiyama', 'space-2')).toBe(true);
+  });
+
+  it("canChooseFreeStaircaseSpace rejects a lot the player doesn't own", () => {
+    const state: HotelState = { ...createInitialState(['Alice', 'Bob']), turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+    expect(canChooseFreeStaircaseSpace(state, 'fujiyama', 'space-2')).toBe(false);
   });
 });
 

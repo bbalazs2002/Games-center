@@ -9,12 +9,14 @@ import {
   getAuctionableLots,
   getConstructionEligibleLots,
   getCurrentPlayer,
+  getFreeStaircaseCandidates,
   getLot,
   getNextBidAmount,
   getNextConstructionStep,
   getRemainingBidderIds,
   getStaircaseEligibleLots,
   ownedLotsOf,
+  type FreeStaircaseCandidate,
 } from './rules';
 import type { BoardSpace, ConstructionPlanItem, HotelLot, HotelState, Player, PlayerId } from './state';
 
@@ -64,6 +66,9 @@ export interface HotelValidActions {
   canRollNights: boolean;
   canBuyStaircaseRight: boolean;
   staircaseEligibleLots: HotelLot[];
+  /** Landed on FREE_STAIRCASE with somewhere to put it — see docs/hotel-0a-specifikacio.md §9.2. */
+  canChooseFreeStaircaseSpace: boolean;
+  freeStaircaseCandidates: FreeStaircaseCandidate[];
   canStartAuction: boolean;
   auctionableLots: HotelLot[];
   canBid: boolean;
@@ -88,6 +93,8 @@ export function getValidActions(state: HotelState): HotelValidActions {
     canRollNights: canRollNights(state),
     canBuyStaircaseRight: state.staircasePurchaseRightActive,
     staircaseEligibleLots: getStaircaseEligibleLots(state, player.id),
+    canChooseFreeStaircaseSpace: state.turnPhase === 'AWAITING_FREE_STAIRCASE_CHOICE',
+    freeStaircaseCandidates: getFreeStaircaseCandidates(state, player.id),
     canStartAuction: state.turnPhase === 'AWAITING_DEBT_RESOLUTION',
     auctionableLots: getAuctionableLots(state),
     canBid: state.turnPhase === 'AUCTION_IN_PROGRESS',

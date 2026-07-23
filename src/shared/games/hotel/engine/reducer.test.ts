@@ -167,13 +167,54 @@ describe('reducer — free spaces resolve automatically on landing (no repeatabl
     expect(next.turnPhase).toBe('RESOLVING_SPACE');
   });
 
-  it('FREE_STAIRCASE places a staircase on an available adjacent space when the player owns the hotel', () => {
+  it('FREE_STAIRCASE with an eligible lot waits for the player to pick the space instead of auto-placing', () => {
     let state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 });
     state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
     const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
-    const staircaseSpace = next.board.find((s) => s.staircaseForLotId === 'fujiyama');
-    expect(staircaseSpace).toBeDefined();
+    expect(next.turnPhase).toBe('AWAITING_FREE_STAIRCASE_CHOICE');
+    expect(next.board.some((s) => s.staircaseForLotId === 'fujiyama')).toBe(false);
+    expect(getPlayer(next, 'player-1').cash).toBe(15000); // untouched until the choice is actually made
+  });
+
+  it('FREE_STAIRCASE pays the owned lot\'s staircase price when it has no room left and the landing space is unrelated', () => {
+    let state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 }); // lands on space-7, adjacent only to fujiyama
+    state = updateLot(state, 'boomerang', { ownerId: 'player-1' }); // owned lot unrelated to the landing space
+    // Occupy every space adjacent to boomerang so it has no room left.
+    for (const space of state.board) {
+      if (space.adjacentLotIds.includes('boomerang')) {
+        state = updateSpace(state, space.id, { staircaseForLotId: 'boomerang' });
+      }
+    }
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+    expect(getPlayer(next, 'player-1').cash).toBe(15000 + getLot(next, 'boomerang').staircasePrice);
+  });
+
+  it('CHOOSE_FREE_STAIRCASE_SPACE places the staircase on the chosen space and resumes the turn', () => {
+    let state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 });
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(landed.turnPhase).toBe('AWAITING_FREE_STAIRCASE_CHOICE');
+
+    const next = reducer(landed, { type: 'CHOOSE_FREE_STAIRCASE_SPACE', lotId: 'fujiyama', spaceId: 'space-2' });
+    expect(next.board.find((s) => s.id === 'space-2')?.staircaseForLotId).toBe('fujiyama');
     expect(getPlayer(next, 'player-1').cash).toBe(15000); // free — no charge, no payout
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+  });
+
+  it('CHOOSE_FREE_STAIRCASE_SPACE refuses a space not adjacent to the given lot', () => {
+    let state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 });
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+
+    const next = reducer(landed, { type: 'CHOOSE_FREE_STAIRCASE_SPACE', lotId: 'fujiyama', spaceId: 'space-9' });
+    expect(next).toBe(landed);
+  });
+
+  it('CHOOSE_FREE_STAIRCASE_SPACE is a no-op outside AWAITING_FREE_STAIRCASE_CHOICE', () => {
+    const state = updateLot(twoPlayerState(), 'fujiyama', { ownerId: 'player-1' });
+    const next = reducer(state, { type: 'CHOOSE_FREE_STAIRCASE_SPACE', lotId: 'fujiyama', spaceId: 'space-2' });
+    expect(next).toBe(state);
   });
 
   it('the reward can not be re-claimed by "clicking again" (re-dispatching) after landing', () => {
@@ -243,35 +284,41 @@ describe('reducer — BUY_STAIRCASE_RIGHT (paid staircase-purchase right)', () =
     return { ...state, staircasePurchaseRightActive: true };
   }
 
-  it('places a staircase on an available adjacent space and charges the price', () => {
+  it('places the staircase on the space the player picked and charges the price', () => {
     const state = stateWithRightActive();
-    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama' });
+    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama', spaceId: 'space-2' });
     expect(getPlayer(next, 'player-1').cash).toBe(15000 - fujiyamaStaircasePrice);
-    expect(next.board.some((space) => space.staircaseForLotId === 'fujiyama')).toBe(true);
+    expect(next.board.find((space) => space.id === 'space-2')?.staircaseForLotId).toBe('fujiyama');
     expect(next.lotsWithStaircasePurchasedThisTurn).toEqual(['fujiyama']);
   });
 
   it('is a no-op when the staircase-purchase right is not currently active', () => {
     const state = updateLot(twoPlayerState(), 'fujiyama', { ownerId: 'player-1' }); // right not active
-    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama' });
+    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama', spaceId: 'space-2' });
     expect(next).toBe(state);
   });
 
   it("refuses a lot the player doesn't own", () => {
     const state = { ...twoPlayerState(), staircasePurchaseRightActive: true }; // fujiyama still bank-owned
-    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama' });
+    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama', spaceId: 'space-2' });
     expect(next).toBe(state);
   });
 
   it('refuses a second staircase purchase on the same lot in the same turn', () => {
-    const state = reducer(stateWithRightActive(), { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama' });
-    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama' });
+    const state = reducer(stateWithRightActive(), { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama', spaceId: 'space-2' });
+    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama', spaceId: 'space-7' });
     expect(next).toBe(state);
   });
 
   it('refuses when the player cannot afford the staircase price', () => {
     const state = updatePlayer(stateWithRightActive(), 'player-1', { cash: 0 });
-    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama' });
+    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama', spaceId: 'space-2' });
+    expect(next).toBe(state);
+  });
+
+  it('refuses a space that is not adjacent to the given lot', () => {
+    const state = stateWithRightActive();
+    const next = reducer(state, { type: 'BUY_STAIRCASE_RIGHT', lotId: 'fujiyama', spaceId: 'space-9' }); // adjacent to letoile, not fujiyama
     expect(next).toBe(state);
   });
 });

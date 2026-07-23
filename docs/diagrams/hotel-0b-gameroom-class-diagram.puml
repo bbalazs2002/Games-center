@@ -1,0 +1,109 @@
+@startuml hotel-0b-gameroom-class-diagram
+title GameRoom generalizálás Hotel-0b-hez — isActionAllowed + Colyseus state típusparaméter (2026-07-24, tervezet)
+
+abstract class "GameRoom<TState, TAction, TPlayerSlot, TColyseusState>" as GameRoom {
+  {abstract} gameType: string
+  {abstract} reducer: Reducer<TState, TAction>
+  {abstract} createInitialState(): TState
+  {abstract} assignPlayerSlot(joinIndex: int): TPlayerSlot
+  {abstract} isValidAction(action: unknown): action is TAction
+  {abstract} isActionAllowed(state: TState, slot: TPlayerSlot, action: TAction): boolean
+  {abstract} computeAiMove(state: TState): TAction?
+  --
+  onAuth(client, options)
+  onCreate(options)
+  onJoin(client, options, auth)
+  onLeave(client, consented)
+  -syncState()
+  -applyAction(action: TAction)
+  -requestFullSync handler
+}
+
+note right of GameRoom
+  isActionAllowed felváltja a korábbi
+  isPlayersTurn(state, slot)-ot — az
+  action is a döntés része, nem csak
+  a slot. isValidAction (alak-ellenőrzés)
+  külön marad, ortogonális felelősség.
+
+  requestFullSync/fullSync: game-agnosztikus
+  biztosíték a mezőnkénti diff ellen —
+  ld. spec §5.1/2.
+end note
+
+class DamaRoom {
+  maxClients = 2
+  gameType = "dama"
+  assignPlayerSlot(i): Player
+  isActionAllowed(state, slot): boolean
+  ..action param nem használt..
+}
+DamaRoom --|> GameRoom
+note bottom of DamaRoom
+  TColyseusState = OpaqueGameStateSchema (default)
+  isActionAllowed(state, slot, _action) {
+    return state.currentPlayer === slot;
+  }
+end note
+
+class HotelRoom {
+  maxClients: dinamikus (onCreate-ben, 2-4)
+  gameType = "hotel"
+  assignPlayerSlot(i): PlayerId
+  isActionAllowed(state, slot, action): boolean
+  ..PLACE_BID/PASS_BID kivétel..
+}
+HotelRoom --|> GameRoom
+note bottom of HotelRoom
+  TColyseusState = HotelStateSchema
+  isActionAllowed(state, slot, action) {
+    if (action.type === 'PLACE_BID'
+     || action.type === 'PASS_BID') {
+      return action.bidderId === slot;
+    }
+    return getCurrentPlayer(state).id === slot;
+  }
+end note
+
+abstract class Schema <<@colyseus/schema>>
+
+class OpaqueGameStateSchema {
+  stateJson: string
+  ready: boolean
+  pendingRequests: ArraySchema<PendingJoinRequest>
+}
+OpaqueGameStateSchema --|> Schema
+
+class HotelStateSchema {
+  board: ArraySchema<BoardSpaceSchema>
+  lots: ArraySchema<HotelLotSchema>
+  players: ArraySchema<PlayerSchema>
+  currentPlayerIndex: number
+  turnPhase: string
+  log: ArraySchema<string>
+  pendingAuction: AuctionSchema?
+  pendingConstructionPlan: ArraySchema<ConstructionItemSchema>?
+  pendingDebt: DebtSchema?
+  ready: boolean
+  pendingRequests: ArraySchema<PendingJoinRequest>
+}
+HotelStateSchema --|> Schema
+note right of HotelStateSchema
+  log: minden elem JSON.stringify(LogEntry) —
+  NEM egy 15-variánsú LogEntrySchema osztály.
+  A LogEntry TS-unió így egyetlen helyen
+  (shared/games/hotel/engine/state.ts) marad
+  leírva, az ArraySchema push-diffelése pedig
+  megoldja, hogy csak új sorok menjenek át.
+end note
+
+class "ColyseusGameTransport<TState, TAction>" as ColyseusGameTransport {
+  -decode: (colyseusState: TColyseusState) => TState
+  getState(): TState
+  dispatch(action: TAction)
+  subscribe(listener)
+  -requestFullSync() periodikusan
+}
+ColyseusGameTransport ..> GameRoom : hálózaton keresztül
+
+@enduml

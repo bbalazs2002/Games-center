@@ -80,6 +80,8 @@ export type TurnPhase =
   | 'AWAITING_BUILDING_PERMIT'
   | 'AWAITING_DEBT_RESOLUTION'
   | 'AUCTION_IN_PROGRESS'
+  /** Landed on FREE_STAIRCASE, owns at least one lot with room for one — waiting on the player to pick which lot/space (docs/hotel-0a-specifikacio.md §9.2). */
+  | 'AWAITING_FREE_STAIRCASE_CHOICE'
   | 'TURN_COMPLETE';
 
 export type BuildingPermitResult = 'GREEN' | 'FREE' | 'DOUBLE' | 'RED';

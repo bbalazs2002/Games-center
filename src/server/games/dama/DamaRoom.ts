@@ -1,3 +1,4 @@
+import { OpaqueGameStateSchema } from '../../../shared/core/OpaqueGameStateSchema';
 import type { DamaAction } from '../../../shared/games/dama/engine/actions';
 import { createInitialState } from '../../../shared/games/dama/engine/initialState';
 import { reducer } from '../../../shared/games/dama/engine/reducer';
@@ -18,11 +19,18 @@ export class DamaRoom extends GameRoom<DamaState, DamaAction, Player> {
   protected reducer = reducer;
   protected createInitialState = createInitialState;
 
+  protected createColyseusState(): OpaqueGameStateSchema {
+    return new OpaqueGameStateSchema();
+  }
+
   protected assignPlayerSlot(joinIndex: number): Player {
     return joinIndex === 0 ? 'LIGHT' : 'DARK';
   }
 
-  protected isPlayersTurn(state: DamaState, playerSlot: Player): boolean {
+  protected isActionAllowed(state: DamaState, playerSlot: Player): boolean {
+    // The action itself is irrelevant here — Dáma has no exception to "only
+    // the current player may act" (unlike Hotel's auction bidding), so this
+    // reduces to the old isPlayersTurn check.
     return state.currentPlayer === playerSlot;
   }
 
@@ -34,5 +42,9 @@ export class DamaRoom extends GameRoom<DamaState, DamaAction, Player> {
 
   protected computeAiMove(state: DamaState): DamaAction | null {
     return pickRandomMove(state);
+  }
+
+  protected syncState(): void {
+    this.state.stateJson = JSON.stringify(this.gameState);
   }
 }

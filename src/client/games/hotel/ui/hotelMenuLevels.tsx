@@ -5,7 +5,9 @@ import {
   computeLotPurchasePrice,
   getConstructionEligibleLots,
   getCurrentPlayer,
+  getLot,
   getNextConstructionStep,
+  getStaircaseSpaceOptions,
 } from '../../../../shared/games/hotel/engine/rules';
 import { getValidActions } from '../../../../shared/games/hotel/engine/selectors';
 import type { ConstructionPlanItem, HotelLot, HotelState } from '../../../../shared/games/hotel/engine/state';
@@ -18,8 +20,16 @@ export type MenuLevel =
   | { kind: 'purchase-lots' }
   | { kind: 'construction-lots' }
   | { kind: 'staircase-right-lots' }
+  | { kind: 'staircase-right-spaces'; lotId: string }
+  | { kind: 'free-staircase-spaces' }
   | { kind: 'debt-auction-lots' }
   | { kind: 'auction-bidding' };
+
+/** "7. mező" — the space's 1-based position in state.board, the same numbering as docs/hotel-0a-specifikacio.md §3.1's table. */
+function describeSpace(state: HotelState, spaceId: string): string {
+  const index = state.board.findIndex((space) => space.id === spaceId);
+  return `${index + 1}. mező`;
+}
 
 export interface NavigationHelpers {
   push: (level: MenuLevel) => void;
@@ -88,6 +98,13 @@ export function rootSlices(
       icon: <Milestone />,
       disabled: !valid.canBuyStaircaseRight || valid.staircaseEligibleLots.length === 0,
       onSelect: () => nav.push({ kind: 'staircase-right-lots' }),
+    },
+    {
+      id: 'free-staircase-choice',
+      label: 'Lépcső elhelyezése',
+      icon: <Milestone />,
+      disabled: !valid.canChooseFreeStaircaseSpace,
+      onSelect: () => nav.push({ kind: 'free-staircase-spaces' }),
     },
     {
       id: 'auction',
@@ -162,13 +179,38 @@ function nextConstructionSlice(
   return { id: `lot-${lot.id}`, label, icon: addsBuilding ? <Hammer /> : <Trees />, onSelect: () => addToPending(nextStep) };
 }
 
-export function staircaseRightLotSlices(state: HotelState, dispatch: Dispatch): WheelMenuSlice[] {
+/** Picking a lot only narrows things down — the actual space is a second, separate choice (see staircaseRightSpaceSlices), same reasoning as the user's request: paid or free, the player picks the space, not the engine. */
+export function staircaseRightLotSlices(state: HotelState, nav: NavigationHelpers): WheelMenuSlice[] {
   return getValidActions(state).staircaseEligibleLots.map((lot) => ({
     id: `staircase-${lot.id}`,
     label: `${lot.name} (${lot.staircasePrice})`,
     icon: <Milestone />,
-    onSelect: () => dispatch({ type: 'BUY_STAIRCASE_RIGHT', lotId: lot.id }),
+    onSelect: () => nav.push({ kind: 'staircase-right-spaces', lotId: lot.id }),
   }));
+}
+
+export function staircaseRightSpaceSlices(state: HotelState, lotId: string, dispatch: Dispatch): WheelMenuSlice[] {
+  const lot = getLot(state, lotId);
+  return getStaircaseSpaceOptions(state, lotId).map((space) => ({
+    id: `staircase-space-${space.id}`,
+    label: `${describeSpace(state, space.id)} (${lot.name})`,
+    icon: <Milestone />,
+    onSelect: () => dispatch({ type: 'BUY_STAIRCASE_RIGHT', lotId, spaceId: space.id }),
+  }));
+}
+
+/** Combined across every owned lot with room — the free-staircase counterpart of staircaseRightSpaceSlices, one flat level since the candidate list is always small. */
+export function freeStaircaseSpaceSlices(state: HotelState, dispatch: Dispatch): WheelMenuSlice[] {
+  return getValidActions(state).freeStaircaseCandidates.map((candidate) => {
+    const lot = getLot(state, candidate.lotId);
+    return {
+      id: `free-staircase-${candidate.spaceId}`,
+      label: `${describeSpace(state, candidate.spaceId)} (${lot.name})`,
+      icon: <Milestone />,
+      onSelect: () =>
+        dispatch({ type: 'CHOOSE_FREE_STAIRCASE_SPACE', lotId: candidate.lotId, spaceId: candidate.spaceId }),
+    };
+  });
 }
 
 export function debtAuctionLotSlices(state: HotelState, dispatch: Dispatch): WheelMenuSlice[] {

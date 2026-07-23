@@ -9,10 +9,12 @@ import {
   auctionBiddingSlices,
   constructionLotSlices,
   debtAuctionLotSlices,
+  freeStaircaseSpaceSlices,
   purchaseLotSlices,
   rollPermitDie,
   rootSlices,
   staircaseRightLotSlices,
+  staircaseRightSpaceSlices,
   type MenuLevel,
   type NavigationHelpers,
 } from './hotelMenuLevels';
@@ -21,6 +23,17 @@ import styles from './PlayerActionWheel.module.css';
 export interface PlayerActionWheelProps {
   state: HotelState;
   dispatch: (action: HotelAction) => void;
+  /**
+   * False when it's not the local player's turn — online mode only (see
+   * docs/hotel-0b-multiplayer-specifikacio.md §5, "nyílt információ, tárcsa
+   * csak saját körben aktív"). The wheel stays visible either way (everyone
+   * always sees the same board/options, matching the physical game), just
+   * every slice renders disabled — the server already rejects an
+   * out-of-turn action regardless, this is purely a UI affordance. Always
+   * true in hot-seat mode (omitted prop), where it's always "your turn" —
+   * whoever's turn it is holds the device.
+   */
+  interactive?: boolean;
 }
 
 function computeSlices(
@@ -40,7 +53,11 @@ function computeSlices(
     case 'construction-lots':
       return constructionLotSlices(state, pending, addToPending);
     case 'staircase-right-lots':
-      return staircaseRightLotSlices(state, dispatch);
+      return staircaseRightLotSlices(state, nav);
+    case 'staircase-right-spaces':
+      return staircaseRightSpaceSlices(state, level.lotId, dispatch);
+    case 'free-staircase-spaces':
+      return freeStaircaseSpaceSlices(state, dispatch);
     case 'debt-auction-lots':
       return debtAuctionLotSlices(state, dispatch);
     case 'auction-bidding':
@@ -65,7 +82,7 @@ function describeSelection(item: ConstructionPlanItem): string {
  * selection — both are transient UI state, not game state, so they live
  * here rather than in HotelState.
  */
-export function PlayerActionWheel({ state, dispatch }: PlayerActionWheelProps) {
+export function PlayerActionWheel({ state, dispatch, interactive = true }: PlayerActionWheelProps) {
   const [open, setOpen] = useState(true);
   const [stack, setStack] = useState<MenuLevel[]>([{ kind: 'root' }]);
   const [pending, setPending] = useState<ConstructionPlanItem[]>([]);
@@ -135,15 +152,18 @@ export function PlayerActionWheel({ state, dispatch }: PlayerActionWheelProps) {
   }
 
   const level = stack[stack.length - 1];
-  const slices = computeSlices(level, state, dispatchAndReturnToRoot, { push }, pending, addToPending, () =>
+  const rawSlices = computeSlices(level, state, dispatchAndReturnToRoot, { push }, pending, addToPending, () =>
     setForfeitConfirmOpen(true),
   );
+  // Not our turn online — still show every slice (open information), just
+  // force them all disabled rather than re-deriving each one's own condition.
+  const slices = interactive ? rawSlices : rawSlices.map((slice) => ({ ...slice, disabled: true }));
   // Shown so the player can weigh the risk before requesting the permit — a
   // DOUBLE permit-die roll charges this amount twice (a RED roll charges nothing).
   const totalCost = pending.reduce((sum, item) => sum + computeConstructionCost(getLot(state, item.lotId), item), 0);
 
   return (
-    <div className={styles.container}>
+    <div className={[styles.container, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
       <div className={styles.playerLabel}>{currentPlayer.name}</div>
       <WheelMenu slices={slices} onBack={stack.length > 1 ? back : undefined} onClose={() => setOpen(false)} />
       {pending.length > 0 && (

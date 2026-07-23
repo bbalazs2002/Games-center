@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
+import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import {
@@ -16,6 +17,7 @@ import {
   type BuildingPermitResult,
   type HotelLot,
   type HotelState,
+  type PlayerId,
   type SpaceType,
 } from '../../../../shared/games/hotel/engine/state';
 import { GameLogPanel } from './GameLogPanel';
@@ -163,20 +165,26 @@ function renderPlayerToken(data: HotelTokenData): ReactNode {
 }
 
 export interface HotelGamePageProps {
-  playerNames: string[];
+  /** Hot-seat only — ignored (a throwaway LocalGameTransport is still built but never used) once `transport` is provided. */
+  playerNames?: string[];
+  /** If omitted, a local LocalGameTransport is created for hot-seat mode — see docs/fazis-0b-multiplayer-specifikacio.md §6.2 and docs/hotel-0b-multiplayer-specifikacio.md. */
+  transport?: GameTransport<HotelState, HotelAction>;
+  /** Online mode only: which player slot the local client controls — gates PlayerActionWheel's interactivity. */
+  myPlayer?: PlayerId;
 }
 
 /**
- * Hotel-0a local (hot-seat) vertical — mirrors DamaGamePage's role: wires the
- * shared reducer to a LocalGameTransport and renders it, here via
- * LoopTrackBoard3D + PlayerActionWheel instead of GridBoard2D. See
- * docs/hotel-0a-specifikacio.md.
+ * Hotel-0a local (hot-seat) vertical, generalized for Hotel-0b online play —
+ * mirrors DamaGamePage's role: wires the shared reducer to a transport (local
+ * or networked) and renders it, here via LoopTrackBoard3D + PlayerActionWheel
+ * instead of GridBoard2D. See docs/hotel-0a-specifikacio.md, docs/hotel-0b-multiplayer-specifikacio.md.
  */
-export function HotelGamePage({ playerNames }: HotelGamePageProps) {
-  const transport = useMemo(
-    () => new LocalGameTransport<HotelState, HotelAction>(reducer, createInitialState(playerNames)),
+export function HotelGamePage({ playerNames, transport: providedTransport, myPlayer }: HotelGamePageProps) {
+  const localTransport = useMemo(
+    () => new LocalGameTransport<HotelState, HotelAction>(reducer, createInitialState(playerNames ?? [])),
     [playerNames],
   );
+  const transport = providedTransport ?? localTransport;
   const [state, dispatch] = useGameTransport(transport);
 
   const spaces: LoopTrackSpace<HotelSpaceData>[] = useMemo(
@@ -234,8 +242,9 @@ export function HotelGamePage({ playerNames }: HotelGamePageProps) {
         />
         <OwnedLotsPanel state={state} />
         <GameLogPanel state={state} />
-        <PlayerActionWheel state={state} dispatch={dispatch} />
+        <PlayerActionWheel state={state} dispatch={dispatch} interactive={!myPlayer || myPlayer === currentPlayer.id} />
       </div>
+      {myPlayer && <p className={styles.status}>Te vagy: {state.players.find((p) => p.id === myPlayer)?.name}</p>}
       <p className={styles.status}>
         <span>Soron van: {currentPlayer.name}</span>
         <span

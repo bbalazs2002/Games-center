@@ -7,7 +7,10 @@ services:
       POSTGRES_PASSWORD: games_center_dev
       POSTGRES_DB: games_center
     ports:
-      - '5432:5432'
+      # Host port 5433 (not the default 5432) — avoids clashing with another
+      # project's Postgres container also bound to 5432 on this machine. The
+      # container's own internal port stays 5432, only the host mapping changed.
+      - '5433:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
 

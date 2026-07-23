@@ -7,10 +7,11 @@ import { GameModeSelectPage } from './GameModeSelectPage';
 import { HomePage } from './HomePage';
 import { LobbyPage } from './lobby/LobbyPage';
 
-// lazy(), not a static import — otherwise Rollup would fold the Dáma engine/UI
-// into the main bundle, losing GameLoader's dynamic code-splitting benefit
-// (see docs/fazis-0a-dama-specifikacio.md, "moduláris letöltéskezelés").
+// lazy(), not a static import — otherwise Rollup would fold each game's
+// engine/UI into the main bundle, losing GameLoader's dynamic code-splitting
+// benefit (see docs/fazis-0a-dama-specifikacio.md, "moduláris letöltéskezelés").
 const DamaOnlineGamePage = lazy(() => import('../games/dama/ui/DamaOnlineGamePage'));
+const HotelOnlineGamePage = lazy(() => import('../games/hotel/ui/HotelOnlineGamePage'));
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
@@ -31,6 +32,16 @@ export const router = createBrowserRouter([
       <RequireAuth>
         <Suspense fallback={<p>Betöltés…</p>}>
           <DamaOnlineGamePage />
+        </Suspense>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/games/hotel/online/:roomId',
+    element: (
+      <RequireAuth>
+        <Suspense fallback={<p>Betöltés…</p>}>
+          <HotelOnlineGamePage />
         </Suspense>
       </RequireAuth>
     ),

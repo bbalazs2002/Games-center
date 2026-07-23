@@ -23,6 +23,11 @@
   gap: 0.5rem;
 }
 
+/** Not this client's turn (online mode) — still fully visible, just visually muted. */
+.readOnly {
+  opacity: 0.55;
+}
+
 .playerLabel {
   background: white;
   border-radius: 999px;
