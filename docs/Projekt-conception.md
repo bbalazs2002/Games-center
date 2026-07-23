@@ -1,6 +1,6 @@
 # Társasjáték Digitalizáló Platform — Projekt Koncepció
 
-**Státusz:** Fázis 0a/0b/0c (Dáma) implementálva és élesben ellenőrizve; Fázis 2 (Hotel) tervezés alatt
+**Státusz:** Fázis 0a/0b/0c (Dáma) implementálva és élesben ellenőrizve; Fázis 2 Hotel-0a (helyi vertikum) implementálva, élő böngészős tesztre vár
 **Utolsó frissítés:** 2026-07-24
 
 ## Projekt célja
@@ -107,7 +107,7 @@ Minden játék besorolva — nincs függő tétel.
 3. **Fázis 0b – Multiplayer réteg**: Colyseus-alapú szerver, lobby, fiók/auth, letöltéskezelő SW cache + PWA telepíthetőség; a Fázis 1-ben megépült Dáma motor hálózati Transport-adapterrel bővül (a reducer nem változik). **Terv és implementáció (lezárva, élesben ellenőrizve):** [fazis-0b-multiplayer-specifikacio.md](./fazis-0b-multiplayer-specifikacio.md) (2026-07-22, utolsó kiegészítés 2026-07-24) — meghívó-kód alapú auth, PostgreSQL+Prisma, `src/` átrendezése `shared`/`client`/`server` alá, valós idejű lobby, újracsatlakozás.
 3b. **Fázis 0c – AI ellenfél**: szoba létrehozásakor választható Ember/AI ellenfél, szerver-oldali "virtuális kliens" AI (ugyanazon a validáció/reducer-csövön megy át, mint egy emberi lépés), szoba-jelszó és csatlakozási kérelem. **Terv és implementáció (lezárva, élesben ellenőrizve):** [fazis-0c-dama-ai-specifikacio.md](./fazis-0c-dama-ai-specifikacio.md) (2026-07-23).
 4. **Fázis 2 (átsorolva, 2026-07-24) — Hotel, a C) klaszter első tagja.** A te döntésed alapján a Dáma után **nem** a soron következő legkisebb lépés (B/A klaszter bővítés) jön, hanem tudatosan a legnagyobb architekturális ugrás: a Hotel egyszerre igényel 3+ fős szobalogikát, 3D board renderert és (a state mérete miatt) a `GameRoom` mezőnkénti `@colyseus/schema`-ra váltását — ezekkel korán, egy alaposan letesztelt vertikumban érdemes megbirkózni, mielőtt sok játékra szétterítenénk a kockázatot. A korábbi Fázis 2/3 (B/A klaszter bővítés, Hanabi) **nem törölve, csak hátrébb sorolva** — lásd lent.
-   - **Hotel-0a — helyi vertikum:** játékmotor (reducer/state, N-fős, pálya-bejárás/ingatlan-vásárlás/bérleti díj/részvény-mechanika), 3D "loop-track" board renderer (Three.js/R3F, geometriai placeholder assetekkel), N-fős hot-seat mód (egy gépen körbeadva) — multiplayer és végleges assetek nélkül.
+   - **Hotel-0a — helyi vertikum: IMPLEMENTÁLVA (2026-07-24), élő böngészős tesztre vár.** Játékmotor (reducer/state, N-fős, pálya-bejárás/ingatlan-vásárlás/bérleti díj/árverés), 3D "loop-track" board renderer (Three.js/R3F, geometriai placeholder assetekkel), N-fős hot-seat mód (egy gépen körbeadva) — multiplayer és végleges assetek nélkül. Részletek: [hotel-0a-specifikacio.md](./hotel-0a-specifikacio.md) §9.
    - **Hotel-0b — multiplayer réteg:** a `GameRoom` N-fősre általánosítása (jelenleg 2 fixre/2 slotra épül), a mezőnkénti `@colyseus/schema`-refaktor, a Fázis 0c-ben megépült szoba-jelszó/kérelem-rendszer élesben tesztelve 3+ fővel is.
    - **Hotel-0c — assets és textúrák:** a placeholder geometriai primitívek lecserélése a hibrid asset-stratégia szerint (kész CC0 elemek + egyedi/AI-generált ikonikus darabok, lásd fent).
    - **Hotel-0d — AI ellenfél:** a Fázis 0c-ben megépült szerver-oldali "virtuális kliens" AI-minta kiterjesztése Hotelre (N-fős szobában bármelyik/több slot lehet AI).

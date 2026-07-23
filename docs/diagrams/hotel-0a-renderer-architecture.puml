@@ -1,0 +1,48 @@
+@startuml hotel-0a-renderer-architecture
+title Renderer-réteg cserélhetősége — Dáma (2D/rács) vs Hotel (3D/hurok)
+
+package "shared/games (motor, framework-agnosztikus)" {
+  [dama/engine\n(reducer, state, actions)] as DamaEngine
+  [hotel/engine\n(reducer, state, actions)] as HotelEngine
+}
+
+package "client/renderers (game-agnosztikus, cserélhető)" {
+  [GridBoard2D<TPiece>\n(SVG, rács-koordináták)] as GridBoard2D
+  [LoopTrackBoard3D<TSpaceData,TToken>\n(Three.js/R3F, hurok-pozíciók)] as LoopTrackBoard3D
+}
+
+package "client/games (vékony UI-réteg, összeköti a kettőt)" {
+  [DamaGamePage] as DamaPage
+  [HotelGamePage] as HotelPage
+}
+
+DamaEngine --> DamaPage : GameTransport<DamaState, DamaAction>
+HotelEngine --> HotelPage : GameTransport<HotelState, HotelAction>
+
+DamaPage --> GridBoard2D : getPieceAt / renderPiece / onSquareClick
+HotelPage --> LoopTrackBoard3D : spaces / renderSpace / tokens / onSpaceClick
+
+note bottom of GridBoard2D
+  Semmit nem tud a Dáma szabályairól —
+  ugyanígy semmit nem tud a Sakk/Malom
+  szabályairól sem, ha azok is erre épülnek.
+end note
+
+note bottom of LoopTrackBoard3D
+  Semmit nem tud a Hotel szabályairól —
+  ugyanígy semmit nem tudna a Monopoly/
+  Gazdálkodj okosan szabályairól sem,
+  ha azok is erre a rendererre épülnek
+  (core/games szeparációs teszt, spec 5. szakasz).
+end note
+
+note right of HotelPage
+  A tényleges kör-akciók egy kör alakú,
+  lebegő, becsukható PlayerActionWheel-en
+  futnak (screen-space HTML overlay a
+  Canvas fölött) — a LoopTrackBoard3D csak
+  megjelenít, nem fogad játék-akciót
+  közvetlenül a 3D jelenetből (spec 5. szakasz).
+end note
+
+@enduml

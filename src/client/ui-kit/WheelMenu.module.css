@@ -1,0 +1,98 @@
+.wheel {
+  position: relative;
+  width: 20rem;
+  height: 20rem;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.slice path {
+  fill: #3b6ea5;
+  stroke: white;
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.slice:hover path {
+  fill: #2c5282;
+}
+
+.sliceDisabled path {
+  fill: #cbd5e0;
+  stroke: white;
+  stroke-width: 2;
+  cursor: default;
+}
+
+.icon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  pointer-events: none;
+}
+
+.icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.sliceDisabled .icon {
+  color: #718096;
+}
+
+.label {
+  font-size: 11px;
+  fill: white;
+  pointer-events: none;
+}
+
+.sliceDisabled .label {
+  fill: #718096;
+}
+
+.hub {
+  fill: white;
+  stroke: #e2e8f0;
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.hubButtons {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+
+.hubButtons > * {
+  pointer-events: auto;
+}
+
+.backButton {
+  border: none;
+  background: transparent;
+  font-size: 0.8rem;
+  color: #4a5568;
+  cursor: pointer;
+}
+
+.closeButton {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #1a202c;
+  cursor: pointer;
+}

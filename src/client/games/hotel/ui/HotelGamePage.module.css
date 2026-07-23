@@ -1,0 +1,71 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.canvasWrapper {
+  position: relative;
+  flex: 1;
+  min-height: 24rem;
+}
+
+.status {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  background: #f7fafc;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.colorSwatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.diceRolls {
+  margin: 0;
+  padding: 0.25rem 1rem 0.5rem;
+  background: #f7fafc;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.ownedLots {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  width: 16rem;
+  background: white;
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+}
+
+.ownedLots h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.ownedLots ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.ownedLots li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #2d3748;
+}

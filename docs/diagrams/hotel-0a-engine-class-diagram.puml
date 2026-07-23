@@ -1,0 +1,159 @@
+@startuml hotel-0a-engine-class-diagram
+title Hotel motor — adatmodell (a valódi szabályok alapján, 2026-07-24)
+
+class HotelState {
+  board: BoardSpace[]
+  specialLanes: SpecialLane[]
+  lots: HotelLot[]
+  players: Player[]
+  currentPlayerIndex: int
+  turnPhase: TurnPhase
+  lastDiceRoll: int?
+  lastBuildingPermitRoll: BuildingPermitResult?
+  pendingAuction: PendingAuction?
+  status: HotelStatus
+  winnerId: PlayerId?
+}
+
+class HotelConfig {
+  id: string
+  name: string
+  lotPrice: int
+  staircasePrice: int
+  buildingPrices: int[]
+  gardenPrice: int
+  nightlyRates: int[][]
+  gardenNightlyRates: int[]
+}
+
+class HotelLot extends HotelConfig {
+  ownerId: PlayerId?
+  buildingsBuilt: int
+  hasGarden: boolean
+  hasStaircase: boolean
+  bankBuybackPrice: int?
+}
+
+class BoardSpace {
+  id: string
+  type: SpaceType
+  adjacentLotIds: string[]
+  staircaseForLotId: string?
+}
+
+class SpecialLane {
+  afterSpaceIndex: int
+  effect: LaneEffect
+}
+
+class Player {
+  id: PlayerId
+  name: string
+  cash: int
+  position: int
+  bankrupt: boolean
+}
+
+class PendingAuction {
+  lotId: string
+  highestBid: int
+  highestBidderId: PlayerId?
+}
+
+enum SpaceType {
+  START
+  PURCHASE
+  CONSTRUCTION
+  FREE_STAIRCASE
+  FREE_BUILDING
+}
+
+enum LaneEffect {
+  BONUS_2000
+  STAIRCASE_PURCHASE_RIGHT
+}
+
+enum TurnPhase {
+  AWAITING_ROLL
+  RESOLVING_SPACE
+  AWAITING_BUILDING_PERMIT
+  AWAITING_NIGHTS_ROLL
+  AUCTION_IN_PROGRESS
+  TURN_COMPLETE
+}
+
+enum BuildingPermitResult {
+  GREEN
+  FREE
+  DOUBLE
+  RED
+}
+
+enum HotelStatus {
+  IN_PROGRESS
+  FINISHED
+}
+
+together {
+  class RollMoveDice <<action>>
+  class BuyLot <<action>> { lotId: string }
+  class StartConstruction <<action>> { plan: {lotId,buildingCount}[] }
+  class RollBuildingPermit <<action>>
+  class TakeFreeStaircase <<action>> { lotId: string? }
+  class TakeFreeBuilding <<action>> { lotId: string? }
+  class RollNights <<action>>
+  class BuyStaircaseRight <<action>> { lotId: string }
+  class StartAuction <<action>> { lotId: string }
+  class PlaceBid <<action>> { amount: int }
+  class Forfeit <<action>>
+  class EndTurn <<action>>
+}
+
+HotelState "1" *-- "N" BoardSpace : board
+HotelState "1" *-- "N" SpecialLane : specialLanes
+HotelState "1" *-- "N" HotelLot : lots
+HotelState "1" *-- "N" Player : players
+HotelState "0..1" *-- "1" PendingAuction : pendingAuction
+HotelState --> TurnPhase
+HotelState --> HotelStatus
+BoardSpace --> SpaceType
+SpecialLane --> LaneEffect
+
+note right of HotelState
+  Fő különbség a Dáma state-jéhez képest (két szinten is):
+  1) currentPlayerIndex N-re körbefordul, átugorja a
+     bankrupt=true játékosokat (nem bináris LIGHT/DARK flip)
+  2) turnPhase egy több-lépéses kör-állapotgépet vezérel
+     (dobás -> mező feloldása -> építési engedély/éjszaka
+     dobás -> fizetés/csőd/árverés -> kör vége), NEM egyetlen
+     MOVE-action, mint a Dámánál.
+end note
+
+note bottom of HotelState
+  Győzelem: amikor a nem-csődbe-ment
+  játékosok száma 1-re csökken ->
+  status=FINISHED, winnerId beállítva.
+  (Kieséses, NEM kör-limit/pontszám-alapú.)
+end note
+
+note bottom of HotelLot
+  A 8 elnevezett hotel (Waikiki, Royal, L'etoile,
+  Boomerang, Taj Mahal, Safari, President, Fujiyama)
+  konfigurációja — pontos árak/díjak a
+  hotel-0a-specifikacio.md 2. szakaszában.
+end note
+
+RollMoveDice ..> HotelState : reducer(state, action) -> HotelState
+BuyLot ..> HotelState
+StartConstruction ..> HotelState
+RollBuildingPermit ..> HotelState
+TakeFreeStaircase ..> HotelState
+TakeFreeBuilding ..> HotelState
+RollNights ..> HotelState
+BuyStaircaseRight ..> HotelState
+StartAuction ..> HotelState
+PlaceBid ..> HotelState
+Forfeit ..> HotelState
+EndTurn ..> HotelState
+
+@enduml

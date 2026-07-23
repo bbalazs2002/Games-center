@@ -1,0 +1,76 @@
+.toggleButton {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  background: #4a5568;
+  color: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+}
+
+.panel {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  width: 22rem;
+  max-width: calc(100vw - 2rem);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.header button {
+  border: none;
+  background: transparent;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #1a202c;
+}
+
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #2d3748;
+}
+
+.entries li {
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 0.4rem;
+}
+
+.entries li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.empty {
+  color: #a0aec0;
+}
