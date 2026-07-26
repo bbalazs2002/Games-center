@@ -2,6 +2,7 @@ import type { HotelAction } from './actions';
 import {
   activePlayerCount,
   appendLog,
+  canBuildWithoutPermit,
   canBuyLot,
   canBuyStaircaseRight,
   canChooseFreeStaircaseSpace,
@@ -109,7 +110,13 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
 
   let next = updatePlayer(state, player.id, { position: newPosition });
   next = { ...next, lastMoveRoll: value };
-  next = appendLog(next, { type: 'MOVED', playerId: player.id, roll: value, toPosition: newPosition });
+  next = appendLog(next, {
+    type: 'MOVED',
+    playerId: player.id,
+    roll: value,
+    fromPosition: player.position,
+    toPosition: newPosition,
+  });
 
   for (const lane of lanes) {
     if (lane.effect === 'BONUS_2000') {
@@ -158,6 +165,22 @@ function applyStartConstruction(state: HotelState, plan: ConstructionPlanItem[])
   if (!isValidConstructionPlan(state, player.id, plan)) return state;
 
   return { ...state, pendingConstructionPlan: plan, turnPhase: 'AWAITING_BUILDING_PERMIT' };
+}
+
+/** A garden-only plan skips the permit-die risk entirely — full price, guaranteed, no roll. See docs/hotel-0a-specifikacio.md §9.2 and canBuildWithoutPermit. */
+function applyBuildWithoutPermit(state: HotelState, plan: ConstructionPlanItem[]): HotelState {
+  const player = getCurrentPlayer(state);
+  if (!canBuildWithoutPermit(state, player.id, plan)) return state;
+
+  let next: HotelState = { ...state, turnPhase: 'RESOLVING_SPACE' };
+  let totalCost = 0;
+  for (const item of plan) {
+    const lot = getLot(next, item.lotId);
+    totalCost += computeConstructionCost(lot, item);
+    next = updateLot(next, item.lotId, { hasGarden: true });
+  }
+  next = appendLog(next, { type: 'GARDEN_BUILT_WITHOUT_PERMIT', playerId: player.id, plan, totalCost });
+  return chargePlayer(next, player.id, totalCost, null);
 }
 
 function applyRollBuildingPermit(state: HotelState, value: BuildingPermitResult): HotelState {
@@ -387,6 +410,8 @@ function dispatchMovementAndProperty(state: HotelState, action: HotelAction): Ho
       return applyStartConstruction(state, action.plan);
     case 'ROLL_BUILDING_PERMIT':
       return applyRollBuildingPermit(state, action.value);
+    case 'BUILD_WITHOUT_PERMIT':
+      return applyBuildWithoutPermit(state, action.plan);
     case 'ROLL_NIGHTS':
       return applyRollNights(state, action.value);
     default:

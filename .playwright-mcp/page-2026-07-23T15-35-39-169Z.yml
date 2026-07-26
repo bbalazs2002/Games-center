@@ -1,0 +1,20 @@
+- generic [ref=e13]:
+  - generic [ref=e14]:
+    - button "Napló (0)" [ref=e18] [cursor=pointer]
+    - generic [ref=e19]:
+      - generic [ref=e20]: Játékos 1
+      - generic [ref=e21]:
+        - img [ref=e22]:
+          - generic [ref=e23]: Dobás
+          - generic [ref=e26]: Vásárlás
+          - generic [ref=e29]: Építkezés
+          - generic [ref=e32]: Hány éjszaka?
+          - generic [ref=e35]: Lépcső vásárlása
+          - generic [ref=e38]: Lépcső elhelyezése
+          - generic [ref=e41]: Árverés
+          - generic [ref=e44]: Feladás
+          - generic [ref=e47]: Kör vége
+        - button "Bezárás" [ref=e51] [cursor=pointer]: ×
+  - paragraph [ref=e52]:
+    - generic [ref=e53]: "Soron van: Játékos 1"
+    - generic [ref=e55]: "(piros bábu) — készpénz: 15000"

@@ -158,6 +158,49 @@ describe('reducer — construction & the building-permit die', () => {
   });
 });
 
+describe('reducer — BUILD_WITHOUT_PERMIT (garden-only, no die roll)', () => {
+  function stateWithFullyBuiltFujiyama(): HotelState {
+    let state = updatePlayer(twoPlayerState(), 'player-1', { position: 1 }); // space-2: CONSTRUCTION [fujiyama]
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 3 }); // all 3 of fujiyama's buildings up
+    return { ...state, turnPhase: 'RESOLVING_SPACE' as const };
+  }
+
+  it('builds the garden immediately at full price — no AWAITING_BUILDING_PERMIT phase, no die roll', () => {
+    const state = stateWithFullyBuiltFujiyama();
+    const next = reducer(state, {
+      type: 'BUILD_WITHOUT_PERMIT',
+      plan: [{ lotId: 'fujiyama', buildingCount: 0, buildGarden: true }],
+    });
+    expect(getLot(next, 'fujiyama').hasGarden).toBe(true);
+    expect(getPlayer(next, 'player-1').cash).toBe(15000 - 500); // fujiyama's gardenPrice
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+    expect(next.pendingConstructionPlan).toBeNull();
+  });
+
+  it('refuses a plan that also requests a building — that still needs the risky permit die', () => {
+    let state = updatePlayer(twoPlayerState(), 'player-1', { position: 1 });
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 2 });
+    state = { ...state, turnPhase: 'RESOLVING_SPACE' };
+    const next = reducer(state, {
+      type: 'BUILD_WITHOUT_PERMIT',
+      plan: [{ lotId: 'fujiyama', buildingCount: 1, buildGarden: true }],
+    });
+    expect(next).toBe(state);
+  });
+
+  it('the garden can still be built the risky way too — requesting a permit remains an option', () => {
+    const state = stateWithFullyBuiltFujiyama();
+    let next = reducer(state, {
+      type: 'START_CONSTRUCTION',
+      plan: [{ lotId: 'fujiyama', buildingCount: 0, buildGarden: true }],
+    });
+    expect(next.turnPhase).toBe('AWAITING_BUILDING_PERMIT');
+    next = reducer(next, { type: 'ROLL_BUILDING_PERMIT', value: 'FREE' });
+    expect(getLot(next, 'fujiyama').hasGarden).toBe(true);
+    expect(getPlayer(next, 'player-1').cash).toBe(15000); // FREE roll — no charge at all
+  });
+});
+
 describe('reducer — free spaces resolve automatically on landing (no repeatable claim action)', () => {
   it('FREE_STAIRCASE pays 100 flat if the player owns no lots', () => {
     const state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 }); // one step from space-7 (index 6)
@@ -447,14 +490,16 @@ describe('reducer — game log', () => {
     const state = twoPlayerState();
     expect(state.log).toEqual([]);
     const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 3 });
-    expect(next.log).toEqual([{ type: 'MOVED', playerId: 'player-1', roll: 3, toPosition: 2 }]);
+    expect(next.log).toEqual([
+      { type: 'MOVED', playerId: 'player-1', roll: 3, fromPosition: PARKING_POSITION, toPosition: 2 },
+    ]);
   });
 
   it('records BONUS_2000 in addition to MOVED when a special lane is crossed', () => {
     const state = twoPlayerState();
     const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 8 }); // crosses the "2000" lane
     expect(next.log).toEqual([
-      { type: 'MOVED', playerId: 'player-1', roll: 8, toPosition: 7 },
+      { type: 'MOVED', playerId: 'player-1', roll: 8, fromPosition: PARKING_POSITION, toPosition: 7 },
       { type: 'BONUS_2000', playerId: 'player-1' },
     ]);
   });

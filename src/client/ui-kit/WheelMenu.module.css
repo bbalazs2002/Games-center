@@ -4,27 +4,50 @@
   height: 20rem;
 }
 
+/**
+ * The actual frosted-glass effect — SVG shapes can't take backdrop-filter
+ * directly in most browsers, so this plain HTML circle sits behind the SVG
+ * and does the blur; the SVG slices above it use translucent fills so the
+ * blur shows through them.
+ */
+.glassBackdrop {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.12), rgba(12, 20, 32, 0.4) 72%);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow:
+    0 0.75rem 2.5rem rgba(5, 10, 20, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
 .svg {
+  position: relative;
   width: 100%;
   height: 100%;
   overflow: visible;
 }
 
 .slice path {
-  fill: #3b6ea5;
-  stroke: white;
-  stroke-width: 2;
+  fill: rgba(19, 36, 61, 0.6);
+  stroke: rgba(212, 175, 55, 0.32);
+  stroke-width: 1.5;
   cursor: pointer;
+  transition:
+    fill 0.15s ease,
+    stroke 0.15s ease;
 }
 
 .slice:hover path {
-  fill: #2c5282;
+  fill: rgba(34, 58, 92, 0.82);
+  stroke: rgba(212, 175, 55, 0.75);
 }
 
 .sliceDisabled path {
-  fill: #cbd5e0;
-  stroke: white;
-  stroke-width: 2;
+  fill: rgba(255, 255, 255, 0.05);
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 1.5;
   cursor: default;
 }
 
@@ -34,7 +57,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #f3ecd9;
   pointer-events: none;
 }
 
@@ -44,23 +67,24 @@
 }
 
 .sliceDisabled .icon {
-  color: #718096;
+  color: rgba(243, 236, 217, 0.32);
 }
 
 .label {
   font-size: 11px;
-  fill: white;
+  font-weight: 500;
+  fill: #f3ecd9;
   pointer-events: none;
 }
 
 .sliceDisabled .label {
-  fill: #718096;
+  fill: rgba(243, 236, 217, 0.32);
 }
 
 .hub {
-  fill: white;
-  stroke: #e2e8f0;
-  stroke-width: 2;
+  fill: rgba(10, 16, 26, 0.55);
+  stroke: rgba(212, 175, 55, 0.45);
+  stroke-width: 1.5;
   cursor: pointer;
 }
 
@@ -84,8 +108,12 @@
   border: none;
   background: transparent;
   font-size: 0.8rem;
-  color: #4a5568;
+  color: rgba(243, 236, 217, 0.75);
   cursor: pointer;
+}
+
+.backButton:hover {
+  color: #d4af37;
 }
 
 .closeButton {
@@ -93,6 +121,10 @@
   background: transparent;
   font-size: 1.5rem;
   line-height: 1;
-  color: #1a202c;
+  color: #f3ecd9;
   cursor: pointer;
+}
+
+.closeButton:hover {
+  color: #d4af37;
 }

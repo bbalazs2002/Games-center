@@ -10,6 +10,11 @@ export type HotelAction =
   | { type: 'BUY_LOT'; lotId: string }
   | { type: 'START_CONSTRUCTION'; plan: ConstructionPlanItem[] }
   | { type: 'ROLL_BUILDING_PERMIT'; value: BuildingPermitResult }
+  // A garden-only plan (no buildingCount in any item) doesn't require the
+  // risky permit-die roll — resolves immediately at full price, no chance of
+  // FREE/DOUBLE/RED. Engine-enforced (canBuildWithoutPermit), not just a UI
+  // affordance — rejected outright if the plan includes any building.
+  | { type: 'BUILD_WITHOUT_PERMIT'; plan: ConstructionPlanItem[] }
   // No TAKE_FREE_BUILDING — FREE_BUILDING resolves automatically on landing
   // (see reducer.ts's resolveFreeBuilding), there's nothing to choose (a
   // building isn't placed on a specific board space the way a staircase is).

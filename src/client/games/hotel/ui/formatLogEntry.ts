@@ -100,6 +100,8 @@ function formatPropertyEvent(entry: LogEntry, state: HotelState): string | undef
       return `${playerName(state, entry.playerId)}: megvásárolta a(z) ${lotName(state, entry.lotId)} telket ${entry.price}-ért`;
     case 'CONSTRUCTION_PERMIT_ROLLED':
       return formatConstructionPermit(entry, state);
+    case 'GARDEN_BUILT_WITHOUT_PERMIT':
+      return `${playerName(state, entry.playerId)}: kertet épített dobás nélkül — ${describeConstructionPlan(state, entry.plan)} (${entry.totalCost})`;
     case 'NIGHTS_STAY':
       return formatNightsStay(entry, state);
     case 'FREE_STAIRCASE_GRANTED':

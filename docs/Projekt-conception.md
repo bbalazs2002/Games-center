@@ -1,7 +1,7 @@
 # Társasjáték Digitalizáló Platform — Projekt Koncepció
 
-**Státusz:** Fázis 0a/0b/0c (Dáma) implementálva és élesben ellenőrizve; Fázis 2 Hotel-0a (helyi vertikum) és Hotel-0b (multiplayer) implementálva és lezárva — legutóbb: lépcső elhelyezésénél a játékos választja ki a mezőt (§9.2, "Tizennegyedik kérés")
-**Utolsó frissítés:** 2026-07-23
+**Státusz:** Fázis 0a/0b/0c (Dáma) implementálva és élesben ellenőrizve; Fázis 2 Hotel-0a (helyi vertikum) és Hotel-0b (multiplayer) implementálva és lezárva; Hotel-0c.1 (assetek, UI-arculat) kész — legutóbb: napló-vezérelt animáció-rendszer (bábu-mozgás, pénzmozgás, építés/kert, telek-vásárlás), lásd [hotel-animacio-specifikacio.md](./hotel-animacio-specifikacio.md)
+**Utolsó frissítés:** 2026-07-26
 
 ## Projekt célja
 
@@ -18,7 +18,7 @@ Fizikailag meglévő, kedvelt társasjátékok digitalizálása egy közös plat
 - **Verziókezelés:** a kód GitHub-ra kerül; helyi git repo már inicializálva (`git init` megtörtént 2026-07-22-én).
 - **Mappastruktúra (gyökér):**
   - `src/` — a forráskód
-  - `docs/` — tervezési dokumentumok és diagramok (ez a fájl is itt van)
+  - `docs/` — tervezési dokumentumok és diagramok (ez a fájl is itt van); a `docs/tests/` almappa a teszt-suite dokumentációja, játékonkénti bontásban (lásd `docs/tests/README.md`)
   - `temp/` — átmeneti fájlok: ide kerülnek a Claude által generált, még átnézésre váró fájlok, valamint a felhasználó által Claude-nak adott bemeneti fájlok (debug infó, instrukciók stb.); nem verziózott tartalom (`.gitignore`-ban kizárva)
   - `.git/` — GitHub-integráció
   - további elemek várhatók a gyökérben a projekt előrehaladtával
@@ -29,7 +29,7 @@ Fizikailag meglévő, kedvelt társasjátékok digitalizálása egy közös plat
 
 ## Játéklista (kiindulás)
 
-Hotel, Gazdálkodj okosan, Bang, Hanabi, Sakk, Malom, Dáma, Connect 4 (4 in a row), Színözön (Mastermind), Catan telepesei (kiegészítőkkel), Gwent (Witcher 3 verzió), Monopoly, Cluedo, Aqua Romana, Activity, Tabu, King Arthur, Jungle Speed, Dobble, Snapszer, Römi, Mocsár, Holland kocsma, Star Trek Fleet Captains, (bővíthető lista)
+Hotel, Gazdálkodj okosan, Bang, Hanabi, Sakk, Malom, Dáma, Connect 4 (4 in a row), Színözön (Mastermind), Catan telepesei (kiegészítőkkel), Gwent (Witcher 3 verzió), Monopoly, Cluedo, Aqua Romana, Activity, Tabu, King Arthur, Jungle Speed, Dobble, Snapszer, Römi, Mocsár, Holland kocsma, Star Trek Fleet Captains, Ramses II (bővíthető lista)
 
 ---
 
@@ -90,7 +90,7 @@ Cél: közös motor-komponensek azonosítása, hogy az alapréteget egyszer ép�
 | **B — Rácsos absztrakt stratégiai játékok** | Sakk, Dáma, Malom, Connect 4 | koordináta-rács, bábu-mozgatás/zseton-ejtés, lépésvalidáció, nincs rejtett infó; közös AI-ellenfél (minimax) lehetőség |
 | **C — Gazdasági/dobókockás táblás játékok** | Hotel, Gazdálkodj okosan, Monopoly | pálya körbejárás, kockadobás, pénz/bank kezelés, ingatlan-tulajdon, kártyahúzás mezők |
 | **D — Party/reflex játékok** | Activity, Tabu, Dobble, Jungle Speed | időzítő, gyors reakció, minimális tábla, real-time interakció fókusz |
-| **E — Rejtett információs kooperatív** | Hanabi | aszimmetrikus infó architektúra (saját kéz nem látható) — jó teszt a state-sync számára |
+| **E — Rejtett információs** | Hanabi, Ramses II | Közös mag: szerver-oldali "teljes igazság" állapot, amiből minden kliens csak a neki járó, részleges nézetet kapja — jó teszt a state-sync számára. Hanabinél ez a saját kéz nem-látható (kooperatív, aszimmetrikus info); Ramses II-nél a tábla 48 mezőjének rejtett tartalma (kincsek a piramisok alatt), ami játék közben fokozatosan, minden játékos számára egyformán tárul fel — versengő, nem kooperatív, és emellett egyedi mechanikákat is igényel (memória-elem, forgatható tábla, célkártyák), amik külön rétegként épülnek a közös "rejtett állapot" alapra, nem a teljes motorból származnak. |
 | **F — Modern hobby társasjátékok** | Catan (kiegészítőkkel), King Arthur, Aqua Romana | hex/moduláris pálya, erőforrás-kezelés, kereskedés — komplexebb, moduláris pálya-builder szükséges. ⚠️ Multiplayer-integráció előtt lásd a "GameRoom mezőnkénti schema" emlékeztetőt lent. |
 | **G — Egyedi komplex kártyajáték** | Gwent | A) klaszter kártyamotorjára épül, de bonyolultabb szabályrendszer (sorok, frakciók, képességek) |
 | **H — Deduction/logikai játékok** | Cluedo, Színözön (Mastermind) | rejtett állapot + visszajelzés-alapú következtetési hurok (guess & feedback loop); Cluedo-nál vádemelés/rejtett kártyaelosztás, Színözönnél gép által generált rejtett szín-sorrend és találati visszajelzés |

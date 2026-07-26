@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
-import { computeConstructionCost, getCurrentPlayer, getLot } from '../../../../shared/games/hotel/engine/rules';
+import {
+  canBuildWithoutPermit,
+  computeConstructionCost,
+  getCurrentPlayer,
+  getLot,
+} from '../../../../shared/games/hotel/engine/rules';
 import type { ConstructionPlanItem, HotelState } from '../../../../shared/games/hotel/engine/state';
 import { Button } from '../../../ui-kit/Button';
 import { Modal } from '../../../ui-kit/Modal';
 import { WheelMenu, type WheelMenuSlice } from '../../../ui-kit/WheelMenu';
+import { DiceHUD } from './DiceHUD';
 import {
   auctionBiddingSlices,
   constructionLotSlices,
@@ -138,6 +144,15 @@ export function PlayerActionWheel({ state, dispatch, interactive = true }: Playe
     setStack([{ kind: 'root' }]);
   }
 
+  // Only ever enabled for a garden-only selection — the engine rejects
+  // anything else (docs/hotel-0a-specifikacio.md §9.2, "kert engedély nélkül").
+  function confirmWithoutPermit(): void {
+    if (pending.length === 0) return;
+    dispatch({ type: 'BUILD_WITHOUT_PERMIT', plan: pending });
+    setPending([]);
+    setStack([{ kind: 'root' }]);
+  }
+
   function confirmForfeit(): void {
     setForfeitConfirmOpen(false);
     dispatchAndReturnToRoot({ type: 'FORFEIT' });
@@ -163,11 +178,19 @@ export function PlayerActionWheel({ state, dispatch, interactive = true }: Playe
   const totalCost = pending.reduce((sum, item) => sum + computeConstructionCost(getLot(state, item.lotId), item), 0);
 
   return (
-    <div className={[styles.container, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
-      <div className={styles.playerLabel}>{currentPlayer.name}</div>
-      <WheelMenu slices={slices} onBack={stack.length > 1 ? back : undefined} onClose={() => setOpen(false)} />
+    <>
+      <div className={[styles.container, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
+        <div className={styles.playerLabel}>{currentPlayer.name}</div>
+        <DiceHUD state={state} />
+        <WheelMenu slices={slices} onBack={stack.length > 1 ? back : undefined} onClose={() => setOpen(false)} />
+      </div>
+      {/* On the LEFT side, not stacked under the wheel — more room there, and
+          the wheel's own column stays a predictable, fixed height. Capped to
+          the canvas's own height (top+bottom, not a fixed height) with
+          internal scrolling, so a long plan can never grow the PAGE taller
+          than the canvas and force a page-level scrollbar. */}
       {pending.length > 0 && (
-        <div className={styles.selectionPanel}>
+        <div className={[styles.selectionPanel, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
           <h3>Kiválasztott építkezések</h3>
           <ul>
             {pending.map((item) => (
@@ -188,6 +211,11 @@ export function PlayerActionWheel({ state, dispatch, interactive = true }: Playe
             <Button variant="secondary" onClick={cancelConstruction}>
               Mégse
             </Button>
+            {canBuildWithoutPermit(state, currentPlayer.id, pending) && (
+              <Button variant="secondary" onClick={confirmWithoutPermit}>
+                Építés dobás nélkül
+              </Button>
+            )}
             <Button onClick={confirmConstruction}>Építési engedélyt kér</Button>
           </div>
         </div>
@@ -202,6 +230,6 @@ export function PlayerActionWheel({ state, dispatch, interactive = true }: Playe
           <Button onClick={confirmForfeit}>Igen, feladom</Button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }

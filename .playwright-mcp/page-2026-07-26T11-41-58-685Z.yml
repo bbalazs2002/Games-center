@@ -1,0 +1,23 @@
+- generic [ref=f22e5]:
+  - generic [ref=f22e9]:
+    - heading "Játékos 1 telkei" [level=3] [ref=f22e10]
+    - list [ref=f22e11]:
+      - listitem [ref=f22e12]:
+        - button "Fujiyama kártyája" [ref=f22e13] [cursor=pointer]
+        - generic [ref=f22e14]:
+          - generic [ref=f22e15]: Fujiyama
+          - generic [ref=f22e16]: 0/3 épület
+  - button "Napló (0)" [ref=f22e17] [cursor=pointer]
+  - generic [ref=f22e18]:
+    - generic [ref=f22e19]: Játékos 1
+    - generic [ref=f22e20]:
+      - img [ref=f22e22]:
+        - generic [ref=f22e59]: "Fujiyama: 1. épület (2200)"
+      - generic:
+        - button "Vissza" [ref=f22e62] [cursor=pointer]
+        - button "Bezárás" [ref=f22e51] [cursor=pointer]: ×
+  - generic [ref=f22e52]:
+    - generic [ref=f22e54]:
+      - generic [ref=f22e55]: Játékos 1
+      - generic [ref=f22e56]: piros bábu
+    - generic [ref=f22e57]: 15 000

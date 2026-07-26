@@ -2,6 +2,8 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  background: radial-gradient(ellipse at 50% 0%, #1c2c40 0%, #0e1620 55%, #090d13 100%);
+  color: #f3ecd9;
 }
 
 .canvasWrapper {
@@ -10,13 +12,23 @@
   min-height: 24rem;
 }
 
-.status {
-  margin: 0;
-  padding: 0.5rem 1rem;
-  background: #f7fafc;
+/** Floating glass status pill, bottom-center — see docs/hotel-0c-specifikacio.md, "organize around the wheel" round. */
+.statusChip {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 32, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  box-shadow:
+    0 0.5rem 1.5rem rgba(5, 10, 20, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .colorSwatch {
@@ -24,33 +36,105 @@
   width: 0.9rem;
   height: 0.9rem;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
 }
 
-.diceRolls {
-  margin: 0;
-  padding: 0.25rem 1rem 0.5rem;
-  background: #f7fafc;
+.statusText {
   display: flex;
-  gap: 1rem;
-  font-size: 0.9rem;
-  color: #4a5568;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.statusName {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.statusMeta {
+  font-size: 0.7rem;
+  color: rgba(243, 236, 217, 0.65);
+}
+
+.cashChip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-left: 0.75rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cashNote {
+  width: 1.8rem;
+  height: auto;
+  border-radius: 0.2rem;
+  box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.5);
+}
+
+/** Floating +/- numbers above the cash figure — see docs/hotel-animacio-specifikacio.md §4.2. */
+.cashFlourishStack {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  pointer-events: none;
+}
+
+.cashFlourish {
+  animation: cash-flourish-rise 1.2s ease-out forwards;
+  font-weight: 700;
+  white-space: nowrap;
+  text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.6);
+}
+
+.cashFlourishGain {
+  color: #6fcf97;
+}
+
+.cashFlourishLoss {
+  color: #e08585;
+}
+
+@keyframes cash-flourish-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.2rem);
+  }
+  15% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-1.4rem);
+  }
 }
 
 .ownedLots {
   position: absolute;
   top: 1rem;
   left: 1rem;
-  width: 16rem;
-  background: white;
+  width: 17rem;
+  background: rgba(15, 23, 32, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
   border-radius: 1rem;
   padding: 0.75rem 1rem;
-  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0.5rem 1.5rem rgba(5, 10, 20, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .ownedLots h3 {
   margin: 0 0 0.5rem;
   font-size: 1rem;
+  font-weight: 600;
+  color: #d4af37;
 }
 
 .ownedLots ul {
@@ -59,13 +143,87 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
+  gap: 0.5rem;
 }
 
 .ownedLots li {
   display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  color: #2d3748;
+  align-items: center;
+  gap: 0.6rem;
+  /* Plays once, automatically, whenever a row actually MOUNTS — i.e. a
+     freshly bought lot (a stable key already in the list re-renders without
+     restarting the animation). See docs/hotel-animacio-specifikacio.md §4.4. */
+  animation: owned-lot-appear 0.4s ease-out;
+}
+
+@keyframes owned-lot-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.lotThumb {
+  flex-shrink: 0;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 0.4rem;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  padding: 0;
+  cursor: pointer;
+  background: none;
+}
+
+.lotThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.15s ease;
+}
+
+.lotThumb:hover img {
+  transform: scale(1.08);
+}
+
+.lotInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+.lotName {
+  font-weight: 600;
+}
+
+.lotDetail {
+  font-size: 0.75rem;
+  color: rgba(243, 236, 217, 0.65);
+}
+
+.cardPreview {
+  color: #1a202c;
+}
+
+.cardPreview h3 {
+  margin: 0 0 0.75rem;
+}
+
+.cardPreviewImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.cardPreviewImages img {
+  max-width: 14rem;
+  max-height: 70vh;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.25);
 }

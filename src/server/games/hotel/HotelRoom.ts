@@ -46,6 +46,7 @@ function isValidMovementOrPropertyAction(candidate: Record<string, unknown>): bo
     case 'BUY_LOT':
       return typeof candidate.lotId === 'string';
     case 'START_CONSTRUCTION':
+    case 'BUILD_WITHOUT_PERMIT':
       return Array.isArray(candidate.plan) && candidate.plan.every(isConstructionPlanItem);
     case 'ROLL_BUILDING_PERMIT':
       return typeof candidate.value === 'string' && PERMIT_DIE_FACES.has(candidate.value);

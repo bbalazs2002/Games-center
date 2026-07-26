@@ -1,0 +1,87 @@
+[     230ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/chunk-5NZOIHK5.js?v=28f18be8:19834
+[    4329ms] [WARNING] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead. @ http://localhost:5173/node_modules/.vite/deps/chunk-BT6PJYSG.js?v=28f18be8:746
+[  331704ms] [WARNING] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead. @ http://localhost:5173/node_modules/.vite/deps/chunk-BT6PJYSG.js?v=28f18be8:746
+[  347054ms] ReferenceError: AnimatedDie is not defined
+    at DiceScene (http://localhost:5173/src/client/games/hotel/ui/HotelGamePage.tsx?t=1784878128107:247:7)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7984:20)
+    at It (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:3951:18)
+    at ks (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:4998:376)
+    at tt (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:5325:20)
+    at B (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:2782:63)
+    at Ph (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7198:44)
+    at wh (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7114:31)
+    at Ff (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7105:13)
+    at Lf (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:6887:61)
+[  347075ms] [ERROR] Error handled by React Router default ErrorBoundary: ReferenceError: AnimatedDie is not defined
+    at DiceScene (http://localhost:5173/src/client/games/hotel/ui/HotelGamePage.tsx?t=1784878128107:247:7)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7984:20)
+    at It (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:3951:18)
+    at ks (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:4998:376)
+    at tt (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:5325:20)
+    at B (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:2782:63)
+    at Ph (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7198:44)
+    at wh (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7114:31)
+    at Ff (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7105:13)
+    at Lf (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:6887:61) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=28f18be8:6569
+[  347076ms] [ERROR] Error handled by React Router default ErrorBoundary: ReferenceError: AnimatedDie is not defined
+    at DiceScene (http://localhost:5173/src/client/games/hotel/ui/HotelGamePage.tsx?t=1784878128107:247:7)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7984:20)
+    at It (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:3951:18)
+    at ks (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:4998:376)
+    at tt (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:5325:20)
+    at B (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:2782:63)
+    at Ph (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7198:44)
+    at wh (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7114:31)
+    at Ff (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7105:13)
+    at Lf (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:6887:61) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=28f18be8:6569
+[  347082ms] [ERROR] Error handled by React Router default ErrorBoundary: ReferenceError: AnimatedDie is not defined
+    at DiceScene (http://localhost:5173/src/client/games/hotel/ui/HotelGamePage.tsx?t=1784878128107:247:7)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7984:20)
+    at It (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:3951:18)
+    at ks (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:4998:376)
+    at tt (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:5325:20)
+    at B (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:2782:63)
+    at Ph (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7198:44)
+    at wh (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7114:31)
+    at Ff (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7105:13)
+    at Lf (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:6887:61) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=28f18be8:6569
+[  347083ms] [ERROR] Error handled by React Router default ErrorBoundary: ReferenceError: AnimatedDie is not defined
+    at DiceScene (http://localhost:5173/src/client/games/hotel/ui/HotelGamePage.tsx?t=1784878128107:247:7)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7984:20)
+    at It (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:3951:18)
+    at ks (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:4998:376)
+    at tt (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:5325:20)
+    at B (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:2782:63)
+    at Ph (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7198:44)
+    at wh (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7114:31)
+    at Ff (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7105:13)
+    at Lf (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:6887:61) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=28f18be8:6569
+[  347087ms] [ERROR] %o
+
+%s
+
+%s
+ ReferenceError: AnimatedDie is not defined
+    at DiceScene (http://localhost:5173/src/client/games/hotel/ui/HotelGamePage.tsx?t=1784878128107:247:7)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7984:20)
+    at It (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:3951:18)
+    at ks (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:4998:376)
+    at tt (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:5325:20)
+    at B (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:2782:63)
+    at Ph (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7198:44)
+    at wh (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7114:31)
+    at Ff (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7105:13)
+    at Lf (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:6887:61) The above error occurred in the <CanvasImpl> component. React will try to recreate this component tree from scratch using the error boundary you provided, RenderErrorBoundary. @ http://localhost:5173/node_modules/.vite/deps/chunk-5NZOIHK5.js?v=28f18be8:6732
+[  347088ms] [ERROR] React Router caught the following error during render ReferenceError: AnimatedDie is not defined
+    at DiceScene (http://localhost:5173/src/client/games/hotel/ui/HotelGamePage.tsx?t=1784878128107:247:7)
+    at Object.react_stack_bottom_frame (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7984:20)
+    at It (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:3951:18)
+    at ks (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:4998:376)
+    at tt (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:5325:20)
+    at B (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:2782:63)
+    at Ph (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7198:44)
+    at wh (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7114:31)
+    at Ff (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:7105:13)
+    at Lf (http://localhost:5173/node_modules/.vite/deps/chunk-4XJPVBWW.js?v=28f18be8:6887:61) @ http://localhost:5173/node_modules/.vite/deps/react-router-dom.js?v=28f18be8:6608
+[  347684ms] [LOG] THREE.WebGLRenderer: Context Lost. @ http://localhost:5173/node_modules/.vite/deps/chunk-BT6PJYSG.js?v=28f18be8:721
+[  347702ms] [LOG] THREE.WebGLRenderer: Context Lost. @ http://localhost:5173/node_modules/.vite/deps/chunk-BT6PJYSG.js?v=28f18be8:721

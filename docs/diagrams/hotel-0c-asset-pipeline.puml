@@ -1,0 +1,60 @@
+@startuml hotel-0c-asset-pipeline
+title Hotel-0c asset pipeline
+
+package "assets/Hotel/ (gitignored, local-only)" {
+  folder "raw-heic/**" as RawHeic
+  folder "raw-png/**" as RawPng
+  folder "png/** (hand-curated)" as CuratedPng
+}
+
+package "public/assets/hotel/ (versioned, served)" {
+  folder "dice/" as PubDice
+  folder "perm-dice/" as PubPermDice
+  folder "property-cards/" as PubCards
+  folder "gardens/" as PubGardens
+  folder "banknotes/" as PubBanknotes
+  folder "buildings/<hotelId>/" as PubBuildings
+  folder "car/" as PubCar
+}
+
+RawHeic --> RawPng : scripts/convert-hotel-heic.mjs\n(mechanical mirror, no curation)
+RawHeic --> CuratedPng : hand-picked/renamed earlier\n(Hotel-0a board reading round)
+
+CuratedPng --> PubDice : manual copy (implementation-time)
+CuratedPng --> PubPermDice : manual copy
+CuratedPng --> PubCards : manual copy
+CuratedPng --> PubGardens : manual copy
+CuratedPng --> PubBanknotes : manual copy
+
+note right of PubBuildings
+  .obj + .mtl, produced by the user via
+  phone 3D scanning (Polycam/Scaniverse/
+  Luma AI) — Hotel-0c.2, not photogrammetry
+  from raw-heic (no tooling available here)
+end note
+note right of PubCar
+  Same as buildings — one scanned car
+  model, tinted per player via ScannedModel
+end note
+
+package "src/client" {
+  component "ScannedModel\n(renderer-agnostic)" as ScannedModel
+  component "LoopTrackBoard3D /\ncomputeLoopPositions" as LoopTrack
+  component "HotelGamePage\n(renderSpace / renderToken)" as HotelGamePage
+  component "OwnedLotsPanel + Modal\n(cards, decorative)" as OwnedLotsPanel
+  component "AnimatedDie" as AnimatedDie
+}
+
+PubBuildings ..> ScannedModel : objUrl/mtlUrl\n(falls back to placeholder\nbox geometry until present)
+PubCar ..> ScannedModel
+PubDice ..> AnimatedDie : face textures
+PubPermDice ..> AnimatedDie
+PubCards ..> OwnedLotsPanel
+PubGardens ..> OwnedLotsPanel
+PubBanknotes ..> OwnedLotsPanel
+
+ScannedModel <.. HotelGamePage : renderSpace (buildings)\nrenderToken (car)
+LoopTrack <.. HotelGamePage : custom S-shaped\ncontrol points
+AnimatedDie <.. HotelGamePage : move / permit roll display
+
+@enduml

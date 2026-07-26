@@ -1,0 +1,17 @@
+/* Global reset — without this, the browser's default `body { margin: 8px }`
+   (plus default `html`/`body` height not filling the viewport) shows up as a
+   thin white strip and forces a page scrollbar on every full-height page
+   (e.g. HotelGamePage's `100vh` canvas), even though nothing overflows. */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

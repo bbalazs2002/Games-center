@@ -257,6 +257,17 @@ export function isValidConstructionPlan(state: HotelState, playerId: PlayerId, p
   });
 }
 
+/** True only when every item requests a garden and nothing else — the one case that doesn't need the risky permit-die roll. */
+export function isGardenOnlyPlan(plan: ConstructionPlanItem[]): boolean {
+  return plan.length > 0 && plan.every((item) => item.buildingCount === 0 && item.buildGarden);
+}
+
+export function canBuildWithoutPermit(state: HotelState, playerId: PlayerId, plan: ConstructionPlanItem[]): boolean {
+  if (!canStartConstruction(state)) return false;
+  if (!isGardenOnlyPlan(plan)) return false;
+  return isValidConstructionPlan(state, playerId, plan);
+}
+
 /** Everything except the specific space choice — shared by canBuyStaircaseRight and getStaircaseEligibleLots so "is this lot eligible at all" and "is this exact space valid" can't drift apart. */
 function canBuyStaircaseRightForLot(state: HotelState, lotId: string): boolean {
   if (!state.staircasePurchaseRightActive) return false;

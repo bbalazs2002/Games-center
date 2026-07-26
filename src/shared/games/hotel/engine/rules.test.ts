@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { HOTEL_CONFIGS } from './hotelConfigs';
 import { createInitialState } from './initialState';
 import {
+  canBuildWithoutPermit,
   canBuyLot,
   canBuyStaircaseRight,
   canChooseFreeStaircaseSpace,
@@ -17,6 +18,7 @@ import {
   crossedLanes,
   getFreeStaircaseCandidates,
   getNextConstructionStep,
+  isGardenOnlyPlan,
   isValidConstructionPlan,
   resolveLandingPosition,
   updateLot,
@@ -199,6 +201,43 @@ describe('isValidConstructionPlan — rejects an out-of-order plan', () => {
     const state = stateWithOwnedLot();
     const plan = [{ lotId: 'waikiki', buildingCount: 0, buildGarden: false }];
     expect(isValidConstructionPlan(state, 'player-1', plan)).toBe(false);
+  });
+});
+
+describe('isGardenOnlyPlan / canBuildWithoutPermit — a garden-only plan skips the permit-die risk', () => {
+  function stateWithFullyBuiltWaikiki(): HotelState {
+    let state = createInitialState(['Alice', 'Bob']);
+    state = updateLot(state, 'waikiki', { ownerId: 'player-1', buildingsBuilt: waikikiConfig.buildingPrices.length });
+    state = updatePlayer(state, 'player-1', { position: 16 }); // space-17: CONSTRUCTION [royal, waikiki]
+    return { ...state, turnPhase: 'RESOLVING_SPACE' as const };
+  }
+
+  it('isGardenOnlyPlan is true only when every item is garden-with-no-buildings', () => {
+    expect(isGardenOnlyPlan([{ lotId: 'waikiki', buildingCount: 0, buildGarden: true }])).toBe(true);
+    expect(isGardenOnlyPlan([{ lotId: 'waikiki', buildingCount: 1, buildGarden: false }])).toBe(false);
+    expect(isGardenOnlyPlan([{ lotId: 'waikiki', buildingCount: 1, buildGarden: true }])).toBe(false);
+    expect(isGardenOnlyPlan([])).toBe(false);
+  });
+
+  it('allows building the garden without a permit once every building is up', () => {
+    const state = stateWithFullyBuiltWaikiki();
+    const plan = [{ lotId: 'waikiki', buildingCount: 0, buildGarden: true }];
+    expect(canBuildWithoutPermit(state, 'player-1', plan)).toBe(true);
+  });
+
+  it('refuses a plan that also requests a building — that still needs the permit die', () => {
+    const state = createInitialState(['Alice', 'Bob']);
+    let next = updateLot(state, 'waikiki', { ownerId: 'player-1', buildingsBuilt: 2 });
+    next = updatePlayer(next, 'player-1', { position: 16 });
+    next = { ...next, turnPhase: 'RESOLVING_SPACE' };
+    const plan = [{ lotId: 'waikiki', buildingCount: waikikiConfig.buildingPrices.length - 2, buildGarden: true }];
+    expect(canBuildWithoutPermit(next, 'player-1', plan)).toBe(false);
+  });
+
+  it('refuses off a construction space / outside RESOLVING_SPACE, same as canStartConstruction', () => {
+    const state = createInitialState(['Alice', 'Bob']);
+    const plan = [{ lotId: 'waikiki', buildingCount: 0, buildGarden: true }];
+    expect(canBuildWithoutPermit(state, 'player-1', plan)).toBe(false);
   });
 });
 

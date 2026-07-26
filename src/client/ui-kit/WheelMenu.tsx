@@ -58,6 +58,7 @@ export function WheelMenu({ slices, onBack, onClose }: WheelMenuProps) {
 
   return (
     <div className={styles.wheel}>
+      <div className={styles.glassBackdrop} />
       <svg viewBox="0 0 300 300" className={styles.svg}>
         {slices.map((slice, index) => {
           const startAngle = index * sliceAngle;

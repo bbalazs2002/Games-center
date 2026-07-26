@@ -122,7 +122,7 @@ export type HotelStatus = 'IN_PROGRESS' | 'FINISHED';
  * stable React key.
  */
 export type LogEntry =
-  | { type: 'MOVED'; playerId: PlayerId; roll: number; toPosition: number }
+  | { type: 'MOVED'; playerId: PlayerId; roll: number; fromPosition: number; toPosition: number }
   | { type: 'BONUS_2000'; playerId: PlayerId }
   | { type: 'STAIRCASE_RIGHT_ACTIVATED'; playerId: PlayerId }
   | { type: 'LOT_BOUGHT'; playerId: PlayerId; lotId: string; price: number }
@@ -133,6 +133,8 @@ export type LogEntry =
       plan: ConstructionPlanItem[];
       totalCost: number;
     }
+  /** A garden-only plan doesn't require the risky permit-die roll — see docs/hotel-0a-specifikacio.md §9.2 and canBuildWithoutPermit. */
+  | { type: 'GARDEN_BUILT_WITHOUT_PERMIT'; playerId: PlayerId; plan: ConstructionPlanItem[]; totalCost: number }
   | { type: 'NIGHTS_STAY'; playerId: PlayerId; lotId: string; nights: number; rentAmount: number; toPlayerId: PlayerId | null }
   /**
    * FREE_STAIRCASE/FREE_BUILDING are bonus spaces — either the player gets

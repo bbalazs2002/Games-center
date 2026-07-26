@@ -1,0 +1,40 @@
+@startuml hotel-animacio-sequence
+title Hotel — animáció-triggerek, egy tipikus dobás (mozgás + bónusz-sáv)
+
+actor Player
+participant "PlayerActionWheel" as Wheel
+participant "reducer (pure)" as Reducer
+participant "HotelState.log" as Log
+participant "AnimatedToken\n(LoopTrackBoard3D, prop-vezérelt)" as Token
+participant "useCashFlourishes\n(napló-vezérelt)" as Cash
+
+Player -> Wheel: "Dobás" kattintás
+Wheel -> Reducer: dispatch(ROLL_MOVE_DICE)
+activate Reducer
+Reducer -> Reducer: resolveLandingPosition\n(azonnal, nincs animáció itt)
+Reducer -> Log: append MOVED\n{fromPosition, toPosition}
+Reducer -> Log: append BONUS_2000\n{playerId}
+Reducer --> Wheel: newState (azonnali)
+deactivate Reducer
+
+note over Wheel, Cash
+  Két FÜGGETLEN trigger-mechanizmus fut a
+  React re-renderen, a bejegyzések számától
+  függően — nincs központi "effekt-dispatcher"
+  (lásd docs/hotel-animacio-specifikacio.md §3.2).
+end note
+
+Wheel -> Token: spaceIndex prop változott\n(player.position)
+activate Token
+Token -> Token: useSpring — mezőről mezőre\nlépked (stepPath, ~200ms/mező)
+note right of Token: Nem a naplót figyeli — a\n"logikai" pozíció (state.players[i].position)\nmaga a trigger, ugyanaz az elv\nmint AnimatedDie-nál.
+deactivate Token
+
+Wheel -> Cash: state.log (új render)
+activate Cash
+Cash -> Cash: useNewItemsSince — 2 új\nbejegyzés (MOVED, BONUS_2000)
+Cash -> Cash: cashDeltaForPlayer(BONUS_2000)\n= +2000 (MOVED-nek nincs\npénz-hatása, kimarad)
+Cash -> Cash: felfelé úszó "+2000",\nelhalványul (~1.2s, CSS keyframes)
+deactivate Cash
+
+@enduml

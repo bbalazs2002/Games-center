@@ -1,0 +1,29 @@
+- generic [ref=f22e5]:
+  - generic [ref=f22e9]:
+    - heading "Játékos 1 telkei" [level=3] [ref=f22e10]
+    - list [ref=f22e11]:
+      - listitem [ref=f22e12]:
+        - button "Fujiyama kártyája" [ref=f22e13] [cursor=pointer]
+        - generic [ref=f22e14]:
+          - generic [ref=f22e15]: Fujiyama
+          - generic [ref=f22e16]: 0/3 épület
+  - button "Napló (0)" [ref=f22e17] [cursor=pointer]
+  - generic [ref=f22e18]:
+    - generic [ref=f22e19]: Játékos 1
+    - generic [ref=f22e20]:
+      - img [ref=f22e22]:
+        - generic [ref=f22e23]: Dobás
+        - generic [ref=f22e26]: Vásárlás
+        - generic [ref=f22e29]: Építkezés
+        - generic [ref=f22e32]: Hány éjszaka?
+        - generic [ref=f22e35]: Lépcső vásárlása
+        - generic [ref=f22e38]: Lépcső elhelyezése
+        - generic [ref=f22e41]: Árverés
+        - generic [ref=f22e44]: Feladás
+        - generic [ref=f22e47]: Kör vége
+      - button "Bezárás" [ref=f22e51] [cursor=pointer]: ×
+  - generic [ref=f22e52]:
+    - generic [ref=f22e54]:
+      - generic [ref=f22e55]: Játékos 1
+      - generic [ref=f22e56]: piros bábu
+    - generic [ref=f22e57]: 15 000

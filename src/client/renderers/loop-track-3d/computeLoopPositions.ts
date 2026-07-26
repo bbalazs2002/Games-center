@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import { CatmullRomCurve3, Vector3 } from 'three';
 
 export interface LoopDimensions {
   width: number;
@@ -19,6 +19,22 @@ export function computeLoopPositions(count: number, dimensions: LoopDimensions =
   const { width, depth } = dimensions;
   const perimeter = 2 * (width + depth);
   return Array.from({ length: count }, (_, i) => pointAtDistance((i / count) * perimeter, width, depth));
+}
+
+/**
+ * Places `count` points evenly (by arc-length) around a CLOSED spline
+ * through `controlPoints` — for a game whose board has a real, irregular
+ * outline (e.g. Hotel's photographed board) instead of a generic rectangle.
+ * Still purely geometric, no game-specific knowledge: the caller supplies
+ * the shape, this just distributes points along it.
+ */
+export function computeSplineLoopPositions(count: number, controlPoints: Vector3[]): Vector3[] {
+  if (count <= 0 || controlPoints.length < 3) return [];
+  const curve = new CatmullRomCurve3(controlPoints, true);
+  // getSpacedPoints(count) returns count+1 points on a closed curve, the
+  // last coinciding with the first — drop it so each space maps to exactly
+  // one point.
+  return curve.getSpacedPoints(count).slice(0, count);
 }
 
 /** Walks the rectangle's perimeter clockwise from the top-left corner. */

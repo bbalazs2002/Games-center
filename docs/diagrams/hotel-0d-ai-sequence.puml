@@ -1,0 +1,38 @@
+@startuml hotel-0d-ai-sequence
+title Hotel-0d — AI lépés, majd egy másik AI árverésen licitál
+
+participant "GameRoom\n(core)" as Room
+participant "HotelRoom" as HotelRoom
+participant "Hotel AI stratégia" as Strategy
+participant "reducer (pure)" as Reducer
+
+== Egy AI-szlot lép, mert rá kerül a sor ==
+
+Room -> Room: maybeTriggerAiMove()\n(minden akció után lefut)
+loop minden AI-szlot, amíg valamelyik tud lépni
+  Room -> HotelRoom: computeAiMove(state, slot)
+  HotelRoom -> Strategy: getValidActions(state)\n(csak ha slot == currentPlayer,\nvagy slot szerepel remainingBidderIds-ben)
+  Strategy --> HotelRoom: pl. { type: 'ROLL_MOVE_DICE', value: <szerver Math.random()> }
+  HotelRoom --> Room: action
+  Room -> Room: isActionAllowed(state, slot, action)?
+  Room -> Reducer: reducer(state, action)\n(UGYANAZ a csővezeték, mint egy emberi kliensnél)
+  Reducer --> Room: newState
+  Room -> Room: syncState() — a valódi kliensek\nlátják a lépést, mintha ember tette volna
+end
+
+== Később: adósság miatt árverés indul, egy MÁSIK AI licitál ==
+
+note over Room, Strategy
+  Az árverés az egyetlen hely, ahol NEM a currentPlayer
+  cselekszik — ezért kérdez a Room minden AI-szlotot
+  egyenként (nem csak a currentPlayer AI-jét).
+end note
+
+Room -> HotelRoom: computeAiMove(state, "player-3")
+HotelRoom -> Strategy: remainingBidderIds tartalmazza\n"player-3"-at?
+Strategy --> HotelRoom: { type: 'PLACE_BID', bidderId: 'player-3', amount }\nvagy { type: 'PASS_BID', bidderId: 'player-3' }
+HotelRoom --> Room: action
+Room -> Room: isActionAllowed — bidderId egyezik, engedélyezve\n(nem a "currentPlayer" szabály szerint)
+Room -> Reducer: reducer(state, action)
+
+@enduml

@@ -2,14 +2,16 @@
   position: absolute;
   bottom: 1rem;
   left: 1rem;
-  border: none;
+  border: 1px solid rgba(212, 175, 55, 0.35);
   border-radius: 999px;
   padding: 0.5rem 1rem;
-  background: #4a5568;
-  color: white;
+  background: rgba(15, 23, 32, 0.55);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  color: #f3ecd9;
   cursor: pointer;
   font-size: 0.85rem;
-  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0.35rem 1rem rgba(5, 10, 20, 0.4);
 }
 
 .panel {
@@ -21,10 +23,15 @@
   max-height: 60vh;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: rgba(15, 23, 32, 0.6);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
   border-radius: 1rem;
-  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 0.5rem 1.5rem rgba(5, 10, 20, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   overflow: hidden;
+  color: #f3ecd9;
 }
 
 .header {
@@ -32,12 +39,13 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .header h3 {
   margin: 0;
   font-size: 1rem;
+  color: #d4af37;
 }
 
 .header button {
@@ -46,7 +54,7 @@
   font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
-  color: #1a202c;
+  color: #f3ecd9;
 }
 
 .entries {
@@ -58,11 +66,11 @@
   flex-direction: column;
   gap: 0.4rem;
   font-size: 0.85rem;
-  color: #2d3748;
+  color: rgba(243, 236, 217, 0.85);
 }
 
 .entries li {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   padding-bottom: 0.4rem;
 }
 
@@ -72,5 +80,5 @@
 }
 
 .empty {
-  color: #a0aec0;
+  color: rgba(243, 236, 217, 0.45);
 }
