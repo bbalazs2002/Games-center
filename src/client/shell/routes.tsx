@@ -12,6 +12,7 @@ import { LobbyPage } from './lobby/LobbyPage';
 // benefit (see docs/fazis-0a-dama-specifikacio.md, "moduláris letöltéskezelés").
 const DamaOnlineGamePage = lazy(() => import('../games/dama/ui/DamaOnlineGamePage'));
 const HotelOnlineGamePage = lazy(() => import('../games/hotel/ui/HotelOnlineGamePage'));
+const RamsesOnlineGamePage = lazy(() => import('../games/ramses/ui/RamsesOnlineGamePage'));
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
@@ -42,6 +43,16 @@ export const router = createBrowserRouter([
       <RequireAuth>
         <Suspense fallback={<p>Betöltés…</p>}>
           <HotelOnlineGamePage />
+        </Suspense>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/games/ramses/online/:roomId',
+    element: (
+      <RequireAuth>
+        <Suspense fallback={<p>Betöltés…</p>}>
+          <RamsesOnlineGamePage />
         </Suspense>
       </RequireAuth>
     ),

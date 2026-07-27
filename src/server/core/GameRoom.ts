@@ -144,6 +144,19 @@ export abstract class GameRoom<
   }
 
   /**
+   * What to send as the full-state snapshot for requestFullSync/fullSync —
+   * default is the raw gameState (Dáma/Hotel have no hidden info, so this is
+   * a safe identity, unchanged from before this hook existed). A game with
+   * genuinely hidden information (Ramses: covered treasures — see
+   * docs/ramses-0b-specifikacio.md §3.2) MUST override this to return a
+   * masked view, otherwise this generic safety-net path would leak the true
+   * state straight past the game-specific syncState()'s own masking.
+   */
+  protected buildFullSyncPayload(): TState {
+    return this.gameState;
+  }
+
+  /**
    * Optional artificial "AI is thinking…" delay (ms) between consecutive
    * AI-applied actions — default 0 (no delay), matching Dáma's confirmed
    * choice. Hotel overrides this because a single AI turn is many small
@@ -225,7 +238,7 @@ export abstract class GameRoom<
     // OpaqueGameStateSchema games too (every one of their syncs is already a
     // full snapshot). See docs/hotel-0b-multiplayer-specifikacio.md §5.1/2.
     this.onMessage('requestFullSync', (client: Client) => {
-      client.send('fullSync', JSON.stringify(this.gameState));
+      client.send('fullSync', JSON.stringify(this.buildFullSyncPayload()));
     });
 
     this.flushInterval = setInterval(() => {

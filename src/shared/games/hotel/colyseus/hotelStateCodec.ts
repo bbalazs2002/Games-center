@@ -1,4 +1,5 @@
 import { ArraySchema } from '@colyseus/schema';
+import { replaceStringArray } from '../../../core/colyseusSyncHelpers';
 import { BOARD_SPACES, HOTEL_CONFIGS, SPECIAL_LANES } from '../engine/hotelConfigs';
 import type {
   BoardSpace,
@@ -22,11 +23,6 @@ import {
   HotelPlayerSchema,
   HotelStateSchema,
 } from './HotelStateSchema';
-
-/** Replaces a string ArraySchema's contents in place — used for the small, infrequently-changing arrays where push-only diffing isn't worth the extra complexity. */
-function replaceStringArray(target: ArraySchema<string>, values: readonly string[]): void {
-  target.splice(0, target.length, ...values);
-}
 
 function syncLotFields(schema: HotelLotSchema, lot: HotelLot): void {
   schema.ownerId = lot.ownerId ?? undefined;

@@ -1,0 +1,30 @@
+- generic [ref=f4e3]:
+  - generic [ref=f4e4]:
+    - heading "Ramses — Lobby" [level=1] [ref=f4e5]
+    - button "Kijelentkezés" [ref=f4e6] [cursor=pointer]
+  - paragraph [ref=f4e7]: "Bejelentkezve mint: Böngésző A"
+  - button "Új szoba" [active] [ref=f4e8] [cursor=pointer]
+  - heading "Nyitott szobák" [level=2] [ref=f4e9]
+  - paragraph [ref=f4e10]: Nincs nyitott szoba — hozz létre egyet!
+  - generic [ref=f4e12]:
+    - heading "Új szoba" [level=2] [ref=f4e13]
+    - group "Játékosok száma" [ref=f4e14]:
+      - combobox [ref=f4e17]:
+        - option "2 fő" [selected]
+        - option "3 fő"
+        - option "4 fő"
+        - option "5 fő"
+    - group "Jelszó" [ref=f4e18]:
+      - generic [ref=f4e20]:
+        - radio "Nincs (publikus szoba)" [checked] [ref=f4e21]
+        - text: Nincs (publikus szoba)
+      - generic [ref=f4e22]:
+        - radio "Generálja a rendszer" [ref=f4e23]
+        - text: Generálja a rendszer
+      - generic [ref=f4e24]:
+        - radio "Megadom:" [ref=f4e25]
+        - text: "Megadom:"
+        - textbox [disabled] [ref=f4e26]
+    - generic [ref=f4e27]:
+      - button "Mégse" [ref=f4e28] [cursor=pointer]
+      - button "Létrehozás" [ref=f4e29] [cursor=pointer]

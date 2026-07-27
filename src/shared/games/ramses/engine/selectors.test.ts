@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getCurrentPlayer, getScoreboard, getSlidableCellIds, getWinners } from './selectors';
+import { getCurrentPlayer, getDrawPileCount, getScoreboard, getSlidableCellIds, getWinners } from './selectors';
 import { buildTestState, updateCell } from './testHelpers';
 
 describe('getCurrentPlayer', () => {
@@ -39,5 +39,17 @@ describe('getScoreboard / getWinners', () => {
   it('getWinners resolves winnerIds back to Player objects', () => {
     const state = buildTestState({ status: 'FINISHED', winnerIds: ['player-2'] });
     expect(getWinners(state).map((p) => p.id)).toEqual(['player-2']);
+  });
+});
+
+describe('getDrawPileCount', () => {
+  it('returns the number of cards left in the draw pile', () => {
+    const state = buildTestState({
+      drawPile: [
+        { id: 'c1', treasureId: 'x', points: 1 },
+        { id: 'c2', treasureId: 'y', points: 2 },
+      ],
+    });
+    expect(getDrawPileCount(state)).toBe(2);
   });
 });

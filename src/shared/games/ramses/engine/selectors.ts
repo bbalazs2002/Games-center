@@ -27,3 +27,8 @@ export function getScoreboard(state: RamsesState): PlayerScore[] {
 export function getWinners(state: RamsesState): Player[] {
   return state.players.filter((player) => state.winnerIds.includes(player.id));
 }
+
+/** How many cards are left to draw — safe to show online too, since a masked state's drawPile is length-matched placeholders (see rules.ts's toPublicRamsesState), never real card contents. */
+export function getDrawPileCount(state: RamsesState): number {
+  return state.drawPile.length;
+}

@@ -36,6 +36,35 @@ export function nextPlayerIndex(state: RamsesState): number {
   return (state.currentPlayerIndex + 1) % state.players.length;
 }
 
+/** Renames a player after creation — needed online, where the real display name isn't known until GameRoom.onPlayerAdmitted, unlike hot-seat's createInitialState (see docs/ramses-0b-specifikacio.md §3.5). Mirrors Hotel's updatePlayer. */
+export function renamePlayer(state: RamsesState, playerId: PlayerId, name: string): RamsesState {
+  return {
+    ...state,
+    players: state.players.map((player) => (player.id === playerId ? { ...player, name } : player)),
+  };
+}
+
+/**
+ * Masks whatever must stay hidden before `state` goes over the network —
+ * the ONE place this happens, used by both the per-field schema sync and the
+ * requestFullSync safety net (see docs/ramses-0b-specifikacio.md §3.1/3.2).
+ * A still-covered cell's `treasureId` is nulled — structurally indistinguishable
+ * from a genuinely blank cell, which is exactly the point (the client can't
+ * tell the difference until it's actually revealed). `drawPile`'s real cards
+ * are replaced with length-matched placeholders (never real treasureId/points) —
+ * its order/contents never leave the server, but the COUNT stays meaningful
+ * (`state.drawPile.length`), so UI code that only ever reads
+ * `drawPile.length` (never individual card contents from an undrawn pile)
+ * works unchanged on both the real and the masked state.
+ */
+export function toPublicRamsesState(state: RamsesState): RamsesState {
+  return {
+    ...state,
+    board: state.board.map((cell) => (cell.hasPyramid ? { ...cell, treasureId: null } : cell)),
+    drawPile: state.drawPile.map((_, index) => ({ id: `hidden-${index}`, treasureId: '', points: 0 })),
+  };
+}
+
 export function scoreOf(player: Player): number {
   return player.wonCards.reduce((sum, card) => sum + card.points, 0);
 }

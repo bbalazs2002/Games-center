@@ -1,0 +1,50 @@
+@startuml ramses-0b-hidden-info-sync-sequence
+title Ramses-0b — rejtett kincs-info maszkolása szinkron közben (2026-07-27, tervezet)
+
+actor "Játékos A\n(kliens)" as ClientA
+actor "Játékos B\n(kliens)" as ClientB
+participant "RamsesRoom" as Room
+participant "reducer()\n(igazi, maszkolatlan state-en)" as Reducer
+participant "toPublicRamsesState()\n(az EGYETLEN maszkoló függvény)" as Mask
+participant "this.state\n(RamsesStateSchema, drótra megy)" as Schema
+
+== Egy sikeres/sikertelen csúsztatás ==
+
+ClientA -> Room : send('action', {SLIDE_PYRAMID, fromCellId})
+Room -> Room : isValidAction? isActionAllowed?\n(a VALÓDI this.gameState alapján)
+Room -> Reducer : reducer(this.gameState, action)
+Reducer --> Room : new RamsesState\n(this.gameState frissül, VALÓDI treasureId-kkal)
+Room -> Mask : toPublicRamsesState(this.gameState)
+Mask --> Room : maszkolt másolat\n(minden hasPyramid===true cella\ntreasureId-ja null)
+Room -> Schema : applyRamsesStateToSchema(schema, maszkolt state)
+Schema -> ClientA : automatikus Colyseus diff-broadcast
+Schema -> ClientB : automatikus Colyseus diff-broadcast
+
+note right of Schema
+  Mindkét kliens UGYANAZT a maszkolt
+  nézetet kapja — nem player-specifikus
+  (szemben egy jövőbeli Hanabi-val, ahol
+  a saját kéz maszkolása JÁTÉKOSONKÉNT
+  eltérő lenne — az egy nehezebb,
+  még megoldatlan probléma, ld. spec §1).
+end note
+
+== Periodikus biztonsági háló (ColyseusGameTransport, 60s-enként) ==
+
+ClientA -> Room : send('requestFullSync')
+Room -> Room : buildFullSyncPayload()\n[RamsesRoom felülírja]
+Room -> Mask : toPublicRamsesState(this.gameState)
+Mask --> Room : maszkolt másolat
+Room -> ClientA : send('fullSync', JSON.stringify(maszkolt state))
+
+note left of Room
+  KRITIKUS: buildFullSyncPayload() nélkül
+  (GameRoom alap-implementáció) ez a JSON.stringify(this.gameState)-et
+  küldené — a VALÓDI, maszkolatlan
+  kincs-elrendezést, megkerülve a
+  syncState() saját maszkolását.
+  Ez a legfontosabb felfedezés ebben a
+  tervezési körben, lásd spec §3.2.
+end note
+
+@enduml

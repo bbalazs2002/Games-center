@@ -49,6 +49,12 @@
   flex-shrink: 0;
 }
 
+.drawPileCount {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
 .scoreboard {
   list-style: none;
   margin: 0;

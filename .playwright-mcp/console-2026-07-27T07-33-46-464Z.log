@@ -1,0 +1,11 @@
+[     133ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5173/node_modules/.vite/deps/chunk-5NZOIHK5.js?v=61b8fc5c:19834
+[ 1744177ms] [WARNING] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead. @ http://localhost:5173/node_modules/.vite/deps/chunk-BT6PJYSG.js?v=61b8fc5c:746
+[ 3405419ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746
+[ 3465414ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746
+[ 3525421ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746
+[ 3585416ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746
+[ 3645410ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746
+[ 3705417ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746
+[ 3765413ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746
+[ 3825420ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746
+[ 3885414ms] [ERROR] WebSocket is already in CLOSING or CLOSED state. @ http://localhost:5173/node_modules/.vite/deps/colyseus__js.js?v=61b8fc5c:746

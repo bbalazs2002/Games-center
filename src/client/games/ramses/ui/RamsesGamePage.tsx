@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react';
+import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { GridBoard3D, type GridBoard3DCell } from '../../../renderers/grid-3d/GridBoard3D';
@@ -8,12 +9,13 @@ import { reducer } from '../../../../shared/games/ramses/engine/reducer';
 import { BOARD_COLS, BOARD_ROWS } from '../../../../shared/games/ramses/engine/rules';
 import {
   getCurrentPlayer,
+  getDrawPileCount,
   getScoreboard,
   getSlidableCellIds,
   getWinners,
   type PlayerScore,
 } from '../../../../shared/games/ramses/engine/selectors';
-import type { RamsesCell, RamsesState } from '../../../../shared/games/ramses/engine/state';
+import type { PlayerId, RamsesCell, RamsesState } from '../../../../shared/games/ramses/engine/state';
 import { getTreasureConfig } from '../../../../shared/games/ramses/engine/treasureConfigs';
 import styles from './RamsesGamePage.module.css';
 
@@ -107,22 +109,30 @@ function ScoreboardList({ scoreboard }: { scoreboard: PlayerScore[] }) {
 }
 
 export interface RamsesGamePageProps {
-  playerNames: string[];
+  /** Hot-seat only — ignored (a throwaway LocalGameTransport is still built but never used) once `transport` is provided. */
+  playerNames?: string[];
+  /** If omitted, a local LocalGameTransport is created for hot-seat mode — see docs/ramses-0b-specifikacio.md §3.6. */
+  transport?: GameTransport<RamsesState, RamsesAction>;
+  /** Online mode only: which player slot the local client controls — gates board interactivity to "only on your turn". */
+  myPlayer?: PlayerId;
 }
 
 /**
- * Ramses-0a hot-seat vertical — mirrors HotelGamePage's role for this game:
- * wires the shared reducer to a local transport and renders it via
- * GridBoard3D (see docs/ramses-0a-specifikacio.md §5). Unlike Hotel, the
- * board itself IS the only interaction surface — no separate action menu,
- * since the engine only has one action type (SLIDE_PYRAMID).
+ * Ramses-0a hot-seat vertical, generalized for Ramses-0b online play —
+ * mirrors HotelGamePage's role: wires the shared reducer to a transport
+ * (local or networked) and renders it via GridBoard3D (see
+ * docs/ramses-0a-specifikacio.md §5, docs/ramses-0b-specifikacio.md §3.6).
+ * Unlike Hotel, the board itself IS the only interaction surface — no
+ * separate action menu, since the engine only has one action type
+ * (SLIDE_PYRAMID).
  */
-export function RamsesGamePage({ playerNames }: RamsesGamePageProps) {
+export function RamsesGamePage({ playerNames, transport: providedTransport, myPlayer }: RamsesGamePageProps) {
   const localTransport = useMemo(
-    () => new LocalGameTransport<RamsesState, RamsesAction>(reducer, createInitialState(playerNames)),
+    () => new LocalGameTransport<RamsesState, RamsesAction>(reducer, createInitialState(playerNames ?? [])),
     [playerNames],
   );
-  const [state, dispatch] = useGameTransport(localTransport);
+  const transport = providedTransport ?? localTransport;
+  const [state, dispatch] = useGameTransport(transport);
   const pyramidColors = usePersistentPyramidColors(state);
 
   const winners = getWinners(state);
@@ -145,6 +155,9 @@ export function RamsesGamePage({ playerNames }: RamsesGamePageProps) {
   const currentPlayer = getCurrentPlayer(state);
   const slidableCellIds = getSlidableCellIds(state);
   const activeTreasure = state.activeCard ? getTreasureConfig(state.activeCard.treasureId) : null;
+  const drawPileCount = getDrawPileCount(state);
+  // Online only (myPlayer is undefined in hot-seat, where it's always "your" turn locally).
+  const isMyTurn = !myPlayer || myPlayer === currentPlayer.id;
 
   const cells: GridBoard3DCell<RamsesCellViewData>[] = state.board.map((cell) => ({
     id: cell.id,
@@ -154,7 +167,7 @@ export function RamsesGamePage({ playerNames }: RamsesGamePageProps) {
   }));
 
   function handleCellClick(cellId: string): void {
-    if (!slidableCellIds.includes(cellId)) return;
+    if (!isMyTurn || !slidableCellIds.includes(cellId)) return;
     dispatch({ type: 'SLIDE_PYRAMID', fromCellId: cellId });
   }
 
@@ -170,7 +183,10 @@ export function RamsesGamePage({ playerNames }: RamsesGamePageProps) {
           boardColor={BOARD_COLOR}
         />
         <div className={styles.hud}>
-          <p className={styles.turnIndicator}>{currentPlayer.name} köre</p>
+          <p className={styles.turnIndicator}>
+            {currentPlayer.name} köre
+            {!isMyTurn && ' — várakozás…'}
+          </p>
           {activeTreasure && state.activeCard && (
             <div className={styles.activeCard}>
               <span className={styles.treasureSwatch} style={{ backgroundColor: activeTreasure.color }} />
@@ -179,6 +195,7 @@ export function RamsesGamePage({ playerNames }: RamsesGamePageProps) {
               </span>
             </div>
           )}
+          <p className={styles.drawPileCount}>{drawPileCount} lap maradt a pakliban</p>
           <ScoreboardList scoreboard={scoreboard} />
         </div>
       </div>

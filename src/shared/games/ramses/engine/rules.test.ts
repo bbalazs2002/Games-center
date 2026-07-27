@@ -6,7 +6,9 @@ import {
   drawCardForCurrentPlayer,
   getAdjacentCellIds,
   nextPlayerIndex,
+  renamePlayer,
   scoreOf,
+  toPublicRamsesState,
 } from './rules';
 import { buildTestState, updateCell } from './testHelpers';
 
@@ -96,6 +98,49 @@ describe('awardActiveCardToCurrentPlayer', () => {
     state = awardActiveCardToCurrentPlayer(state);
     expect(state.status).toBe('FINISHED');
     expect(state.winnerIds).toEqual(['player-1']);
+  });
+});
+
+describe('renamePlayer', () => {
+  it('renames only the matching player, leaves the rest untouched', () => {
+    const state = buildTestState();
+    const next = renamePlayer(state, 'player-2', 'Real Name');
+    expect(next.players).toEqual([
+      { id: 'player-1', name: 'Alice', wonCards: [] },
+      { id: 'player-2', name: 'Real Name', wonCards: [] },
+    ]);
+  });
+});
+
+describe('toPublicRamsesState', () => {
+  it('nulls treasureId only for cells still covered by a pyramid, leaves revealed cells untouched', () => {
+    let state = buildTestState();
+    state = updateCell(state, 'r1c0', { treasureId: 'ankh', hasPyramid: true }); // still covered — must be masked
+    state = updateCell(state, 'r0c0', { treasureId: 'scarab', hasPyramid: false }); // already revealed — must stay visible
+    const publicState = toPublicRamsesState(state);
+    expect(publicState.board.find((c) => c.id === 'r1c0')?.treasureId).toBeNull();
+    expect(publicState.board.find((c) => c.id === 'r0c0')?.treasureId).toBe('scarab');
+  });
+
+  it('replaces drawPile cards with length-matched placeholders carrying no real treasure info', () => {
+    const state = buildTestState({
+      drawPile: [
+        { id: 'c1', treasureId: 'ankh', points: 3 },
+        { id: 'c2', treasureId: 'scarab', points: 1 },
+      ],
+    });
+    const publicState = toPublicRamsesState(state);
+    expect(publicState.drawPile).toHaveLength(2);
+    expect(publicState.drawPile.every((card) => card.treasureId === '' && card.points === 0)).toBe(true);
+  });
+
+  it('leaves everything else (players, activeCard, currentPlayerIndex, status) unchanged', () => {
+    const state = buildTestState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
+    const publicState = toPublicRamsesState(state);
+    expect(publicState.activeCard).toEqual(state.activeCard);
+    expect(publicState.players).toEqual(state.players);
+    expect(publicState.currentPlayerIndex).toBe(state.currentPlayerIndex);
+    expect(publicState.status).toBe(state.status);
   });
 });
 

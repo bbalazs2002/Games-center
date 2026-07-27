@@ -1,0 +1,9 @@
+- generic [ref=e3]:
+  - heading "Games Center" [level=1] [ref=e4]
+  - generic [ref=e5]:
+    - text: Meghívó-kód
+    - textbox "Meghívó-kód" [ref=e6]
+  - generic [ref=e7]:
+    - text: Megjelenítendő név
+    - textbox "Megjelenítendő név" [ref=e8]
+  - button "Belépés" [ref=e9] [cursor=pointer]
