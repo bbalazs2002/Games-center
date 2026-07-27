@@ -87,9 +87,10 @@ function WaitingForPlayersScreen({
  * Hotel-0b counterpart to DamaOnlineGamePage, sharing the exact same
  * game-agnostic `useOnlineGameRoom` connection lifecycle (see
  * docs/hotel-0b-multiplayer-specifikacio.md §5/3). This component is only
- * the Hotel-specific glue: option-building (playerCount instead of Dáma's
- * opponentType, no AI in Hotel-0b), decoding via the per-field schema codec,
- * and rendering.
+ * the Hotel-specific glue: option-building (playerCount + aiOpponentCount/
+ * aiDifficulty instead of Dáma's binary opponentType — see
+ * docs/hotel-0d-ai-specifikacio.md §3.1), decoding via the per-field schema
+ * codec, and rendering.
  */
 export function HotelOnlineGamePage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -121,6 +122,8 @@ export function HotelOnlineGamePage() {
     decode: decodeHotelState,
     buildCreateOptions: () => ({
       playerCount: Number(searchParams.get('playerCount')) || 2,
+      aiOpponentCount: Number(searchParams.get('aiCount')) || 0,
+      aiDifficulty: searchParams.get('aiDifficulty') ?? undefined,
       password: searchParams.get('password') ?? undefined,
     }),
     buildJoinOptions: () => ({

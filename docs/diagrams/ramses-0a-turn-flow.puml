@@ -1,0 +1,45 @@
+@startuml ramses-0a-turn-flow
+title Ramses-0a — egy SLIDE_PYRAMID akció feldolgozása (reducer)
+
+start
+
+if (activeCard == null?) then (igen)
+  :húzd a drawPile tetejét -> activeCard;
+  if (emptyCell.treasureId == activeCard.treasureId?) then (igen, "szerencsés eset")
+    :a soron lévő játékos AZONNAL megkapja a lapot;
+    :activeCard = null;
+    :currentPlayerIndex = következő;
+    stop
+  else (nem)
+  endif
+else (nem)
+endif
+
+:játékos SLIDE_PYRAMID(fromCellId);
+note right: fromCellId szomszédos emptyCellId-vel,\nés hasPyramid(fromCellId) == true
+
+:piramis mozgatása;
+:emptyCellId = fromCellId (a régi hely lesz üres);
+
+if (emptyCell.treasureId == null?) then (üres mező)
+  :kör folytatódik, ugyanaz a játékos,\nugyanaz az activeCard;
+  stop
+elseif (emptyCell.treasureId == activeCard.treasureId?) then (jó kincs)
+  :a lap a játékos wonCards-ába kerül;
+  :activeCard = null;
+  :currentPlayerIndex = következő;
+  if (drawPile üres?) then (igen)
+    :status = FINISHED;
+    :winnerIds számítása (2.4 szakasz);
+    stop
+  else (nem)
+    :következő SLIDE_PYRAMID hívás elején\núj lap húzása (fent leírt logika);
+    stop
+  endif
+else (rossz kincs)
+  :kör vége — activeCard VÁLTOZATLAN;
+  :currentPlayerIndex = következő;
+  stop
+endif
+
+@enduml

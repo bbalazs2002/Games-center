@@ -129,8 +129,17 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
   }
 
   const space = next.board[newPosition];
+  // A staircase right can be bought before anything is built on the lot (see
+  // computeNightlyRent's own note) — in that case the rent would always be
+  // 0, so skip the whole nights-roll procedure entirely instead of asking
+  // the landing player to roll for a guaranteed-zero result. Falls through
+  // to the space's own type handling below, exactly as if there were no
+  // staircase here at all.
   if (space.staircaseForLotId) {
-    return { ...next, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: space.staircaseForLotId };
+    const staircaseLot = getLot(next, space.staircaseForLotId);
+    if (staircaseLot.buildingsBuilt > 0 || staircaseLot.hasGarden) {
+      return { ...next, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: space.staircaseForLotId };
+    }
   }
   if (space.type === 'START') return finishTurn(next);
   // FREE_BUILDING resolves automatically on landing — there's nothing for the
@@ -152,9 +161,15 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
 function applyBuyLot(state: HotelState, lotId: string): HotelState {
   if (!canBuyLot(state, lotId)) return state;
   const player = getCurrentPlayer(state);
-  const price = computeLotPurchasePrice(getLot(state, lotId));
+  const lot = getLot(state, lotId);
+  const price = computeLotPurchasePrice(lot);
+  const previousOwnerId = lot.ownerId;
 
   let next = updatePlayer(state, player.id, { cash: player.cash - price });
+  // A force-buy ("féláron megveheted tőle") is a purchase FROM that other
+  // player, not from the bank — they must receive the payment. Only a
+  // bank-owned (unowned) lot has no one to pay.
+  if (previousOwnerId !== null) next = payFromBank(next, previousOwnerId, price);
   next = updateLot(next, lotId, { ownerId: player.id, bankBuybackPrice: null });
   return appendLog(next, { type: 'LOT_BOUGHT', playerId: player.id, lotId, price });
 }

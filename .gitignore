@@ -12,6 +12,9 @@ temp/**
 # assets contains large files that are not versioned yet
 assets/**
 
+# opt-in full game-event logs (docs/hotel-0d-ai-specifikacio.md §4.8) — local analysis artifacts, not versioned
+logs/**
+
 # OS
 .DS_Store
 Thumbs.db

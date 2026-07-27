@@ -114,8 +114,15 @@ export function getStaircaseSpaceOptions(state: HotelState, lotId: string): Boar
   return state.board.filter((space) => space.adjacentLotIds.includes(lotId) && space.staircaseForLotId === null);
 }
 
-/** nights is 1-6, matching the printed table's columns. */
+/**
+ * nights is 1-6, matching the printed table's columns. A staircase right can
+ * be bought on a lot before anything is built on it (canBuyStaircaseRightForLot
+ * has no buildingsBuilt check), so landing there can still trigger a nights
+ * roll (see applyRollMoveDice's `space.staircaseForLotId` branch) — with
+ * nothing actually built (and no garden), there's nothing to charge for.
+ */
 export function computeNightlyRent(lot: HotelLot, nights: number): number {
+  if (lot.buildingsBuilt === 0 && !lot.hasGarden) return 0;
   const nightsIndex = nights - 1;
   if (lot.hasGarden) return lot.gardenNightlyRates[nightsIndex];
   return lot.nightlyRates[lot.buildingsBuilt - 1][nightsIndex];

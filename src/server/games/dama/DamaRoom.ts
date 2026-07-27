@@ -40,7 +40,8 @@ export class DamaRoom extends GameRoom<DamaState, DamaAction, Player> {
     return candidate.type === 'MOVE' && isPosition(candidate.from) && isPosition(candidate.to);
   }
 
-  protected computeAiMove(state: DamaState): DamaAction | null {
+  protected computeAiMove(state: DamaState, slot: Player): DamaAction | null {
+    if (state.currentPlayer !== slot) return null;
     return pickRandomMove(state);
   }
 

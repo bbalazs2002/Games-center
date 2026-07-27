@@ -1,0 +1,23 @@
+- generic [ref=f24e4]:
+  - heading "Hotel — új játék" [level=1] [ref=f24e5]
+  - paragraph [ref=f24e6]: "Játékosok (2–4 fő):"
+  - generic [ref=f24e7]:
+    - textbox [ref=f24e8]: Játékos 1
+    - generic [ref=f24e9]:
+      - checkbox "AI" [ref=f24e10]
+      - text: AI
+  - generic [ref=f24e11]:
+    - textbox [ref=f24e12]: Játékos 2
+    - generic [ref=f24e13]:
+      - checkbox "AI" [checked] [active] [ref=f24e14]
+      - text: AI
+  - generic [ref=f24e15]:
+    - button "Játékos eltávolítása" [disabled] [ref=f24e16] [cursor=pointer]
+    - button "Játékos hozzáadása" [ref=f24e17] [cursor=pointer]
+  - generic [ref=f24e19]:
+    - text: "AI nehézsége:"
+    - combobox "AI nehézsége:" [ref=f24e20]:
+      - option "Könnyű"
+      - option "Közepes" [selected]
+      - option "Nehéz"
+  - button "Játék indítása" [ref=f24e18] [cursor=pointer]

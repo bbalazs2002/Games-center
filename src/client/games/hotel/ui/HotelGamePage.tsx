@@ -27,6 +27,7 @@ import {
 import { GameLogPanel } from './GameLogPanel';
 import { PlayerActionWheel } from './PlayerActionWheel';
 import { useCashFlourishes, useRecentLotPurchases } from './useTransientLogEffects';
+import { useHotSeatAi, type HotSeatAiSlots } from './useHotSeatAi';
 import styles from './HotelGamePage.module.css';
 
 const PLAYER_COLORS = ['#e53e3e', '#3182ce', '#38a169', '#d69e2e'];
@@ -289,7 +290,7 @@ function CashFlourishOverlay({ log, playerId }: { log: HotelState['log']; player
 }
 
 /** Floating glass status chip — current player, color, and cash (with a real banknote flourish) live right beside the wheel that drives the whole turn, per the "organize around the wheel" request. */
-function StatusChip({ state, myPlayer }: { state: HotelState; myPlayer?: PlayerId }) {
+function StatusChip({ state, myPlayer, isCurrentPlayerAi }: { state: HotelState; myPlayer?: PlayerId; isCurrentPlayerAi: boolean }) {
   const currentPlayer = state.players[state.currentPlayerIndex];
   const colorIndex = state.currentPlayerIndex % PLAYER_COLORS.length;
   const you = myPlayer ? state.players.find((p) => p.id === myPlayer) : undefined;
@@ -298,7 +299,10 @@ function StatusChip({ state, myPlayer }: { state: HotelState; myPlayer?: PlayerI
     <div className={styles.statusChip}>
       <span className={styles.colorSwatch} style={{ backgroundColor: PLAYER_COLORS[colorIndex] }} />
       <div className={styles.statusText}>
-        <span className={styles.statusName}>{currentPlayer.name}</span>
+        <span className={styles.statusName}>
+          {currentPlayer.name}
+          {isCurrentPlayerAi && ' (AI gondolkodik…)'}
+        </span>
         <span className={styles.statusMeta}>
           {PLAYER_COLOR_NAMES[colorIndex]} bábu{you && you.id !== currentPlayer.id ? ` — Te vagy: ${you.name}` : ''}
         </span>
@@ -328,6 +332,8 @@ export interface HotelGamePageProps {
   transport?: GameTransport<HotelState, HotelAction>;
   /** Online mode only: which player slot the local client controls — gates PlayerActionWheel's interactivity. */
   myPlayer?: PlayerId;
+  /** Hot-seat only — which of THIS game's player slots (if any) are AI-controlled, and at what difficulty. Ignored (and has no effect) once `transport` is provided, since online AI is already driven server-side by GameRoom. */
+  hotSeatAiSlots?: HotSeatAiSlots;
 }
 
 /**
@@ -336,13 +342,14 @@ export interface HotelGamePageProps {
  * or networked) and renders it, here via LoopTrackBoard3D + PlayerActionWheel
  * instead of GridBoard2D. See docs/hotel-0a-specifikacio.md, docs/hotel-0b-multiplayer-specifikacio.md.
  */
-export function HotelGamePage({ playerNames, transport: providedTransport, myPlayer }: HotelGamePageProps) {
+export function HotelGamePage({ playerNames, transport: providedTransport, myPlayer, hotSeatAiSlots }: HotelGamePageProps) {
   const localTransport = useMemo(
     () => new LocalGameTransport<HotelState, HotelAction>(reducer, createInitialState(playerNames ?? [])),
     [playerNames],
   );
   const transport = providedTransport ?? localTransport;
   const [state, dispatch] = useGameTransport(transport);
+  useHotSeatAi(transport, hotSeatAiSlots ?? {});
 
   const spaces: LoopTrackSpace<HotelSpaceData>[] = useMemo(
     () =>
@@ -383,6 +390,10 @@ export function HotelGamePage({ playerNames, transport: providedTransport, myPla
 
   const winner = getWinner(state);
   const currentPlayer = state.players[state.currentPlayerIndex];
+  // Hot-seat only (hotSeatAiSlots is empty in online mode) — hides the wheel
+  // while an AI-controlled slot's turn is being decided/applied, so a human
+  // sharing the device doesn't try to act on its behalf mid-thought.
+  const isCurrentPlayerAi = (hotSeatAiSlots ?? {})[currentPlayer.id] !== undefined;
 
   if (winner) {
     return (
@@ -411,8 +422,12 @@ export function HotelGamePage({ playerNames, transport: providedTransport, myPla
         />
         <OwnedLotsPanel state={state} />
         <GameLogPanel state={state} />
-        <PlayerActionWheel state={state} dispatch={dispatch} interactive={!myPlayer || myPlayer === currentPlayer.id} />
-        <StatusChip state={state} myPlayer={myPlayer} />
+        <PlayerActionWheel
+          state={state}
+          dispatch={dispatch}
+          interactive={(!myPlayer || myPlayer === currentPlayer.id) && !isCurrentPlayerAi}
+        />
+        <StatusChip state={state} myPlayer={myPlayer} isCurrentPlayerAi={isCurrentPlayerAi} />
       </div>
     </div>
   );

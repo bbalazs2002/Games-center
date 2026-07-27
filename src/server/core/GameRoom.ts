@@ -1,6 +1,8 @@
 import { Room, type Client } from 'colyseus';
 import type { Prisma } from '@prisma/client';
 import { ArraySchema, type Schema } from '@colyseus/schema';
+import { createWriteStream, mkdirSync, type WriteStream } from 'node:fs';
+import { join } from 'node:path';
 import type { GameRoomState } from '../../shared/core/GameRoomState';
 import { OpaqueGameStateSchema } from '../../shared/core/OpaqueGameStateSchema';
 import { PendingJoinRequest } from '../../shared/core/PendingJoinRequestSchema';
@@ -19,14 +21,31 @@ const MAX_AI_MOVES_PER_TRIGGER = 40;
 // this is a casual family app, not a competitive one. Widened 120s -> 300s
 // (2026-07-24, Hotel-0b planning) — same reasoning, just more generous.
 const RECONNECTION_WINDOW_SECONDS = 300;
+// Off by default — meant for offline analysis of AI-only test games (see
+// docs/hotel-0d-ai-specifikacio.md §4.8/7), not regular play, so it isn't
+// wired into any lobby UI yet, only reachable by passing enableGameLog at
+// room-creation time.
+const GAME_LOG_DIR = join(process.cwd(), 'logs', 'games');
 
 export interface GameRoomCreateOptions {
   token?: string;
-  opponentType?: 'HUMAN' | 'AI';
+  /**
+   * How many of the remaining slots (after the creator) should be filled with
+   * AI opponents — 0 means none. Generalized from the old binary
+   * `opponentType: 'HUMAN'|'AI'` so Hotel's 2-4 player rooms can mix AI and
+   * human slots (Dáma just uses 0 or 1, matching its old binary choice). See
+   * docs/hotel-0d-ai-specifikacio.md §3.1. Always clamped to `maxClients - 1`
+   * server-side, so a room can never end up with zero real players.
+   */
+  aiOpponentCount?: number;
+  /** Hotel-only — which strategy AI opponents in this room use (see docs/hotel-0d-ai-specifikacio.md §4.4). Ignored by games without difficulty tiers. */
+  aiDifficulty?: string;
   /** Already-resolved plain-text password (typed or client-generated) — omitted/empty means a public room. */
   password?: string;
   /** Hotel-only (2-4, chosen at creation) — meaningless/ignored for a fixed-player-count game like Dáma. */
   playerCount?: number;
+  /** Simple on/off switch for full JSONL event logging (every applied action + resulting state) — see docs/hotel-0d-ai-specifikacio.md §4.8. */
+  enableGameLog?: boolean;
 }
 
 export interface GameRoomJoinOptions {
@@ -83,8 +102,17 @@ export abstract class GameRoom<
   /** Runtime shape check for incoming actions — the network is not trusted input. */
   protected abstract isValidAction(action: unknown): action is TAction;
 
-  /** Server-side "virtual client" AI move, or null if the AI has no legal move — see docs/fazis-0c-dama-ai-specifikacio.md §2. */
-  protected abstract computeAiMove(state: TState): TAction | null;
+  /**
+   * Server-side "virtual client" AI move for `slot`, or null if `slot` has
+   * nothing to legally do right now — see docs/fazis-0c-dama-ai-specifikacio.md
+   * §2. Takes the slot (not just the state) because Hotel's auction bidding
+   * means more than one AI slot can be asked "what would you do right now"
+   * in the same trigger (any non-auctioneer slot may bid/pass, not just
+   * whoever's turn it nominally is) — see docs/hotel-0d-ai-specifikacio.md
+   * §3.2. Games without that exception (Dáma) simply ignore `slot` beyond
+   * checking it's actually their turn.
+   */
+  protected abstract computeAiMove(state: TState, slot: TPlayerSlot): TAction | null;
 
   /** Writes the current `gameState` into `this.state` (the live Colyseus Schema) — game-specific because the mapping depends entirely on TColyseusState's shape. */
   protected abstract syncState(): void;
@@ -103,6 +131,30 @@ export abstract class GameRoom<
     // Intentionally empty default — most games don't need this.
   }
 
+  /**
+   * Optional hook: lets a game replace/augment a just-validated client action
+   * before it reaches the reducer — default is identity (most games trust the
+   * action once isValidAction/isActionAllowed pass). Hotel overrides this to
+   * discard the client-supplied dice/permit-die value and substitute a
+   * server-generated one, since the client is not a trusted source for that
+   * value in online play (see docs/hotel-0d-ai-specifikacio.md §4.6).
+   */
+  protected resolveServerAction(action: TAction): TAction {
+    return action;
+  }
+
+  /**
+   * Optional artificial "AI is thinking…" delay (ms) between consecutive
+   * AI-applied actions — default 0 (no delay), matching Dáma's confirmed
+   * choice. Hotel overrides this because a single AI turn is many small
+   * actions (roll → buy/build → end turn), and applying all of them in one
+   * synchronous burst is hard to follow even with the animation system (see
+   * docs/hotel-0d-ai-specifikacio.md §4.7).
+   */
+  protected aiMoveDelayMs(): number {
+    return 0;
+  }
+
   /** protected, not private — game-specific `syncState()` implementations need to read the current state to write it into `this.state`. */
   protected gameState!: TState;
   private dbSessionId!: string;
@@ -111,9 +163,12 @@ export abstract class GameRoom<
   private readonly clientSlots = new Map<string, TPlayerSlot>();
   private joinCount = 0;
   private readonly aiSlots = new Set<TPlayerSlot>();
-  private aiOpponentRequested = false;
+  private aiOpponentCountRequested = 0;
   private roomPassword: string | null = null;
   private creatorSessionId: string | null = null;
+  private gameLogStream: WriteStream | null = null;
+  private gameLogSeq = 0;
+  private pendingAiMoveTimer: ReturnType<typeof setTimeout> | null = null;
 
   async onAuth(_client: Client, options: GameRoomJoinOptions): Promise<AuthPayload> {
     const auth = verifyToken(options.token);
@@ -129,7 +184,12 @@ export abstract class GameRoom<
     this.gameState = this.createInitialState();
     this.syncState();
 
-    this.aiOpponentRequested = options.opponentType === 'AI';
+    // Clamped so a room can never end up with zero real players — see
+    // GameRoomCreateOptions.aiOpponentCount.
+    this.aiOpponentCountRequested = Math.min(
+      Math.max(0, Math.trunc(options.aiOpponentCount ?? 0)),
+      this.maxClients - 1,
+    );
     if (options.password?.trim()) {
       this.roomPassword = options.password.trim();
       await this.setMetadata({ hasPassword: true });
@@ -140,10 +200,17 @@ export abstract class GameRoom<
     });
     this.dbSessionId = session.id;
 
+    if (options.enableGameLog) {
+      mkdirSync(GAME_LOG_DIR, { recursive: true });
+      this.gameLogStream = createWriteStream(join(GAME_LOG_DIR, `${this.gameType}-${this.dbSessionId}.jsonl`), {
+        flags: 'a',
+      });
+    }
+
     this.onMessage('action', (client: Client, action: unknown) => {
       const slot = this.clientSlots.get(client.sessionId);
       if (!slot || !this.isValidAction(action) || !this.isActionAllowed(this.gameState, slot, action)) return;
-      this.applyAction(action);
+      this.applyAction(this.resolveServerAction(action), slot);
       this.maybeTriggerAiMove();
     });
 
@@ -206,7 +273,9 @@ export abstract class GameRoom<
 
   async onDispose(): Promise<void> {
     if (this.flushInterval) clearInterval(this.flushInterval);
+    if (this.pendingAiMoveTimer) clearTimeout(this.pendingAiMoveTimer);
     await this.flushToDatabase();
+    this.gameLogStream?.end();
   }
 
   /** Slot assignment + AI registration + capacity check — the single path shared by direct joins and accepted join requests. */
@@ -222,8 +291,12 @@ export abstract class GameRoom<
       data: { gameSessionId: this.dbSessionId, userId: auth.userId, playerSlot: slot },
     });
 
-    if (this.aiOpponentRequested && this.aiSlots.size === 0) {
-      await this.registerAiOpponent();
+    // Only right after the creator's own join (joinCount was just bumped to 1
+    // above) — matches Dáma's original once-only timing, just repeated N times.
+    if (this.joinCount === 1 && this.aiOpponentCountRequested > 0) {
+      for (let i = 0; i < this.aiOpponentCountRequested; i += 1) {
+        await this.registerAiOpponent();
+      }
     }
 
     if (this.joinCount >= this.maxClients) {
@@ -272,30 +345,68 @@ export abstract class GameRoom<
     });
   }
 
-  private applyAction(action: TAction): void {
+  private applyAction(action: TAction, actorSlot: TPlayerSlot | null = null): void {
     this.gameState = this.reducer(this.gameState, action);
     this.syncState();
     this.dirty = true;
+    this.logAction(actorSlot, action);
+  }
+
+  /** No-op unless `enableGameLog` was passed at creation (see onCreate) — see docs/hotel-0d-ai-specifikacio.md §4.8. */
+  private logAction(actorSlot: TPlayerSlot | null, action: TAction): void {
+    if (!this.gameLogStream) return;
+    const entry = {
+      seq: this.gameLogSeq++,
+      timestamp: new Date().toISOString(),
+      actorSlot,
+      isAi: actorSlot !== null && this.aiSlots.has(actorSlot),
+      action,
+      state: this.gameState,
+    };
+    this.gameLogStream.write(`${JSON.stringify(entry)}\n`);
   }
 
   /**
    * Runs the AI's virtual-client move(s) through the exact same reducer path
-   * a human action would use. Computes a candidate move first, THEN checks
-   * whether any AI slot is actually allowed to make it — the reverse order
-   * from a naive "find whose turn it is, then compute their move," but
-   * necessary now that turn-ownership is folded into the action-aware
-   * `isActionAllowed` (no more standalone "whose general turn is it" check).
-   * Cheap even when it's a human's turn (the computed move is just discarded
-   * once no AI slot matches it).
+   * a human action would use. Asks EACH AI slot individually "what would you
+   * do right now" (not just whoever's turn it nominally is) — necessary for
+   * Hotel, where an out-of-turn AI slot may need to bid/pass during another
+   * player's auction (see docs/hotel-0d-ai-specifikacio.md §3.2). Cheap even
+   * when it's a human's turn (every AI slot's computeAiMove just returns
+   * null). With no artificial delay configured (aiMoveDelayMs() === 0, the
+   * default — Dáma's case), this runs synchronously to completion exactly
+   * like before; with a delay it paces itself via setTimeout instead of
+   * blocking, so it never blocks the room's event loop (see docs/
+   * hotel-0d-ai-specifikacio.md §4.7).
    */
   private maybeTriggerAiMove(): void {
-    for (let guard = 0; guard < MAX_AI_MOVES_PER_TRIGGER; guard += 1) {
-      const action = this.computeAiMove(this.gameState);
-      if (!action) return;
-      const actingSlot = [...this.aiSlots].find((slot) => this.isActionAllowed(this.gameState, slot, action));
-      if (!actingSlot) return;
-      this.applyAction(action);
+    const delayMs = this.aiMoveDelayMs();
+    if (delayMs <= 0) {
+      for (let guard = 0; guard < MAX_AI_MOVES_PER_TRIGGER; guard += 1) {
+        if (!this.tryApplyOneAiMove()) return;
+      }
+      return;
     }
+    this.scheduleNextAiMove(delayMs, 0);
+  }
+
+  private scheduleNextAiMove(delayMs: number, guard: number): void {
+    if (guard >= MAX_AI_MOVES_PER_TRIGGER) return;
+    this.pendingAiMoveTimer = setTimeout(() => {
+      this.pendingAiMoveTimer = null;
+      if (this.tryApplyOneAiMove()) this.scheduleNextAiMove(delayMs, guard + 1);
+    }, delayMs);
+  }
+
+  /** Tries each AI slot in turn for something it can legally do right now; applies (and logs) the first one found. Returns whether a move was applied. */
+  private tryApplyOneAiMove(): boolean {
+    for (const slot of this.aiSlots) {
+      const action = this.computeAiMove(this.gameState, slot);
+      if (!action || !this.isActionAllowed(this.gameState, slot, action)) continue;
+      this.applyAction(action, slot);
+      return true;
+    }
+    return false;
   }
 
   private async flushToDatabase(): Promise<void> {

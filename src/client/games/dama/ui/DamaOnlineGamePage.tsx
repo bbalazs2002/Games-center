@@ -128,7 +128,10 @@ export function DamaOnlineGamePage() {
     createInitialState,
     decode: decodeDamaState,
     buildCreateOptions: () => ({
-      opponentType: searchParams.get('opponent') === 'ai' ? 'AI' : 'HUMAN',
+      // Dáma's own UI is still the binary Ember/AI choice — translated here
+      // into the generalized 0/1 aiOpponentCount the room now expects (see
+      // docs/hotel-0d-ai-specifikacio.md §3.1).
+      aiOpponentCount: searchParams.get('opponent') === 'ai' ? 1 : 0,
       password: searchParams.get('password') ?? undefined,
     }),
     buildJoinOptions: () => ({

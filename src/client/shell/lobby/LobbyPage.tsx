@@ -8,11 +8,12 @@ import { NEW_ROOM_PARAM } from '../../core/transport/onlineRoomConstants';
 import { Button } from '../../ui-kit/Button';
 import { Modal } from '../../ui-kit/Modal';
 import { useAuth } from '../auth/AuthContext';
-import { GAMES_REGISTRY } from '../gamesRegistry';
+import { GAMES_REGISTRY, type GameDescriptor } from '../gamesRegistry';
 import styles from './LobbyPage.module.css';
 
 type OpponentType = 'HUMAN' | 'AI';
 type PasswordMode = 'none' | 'generate' | 'custom';
+type AiDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
 
 function playerCountOptions([min, max]: [number, number]): number[] {
   return Array.from({ length: max - min + 1 }, (_, i) => min + i);
@@ -65,6 +66,47 @@ function PlayerCountFieldset({
   );
 }
 
+/** Hotel's AI picker — replaces Dáma's binary Ember/AI choice with "how many of the remaining slots" + a shared difficulty for all of them (see docs/hotel-0d-ai-specifikacio.md §3.1, §6). */
+function AiOpponentCountFieldset({
+  maxAiCount,
+  aiCount,
+  onAiCountChange,
+  aiDifficulty,
+  onAiDifficultyChange,
+}: {
+  maxAiCount: number;
+  aiCount: number;
+  onAiCountChange: (count: number) => void;
+  aiDifficulty: AiDifficulty;
+  onAiDifficultyChange: (difficulty: AiDifficulty) => void;
+}) {
+  return (
+    <fieldset className={styles.fieldset}>
+      <legend>AI ellenfelek</legend>
+      <label>
+        <select value={aiCount} onChange={(event) => onAiCountChange(Number(event.target.value))}>
+          {Array.from({ length: maxAiCount + 1 }, (_, i) => i).map((count) => (
+            <option key={count} value={count}>
+              {count === 0 ? 'Nincs AI' : `${count} AI`}
+            </option>
+          ))}
+        </select>
+      </label>
+      {aiCount > 0 && (
+        <label>
+          {' '}
+          Nehézség:{' '}
+          <select value={aiDifficulty} onChange={(event) => onAiDifficultyChange(event.target.value as AiDifficulty)}>
+            <option value="EASY">Könnyű</option>
+            <option value="MEDIUM">Közepes</option>
+            <option value="HARD">Nehéz</option>
+          </select>
+        </label>
+      )}
+    </fieldset>
+  );
+}
+
 function PasswordModeFieldset({
   passwordMode,
   generatedPassword,
@@ -103,6 +145,123 @@ function PasswordModeFieldset({
   );
 }
 
+interface CreateRoomValues {
+  opponentType: OpponentType;
+  playerCount: number;
+  aiCount: number;
+  aiDifficulty: AiDifficulty;
+  passwordMode: PasswordMode;
+  generatedPassword: string;
+  customPassword: string;
+}
+
+function applyAiOpponentCountParams(params: URLSearchParams, values: CreateRoomValues): void {
+  const { aiCount, aiDifficulty } = values;
+  params.set('aiCount', String(aiCount));
+  if (aiCount > 0) params.set('aiDifficulty', aiDifficulty);
+}
+
+function applyOpponentParams(params: URLSearchParams, game: GameDescriptor | undefined, values: CreateRoomValues): void {
+  if (game?.online?.supportsAiOpponent) params.set('opponent', values.opponentType.toLowerCase());
+  if (game?.online?.playerCountRange) params.set('playerCount', String(values.playerCount));
+  if (game?.online?.supportsAiOpponentCount) applyAiOpponentCountParams(params, values);
+}
+
+function applyPasswordParams(params: URLSearchParams, values: CreateRoomValues): void {
+  const { passwordMode, generatedPassword, customPassword } = values;
+  if (passwordMode === 'generate') {
+    params.set('password', generatedPassword);
+  } else if (passwordMode === 'custom' && customPassword.trim()) {
+    params.set('password', customPassword.trim());
+  }
+}
+
+/** Pure param-building split out of handleConfirmCreate purely to stay under the project's ESLint complexity limit — same reasoning as the reducer's dispatch-table splits elsewhere in this codebase. */
+function buildCreateRoomParams(game: GameDescriptor | undefined, values: CreateRoomValues): URLSearchParams {
+  const params = new URLSearchParams();
+  applyOpponentParams(params, game, values);
+  applyPasswordParams(params, values);
+  return params;
+}
+
+/** The "Új szoba" modal's contents, split out of LobbyPage purely to stay under the project's ESLint complexity limit (each optional fieldset's conditional render counted toward LobbyPage's own complexity otherwise). */
+function CreateRoomModal({
+  open,
+  onClose,
+  game,
+  opponentType,
+  onOpponentTypeChange,
+  playerCount,
+  onPlayerCountChange,
+  aiCount,
+  onAiCountChange,
+  aiDifficulty,
+  onAiDifficultyChange,
+  passwordMode,
+  generatedPassword,
+  customPassword,
+  onPasswordModeChange,
+  onCustomPasswordChange,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  game: GameDescriptor;
+  opponentType: OpponentType;
+  onOpponentTypeChange: (type: OpponentType) => void;
+  playerCount: number;
+  onPlayerCountChange: (count: number) => void;
+  aiCount: number;
+  onAiCountChange: (count: number) => void;
+  aiDifficulty: AiDifficulty;
+  onAiDifficultyChange: (difficulty: AiDifficulty) => void;
+  passwordMode: PasswordMode;
+  generatedPassword: string;
+  customPassword: string;
+  onPasswordModeChange: (mode: PasswordMode) => void;
+  onCustomPasswordChange: (value: string) => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal open={open} onClose={onClose}>
+      <h2>Új szoba</h2>
+
+      {game.online?.supportsAiOpponent && (
+        <OpponentTypeFieldset opponentType={opponentType} onChange={onOpponentTypeChange} />
+      )}
+
+      {game.online?.playerCountRange && (
+        <PlayerCountFieldset range={game.online.playerCountRange} playerCount={playerCount} onChange={onPlayerCountChange} />
+      )}
+
+      {game.online?.supportsAiOpponentCount && (
+        <AiOpponentCountFieldset
+          maxAiCount={playerCount - 1}
+          aiCount={aiCount}
+          onAiCountChange={onAiCountChange}
+          aiDifficulty={aiDifficulty}
+          onAiDifficultyChange={onAiDifficultyChange}
+        />
+      )}
+
+      <PasswordModeFieldset
+        passwordMode={passwordMode}
+        generatedPassword={generatedPassword}
+        customPassword={customPassword}
+        onModeChange={onPasswordModeChange}
+        onCustomPasswordChange={onCustomPasswordChange}
+      />
+
+      <div className={styles.modalActions}>
+        <Button variant="secondary" onClick={onClose}>
+          Mégse
+        </Button>
+        <Button onClick={onConfirm}>Létrehozás</Button>
+      </div>
+    </Modal>
+  );
+}
+
 export function LobbyPage() {
   const { gameId } = useParams<{ gameId: string }>();
   const { auth, logout } = useAuth();
@@ -113,6 +272,8 @@ export function LobbyPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [opponentType, setOpponentType] = useState<OpponentType>('HUMAN');
   const [playerCount, setPlayerCount] = useState(2);
+  const [aiCount, setAiCount] = useState(0);
+  const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>('MEDIUM');
   const [passwordMode, setPasswordMode] = useState<PasswordMode>('none');
   const [customPassword, setCustomPassword] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
@@ -165,10 +326,18 @@ export function LobbyPage() {
   function openCreateModal(): void {
     setOpponentType('HUMAN');
     setPlayerCount(game?.online?.playerCountRange?.[0] ?? 2);
+    setAiCount(0);
+    setAiDifficulty('MEDIUM');
     setPasswordMode('none');
     setCustomPassword('');
     setGeneratedPassword(generateRoomPassword());
     setCreateModalOpen(true);
+  }
+
+  /** Clamps aiCount down if a smaller playerCount no longer leaves room for it — always leaves at least one real player. */
+  function handlePlayerCountChange(count: number): void {
+    setPlayerCount(count);
+    setAiCount((prev) => Math.min(prev, count - 1));
   }
 
   function handlePasswordModeChange(mode: PasswordMode): void {
@@ -177,14 +346,15 @@ export function LobbyPage() {
   }
 
   function handleConfirmCreate(): void {
-    const params = new URLSearchParams();
-    if (game?.online?.supportsAiOpponent) params.set('opponent', opponentType.toLowerCase());
-    if (game?.online?.playerCountRange) params.set('playerCount', String(playerCount));
-    if (passwordMode === 'generate') {
-      params.set('password', generatedPassword);
-    } else if (passwordMode === 'custom' && customPassword.trim()) {
-      params.set('password', customPassword.trim());
-    }
+    const params = buildCreateRoomParams(game, {
+      opponentType,
+      playerCount,
+      aiCount,
+      aiDifficulty,
+      passwordMode,
+      generatedPassword,
+      customPassword,
+    });
     setCreateModalOpen(false);
     navigate(`/games/${gameId}/online/${NEW_ROOM_PARAM}?${params}`);
   }
@@ -260,36 +430,25 @@ export function LobbyPage() {
         </ul>
       )}
 
-      <Modal open={createModalOpen} onClose={() => setCreateModalOpen(false)}>
-        <h2>Új szoba</h2>
-
-        {game.online?.supportsAiOpponent && (
-          <OpponentTypeFieldset opponentType={opponentType} onChange={setOpponentType} />
-        )}
-
-        {game.online?.playerCountRange && (
-          <PlayerCountFieldset
-            range={game.online.playerCountRange}
-            playerCount={playerCount}
-            onChange={setPlayerCount}
-          />
-        )}
-
-        <PasswordModeFieldset
-          passwordMode={passwordMode}
-          generatedPassword={generatedPassword}
-          customPassword={customPassword}
-          onModeChange={handlePasswordModeChange}
-          onCustomPasswordChange={setCustomPassword}
-        />
-
-        <div className={styles.modalActions}>
-          <Button variant="secondary" onClick={() => setCreateModalOpen(false)}>
-            Mégse
-          </Button>
-          <Button onClick={handleConfirmCreate}>Létrehozás</Button>
-        </div>
-      </Modal>
+      <CreateRoomModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        game={game}
+        opponentType={opponentType}
+        onOpponentTypeChange={setOpponentType}
+        playerCount={playerCount}
+        onPlayerCountChange={handlePlayerCountChange}
+        aiCount={aiCount}
+        onAiCountChange={setAiCount}
+        aiDifficulty={aiDifficulty}
+        onAiDifficultyChange={setAiDifficulty}
+        passwordMode={passwordMode}
+        generatedPassword={generatedPassword}
+        customPassword={customPassword}
+        onPasswordModeChange={handlePasswordModeChange}
+        onCustomPasswordChange={setCustomPassword}
+        onConfirm={handleConfirmCreate}
+      />
 
       <Modal open={joinTarget !== null} onClose={() => setJoinTarget(null)}>
         <h2>🔒 Szoba {joinTarget?.roomId}</h2>

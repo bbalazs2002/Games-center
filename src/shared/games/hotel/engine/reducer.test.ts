@@ -84,12 +84,13 @@ describe('reducer — BUY_LOT', () => {
     expect(next).toBe(state);
   });
 
-  it('force-buys an unbuilt lot from another player at half price', () => {
+  it('force-buys an unbuilt lot from another player at half price, paid TO that player (not the bank)', () => {
     let state: HotelState = { ...stateOnPurchaseSpace(), turnPhase: 'RESOLVING_SPACE' as const };
     state = updateLot(state, 'fujiyama', { ownerId: 'player-2' });
     const next = reducer(state, { type: 'BUY_LOT', lotId: 'fujiyama' });
     expect(getLot(next, 'fujiyama').ownerId).toBe('player-1');
     expect(getPlayer(next, 'player-1').cash).toBe(15000 - 500); // half of 1000
+    expect(getPlayer(next, 'player-2').cash).toBe(15000 + 500); // the previous owner receives it
   });
 
   it('refuses to buy a built-up lot from another player', () => {
@@ -306,6 +307,17 @@ describe('reducer — staircase rent (nights)', () => {
 
     const next = reducer(state, { type: 'ROLL_NIGHTS', value: 3 });
     expect(getPlayer(next, 'player-1').cash).toBe(15000);
+  });
+
+  it('landing on a staircase space skips the whole nights-roll procedure when the lot has nothing built yet (rent would always be 0)', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 0, hasGarden: false });
+    state = updateSpace(state, 'space-3', { staircaseForLotId: 'fujiyama' });
+    state = updatePlayer(state, 'player-1', { position: 1 }); // +1 roll lands on space-3
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+    expect(next.pendingNightsRollLotId).toBeNull();
   });
 
   it('a shortfall parks the turn in AWAITING_DEBT_RESOLUTION instead of going negative', () => {

@@ -1,0 +1,63 @@
+@startuml ramses-0a-engine-class-diagram
+title Ramses-0a — adatmodell (motor)
+
+class RamsesCell {
+  id: string
+  row: number
+  col: number
+  treasureId: string | null
+  hasPyramid: boolean
+}
+note right of RamsesCell
+  treasureId FIX a teljes parti alatt —
+  ez a "kincs-réteg", sosem változik.
+  hasPyramid az, ami mozog (SLIDE_PYRAMID).
+end note
+
+class SearchCard {
+  id: string
+  treasureId: string
+  points: number
+}
+
+class Player {
+  id: PlayerId
+  name: string
+  wonCards: SearchCard[]
+}
+
+class RamsesState {
+  board: RamsesCell[]
+  emptyCellId: string
+  drawPile: SearchCard[]
+  activeCard: SearchCard | null
+  players: Player[]
+  currentPlayerIndex: number
+  status: RamsesStatus
+  winnerIds: PlayerId[]
+}
+
+enum RamsesStatus {
+  IN_PROGRESS
+  FINISHED
+}
+
+class RamsesAction {
+  type: 'SLIDE_PYRAMID'
+  fromCellId: string
+}
+note right of RamsesAction
+  Szándékosan EGYETLEN akció-típus —
+  a lapfelfordítás/kör-váltás a reducer
+  belső, automatikus lépése (lásd
+  ramses-0a-turn-flow.puml).
+end note
+
+RamsesState "1" *-- "48" RamsesCell : board
+RamsesState "1" *-- "0..*" SearchCard : drawPile
+RamsesState "1" o-- "0..1" SearchCard : activeCard
+RamsesState "1" *-- "2..5" Player : players
+Player "1" *-- "0..*" SearchCard : wonCards
+RamsesState -- RamsesStatus
+
+@enduml

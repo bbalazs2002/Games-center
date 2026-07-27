@@ -2,6 +2,8 @@ import type { AuthPayload } from '../../auth/jwt';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 import { HotelStateSchema } from '../../../shared/games/hotel/colyseus/HotelStateSchema';
 import { applyHotelStateToSchema } from '../../../shared/games/hotel/colyseus/hotelStateCodec';
+import { chooseHotelAiAction, isHotelAiDifficulty, HOTEL_AI_MOVE_DELAY_MS, type HotelAiDifficulty } from '../../../shared/games/hotel/ai';
+import { rollBuildingPermit, rollD6 } from '../../../shared/games/hotel/dice';
 import type { HotelAction } from '../../../shared/games/hotel/engine/actions';
 import { createInitialState as createHotelInitialState } from '../../../shared/games/hotel/engine/initialState';
 import { reducer } from '../../../shared/games/hotel/engine/reducer';
@@ -11,6 +13,7 @@ import type { ConstructionPlanItem, HotelState, PlayerId } from '../../../shared
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 4;
 const PERMIT_DIE_FACES = new Set(['GREEN', 'FREE', 'DOUBLE', 'RED']);
+const DEFAULT_AI_DIFFICULTY: HotelAiDifficulty = 'MEDIUM';
 
 function resolvePlayerCount(requested: unknown): number {
   const parsed = typeof requested === 'number' ? Math.trunc(requested) : MIN_PLAYERS;
@@ -80,11 +83,13 @@ export class HotelRoom extends GameRoom<HotelState, HotelAction, PlayerId, Hotel
   // Placeholder until onCreate resolves the real player count from options —
   // onCreate always reassigns this before the base class ever calls it.
   protected createInitialState = () => createHotelInitialState(placeholderPlayerNames(MIN_PLAYERS));
+  private aiDifficulty: HotelAiDifficulty = DEFAULT_AI_DIFFICULTY;
 
   async onCreate(options: GameRoomCreateOptions): Promise<void> {
     const playerCount = resolvePlayerCount(options.playerCount);
     this.maxClients = playerCount;
     this.createInitialState = () => createHotelInitialState(placeholderPlayerNames(playerCount));
+    if (isHotelAiDifficulty(options.aiDifficulty)) this.aiDifficulty = options.aiDifficulty;
     await super.onCreate(options);
   }
 
@@ -122,9 +127,32 @@ export class HotelRoom extends GameRoom<HotelState, HotelAction, PlayerId, Hotel
     return isValidMovementOrPropertyAction(candidate) ?? isValidStaircaseAuctionOrTurnAction(candidate) ?? false;
   }
 
-  /** Hotel-0d's job — no AI opponent in Hotel-0b at all (see docs/hotel-0b-multiplayer-specifikacio.md §1). */
-  protected computeAiMove(): HotelAction | null {
-    return null;
+  /**
+   * The client-supplied `value` on these three action types is never trusted
+   * for online play — a modified client could otherwise always send the best
+   * possible roll. The server regenerates it here, unconditionally
+   * discarding whatever the client sent (see docs/hotel-0d-ai-specifikacio.md
+   * §4.6). Hot-seat never goes through GameRoom at all, so it's unaffected —
+   * it keeps rolling client-side.
+   */
+  protected resolveServerAction(action: HotelAction): HotelAction {
+    switch (action.type) {
+      case 'ROLL_MOVE_DICE':
+      case 'ROLL_NIGHTS':
+        return { ...action, value: rollD6() };
+      case 'ROLL_BUILDING_PERMIT':
+        return { ...action, value: rollBuildingPermit() };
+      default:
+        return action;
+    }
+  }
+
+  protected computeAiMove(state: HotelState, slot: PlayerId): HotelAction | null {
+    return chooseHotelAiAction(state, slot, this.aiDifficulty);
+  }
+
+  protected aiMoveDelayMs(): number {
+    return HOTEL_AI_MOVE_DELAY_MS;
   }
 
   protected syncState(): void {
