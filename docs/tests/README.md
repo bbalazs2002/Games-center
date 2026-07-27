@@ -9,6 +9,7 @@ Ez a mappa a projekt automatizált tesztjeinek (Vitest) dokumentációja — mit
 | `npm run test` | **Minden** teszt (teljes suite) — ezt futtassuk le véglegesítés/PR előtt mindig. |
 | `npm run test:dama` | Csak a Dáma-specifikus tesztek (`src/shared/games/dama`, `src/server/games/dama`). |
 | `npm run test:hotel` | Csak a Hotel-specifikus tesztek (`src/shared/games/hotel`, `src/server/games/hotel`). |
+| `npm run test:ramses` | Csak a Ramses-specifikus tesztek (`src/shared/games/ramses`). |
 
 **Miért ilyen egyszerű a megoldás?** A Vitest CLI-je natívan támogatja, hogy elérési út(ak)at adjunk meg paraméterként — csak azok a teszt-fájlok futnak le, amiknek az útvonala illeszkedik. Mivel a tesztek mappastruktúrája már eddig is játékonként szeparált volt (`src/shared/games/<game>/engine/*.test.ts`, `src/server/games/<game>/**/*.test.ts`), nem kellett hozzá semmilyen új konfiguráció (pl. Vitest workspace/projects) — csak egy-egy kényelmi `npm run` parancs játékonként.
 
@@ -18,6 +19,7 @@ Ez a mappa a projekt automatizált tesztjeinek (Vitest) dokumentációja — mit
 
 - [dama-tesztek.md](./dama-tesztek.md) — Dáma motor + szerver-oldali AI tesztek
 - [hotel-tesztek.md](./hotel-tesztek.md) — Hotel motor tesztek
+- [ramses-tesztek.md](./ramses-tesztek.md) — Ramses motor tesztek
 
 ## Konvenciók, amik minden játék tesztjeire érvényesek
 

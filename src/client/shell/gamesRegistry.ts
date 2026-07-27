@@ -29,4 +29,6 @@ export const GAMES_REGISTRY: GameDescriptor[] = [
     load: () => import('../games/hotel'),
     online: { playerCountRange: [2, 4], supportsAiOpponentCount: true },
   },
+  // No `online` yet — Ramses-0a is hot-seat only, see docs/ramses-0a-specifikacio.md §1.
+  { id: 'ramses', label: 'Ramses', load: () => import('../games/ramses') },
 ];

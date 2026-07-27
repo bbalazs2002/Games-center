@@ -1,21 +1,28 @@
 @startuml ramses-0a-turn-flow
 title Ramses-0a — egy SLIDE_PYRAMID akció feldolgozása (reducer)
+note as N1
+  Szabály-módosítás (2.3 szakasz, a felhasználó döntése): egy JÓ találat
+  UTÁN a soron lévő játékos MARAD aktív (ő húz új lapot, ő keres tovább) —
+  currentPlayerIndex KIZÁRÓLAG egy ROSSZ kincs felfedésekor lép a
+  következőre. Ez eltér a hivatalos szabálykönyv "mindig a következő
+  játékos húz" szabályától, szándékosan.
+end note
 
 start
 
 if (activeCard == null?) then (igen)
-  :húzd a drawPile tetejét -> activeCard;
+  :a SORON LÉVŐ játékos húzza\na drawPile tetejét -> activeCard;
   if (emptyCell.treasureId == activeCard.treasureId?) then (igen, "szerencsés eset")
     :a soron lévő játékos AZONNAL megkapja a lapot;
     :activeCard = null;
-    :currentPlayerIndex = következő;
+    note right: currentPlayerIndex VÁLTOZATLAN —\nugyanő húz újra (lásd lent, rekurzió)
     stop
   else (nem)
   endif
 else (nem)
 endif
 
-:játékos SLIDE_PYRAMID(fromCellId);
+:játékos kattint egy piramisra a\n(GridBoard3D-n, valódi 3D-kattintás)\n-> SLIDE_PYRAMID(fromCellId);
 note right: fromCellId szomszédos emptyCellId-vel,\nés hasPyramid(fromCellId) == true
 
 :piramis mozgatása;
@@ -27,18 +34,18 @@ if (emptyCell.treasureId == null?) then (üres mező)
 elseif (emptyCell.treasureId == activeCard.treasureId?) then (jó kincs)
   :a lap a játékos wonCards-ába kerül;
   :activeCard = null;
-  :currentPlayerIndex = következő;
+  note right: currentPlayerIndex VÁLTOZATLAN — a kör NEM ér véget
   if (drawPile üres?) then (igen)
     :status = FINISHED;
     :winnerIds számítása (2.4 szakasz);
     stop
   else (nem)
-    :következő SLIDE_PYRAMID hívás elején\núj lap húzása (fent leírt logika);
+    :ugyanaz a játékos húz új lapot\n(fent leírt "szerencsés eset" logika\nújra lefuthat, akár láncban);
     stop
   endif
 else (rossz kincs)
   :kör vége — activeCard VÁLTOZATLAN;
-  :currentPlayerIndex = következő;
+  :currentPlayerIndex = KÖVETKEZŐ;
   stop
 endif
 

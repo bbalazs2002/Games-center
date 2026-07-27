@@ -24,7 +24,7 @@ export interface ChanceOutcome {
   probability: number;
 }
 
-/** Same weighting as src/server/games/hotel/dice.ts, expressed as an explicit probability distribution for the search's expectation sum instead of a single sampled draw. */
+/** Same weighting as src/shared/games/hotel/dice.ts, expressed as an explicit probability distribution for the search's expectation sum instead of a single sampled draw. */
 export function chanceOutcomes(state: HotelState): ChanceOutcome[] {
   if (state.turnPhase === 'AWAITING_BUILDING_PERMIT') {
     return [

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:dama": "vitest run src/shared/games/dama src/server/games/dama",
     "test:hotel": "vitest run src/shared/games/hotel src/server/games/hotel",
+    "test:ramses": "vitest run src/shared/games/ramses",
     "lint": "eslint .",
     "format": "prettier --write .",
     "server:dev": "tsx watch src/server/index.ts",

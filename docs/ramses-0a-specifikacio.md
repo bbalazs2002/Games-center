@@ -1,4 +1,4 @@
-# Ramses-0a — Specifikáció: helyi vertikum (alapjáték motor + 2D renderer + N-fős hot-seat)
+# Ramses-0a — Specifikáció: helyi vertikum (alapjáték motor + 3D renderer + N-fős hot-seat)
 
 **Státusz:** Tervezés — implementáció még NEM kezdődött el, ez a dokumentum a jóváhagyásra vár
 **Utolsó frissítés:** 2026-07-26
@@ -15,7 +15,7 @@
 **Hatókörben van:**
 - Ramses motor (state, action-ok, reducer) — 48 mezős rács tábla, fix "kincs-réteg" alul, mozgó piramis-réteg felül, "15-ös kirakó" csúsztatási mechanika, célkártya-húzás, pontszámítás, végjáték
 - N-fős (2–5) hot-seat körvezérlés
-- Egyszerű 2D tábla-renderer (rács, kattintható piramisok)
+- 3D tábla-renderer, valódi kattintható 3D-elemekkel (lásd 5. szakasz)
 
 **Nincs hatókörben (külön, jövőbeli fázis):**
 - **A 4 speciális akció-kártya** (Homokvihar, Skorpió, Szuperképesség, Párbaj) — a pontos szabályuk (különösen a Szuperképesség) nyitott kérdés marad, playteszteléssel/a fizikai példány újra-átnézésével tisztázandó. A húzópakli-felépítés (3 db 10-lapos kupac, amiből a 2-3. kupacban jelennek meg a szimbólumok) emiatt Ramses-0a-ban EGYETLEN, összekevert 30 lapos pakli, kupac-szétválasztás nélkül.
@@ -35,23 +35,26 @@
 ### 2.2 Kezdő-felállás
 
 - A 48 pozíció mindegyikéhez FIX tartalom tartozik a játék elejétől a végéig (12 pozíción egy-egy különböző kincs, 36-on semmi) — ez a réteg a piramisok alatt van, és **soha nem változik** a parti során.
+- **Kincs-elhelyezés generálási szabálya (a felhasználó pontosítása 2026-07-27, nem szerepelt az eredeti szabálykönyv-kivonatban):** a 6×8 rácsot a bal felső saroktól kezdve 2×2-es alrácsokra osztjuk (3×4 = 12 alrács, pontosan annyi, ahány kincs van). Minden alrácsba PONTOSAN 1 kincs kerül, véletlenszerű pozícióban a 4 mező közül (a másik 3 üres); az is véletlenszerű, melyik kincs melyik alrácsba kerül. Ez fizikailag megfelel annak, hogy a valódi kincs-réteg 12 db 2×2-es kivágásból áll össze (2.1 szakasz), és garantálja, hogy a kincsek egyenletesen szóródjanak a táblán — egy tisztán globális keverés (mind a 48 mezőt egyben összekeverve) ezt nem biztosítaná, akár egy sarokba is zsúfolódhatna több kincs. Implementáció: `initialState.ts`'s `createBoard()`.
 - 47 pozícióra piramis kerül, PONTOSAN 1 marad üresen — a szabály szerint az induló üres mező NEM mutathat kincset (ez csak a kezdő-felállítást korlátozza, a parti közben bármelyik felfedett mező lehet kincs vagy üres).
 - A 30 célkártya megkeverve, húzópakli.
 
 ### 2.3 Körvezérlés
 
+> **Szabály-módosítás a felhasználó döntése alapján (a hivatalos szabálykönyvhöz képest eltérő házi szabály):** az eredeti szabálykönyv szerint egy sikeres találat után a kör automatikusan a KÖVETKEZŐ játékosra száll (ő húz új lapot). **Ehelyett itt az van érvényben, hogy egy játékos MINDADDIG játszik (ő húz új lapot, ő keresi a következő kincset is), amíg ROSSZ kincset nem fed fel** — csak ekkor száll a kör a következő játékosra. Ez a klasszikus "Memória" játékok szokásos "amíg találsz, tovább játszol" logikájának felel meg. Lásd 6. szakasz.
+
 Óramutató járása szerint haladva:
 
 1. Az aktív játékos felfordítja a húzópakli tetején lévő lapot (ha még nincs "aktuális cél") — ez mutatja, melyik kincset keresi, és mennyi pontot ér.
-2. **Kivétel/"szerencsés" eset:** ha az új lap kincse ÉPPEN megegyezik azzal, ami már fel van fedve (az aktuálisan üres mezőn, amit az előző játékos húzása hagyott ott), a játékos AZONNAL megkapja a lapot, lépés nélkül, és a kör a következő játékosra száll.
+2. **Kivétel/"szerencsés" eset:** ha az új lap kincse ÉPPEN megegyezik azzal, ami már fel van fedve (az aktuálisan üres mezőn, amit az előző csúsztatás hagyott ott), a játékos AZONNAL megkapja a lapot, lépés nélkül — **majd (a fenti szabály-módosítás szerint) Ő MAGA húz egy újabb lapot**, és folytatja a keresést (vissza az 1. ponthoz).
 3. Egyébként a játékos az üres mezővel SZOMSZÉDOS piramisok közül pontosan egyet az üres helyre csúsztat — ez FELFEDI a piramis EREDETI helyét (klasszikus "15-ös kirakó" logika: a mozgó darab helye lesz üres, nem a célhely).
 4. A felfedett mező alapján három eset:
    - **Üres:** a játékos folytathatja, ismét csúsztathat egy, az ÚJ üres hellyel szomszédos piramist — tetszőleges hosszúságú láncban, amíg kincset nem talál.
-   - **Rossz kincs:** a kör azonnal véget ér, a lap NEM kerül el (marad felfedve, célként), a következő játékos ugyanazt a kincset keresi tovább.
-   - **Jó kincs:** a játékos elveszi a lapot (lefordítva maga elé teszi — ez a "megnyert" kártyáinak kupaca), a kör véget ér, a következő játékos új lapot húz (2. pont szerint).
+   - **Rossz kincs:** a kör VÉGET ér, a lap NEM kerül el (marad felfedve, célként), a KÖVETKEZŐ játékos ugyanazt a kincset keresi tovább.
+   - **Jó kincs:** a játékos elveszi a lapot (lefordítva maga elé teszi — ez a "megnyert" kártyáinak kupaca), **majd Ő MAGA húz egy újabb lapot** (2. pont szerint) — a kör NEM ér véget, ugyanaz a játékos folytatja.
 5. A játék véget ér, amint valaki elviszi az UTOLSÓ célkártyát a pakliból.
 
-**Fontos:** a "kör vége" NEM külön játékos-döntés (nincs "Kör vége" akció, mint Hotelnél) — kizárólag a felfedés kimenetele dönti el automatikusan. Ez a motort jelentősen egyszerűbbé teszi, mint a Hotelt: gyakorlatilag **egyetlen action-típus** kell (`SLIDE_PYRAMID`), a lapfelfordítás/kör-váltás a reducer belső, automatikus lépése, nem külön akció.
+**Fontos:** a "kör vége" NEM külön játékos-döntés (nincs "Kör vége" akció, mint Hotelnél) — kizárólag a felfedés kimenetele dönti el automatikusan (KIZÁRÓLAG egy rossz kincs felfedése zárja le az aktív játékos körét). Ez a motort jelentősen egyszerűbbé teszi, mint a Hotelt: gyakorlatilag **egyetlen action-típus** kell (`SLIDE_PYRAMID`), a lapfelfordítás/kör-váltás a reducer belső, automatikus lépése, nem külön akció.
 
 ### 2.4 Végjáték és pontszámítás
 
@@ -70,7 +73,7 @@ export type PlayerId = string;
 
 /** Egy tábla-mező — a `treasureId` a FIX "kincs-réteg", sosem változik a parti alatt; a `hasPyramid` az, ami mozog. */
 export interface RamsesCell {
-  id: string; // pl. "r3c5" — a pontos rács-alak még nyitott kérdés, lásd 5. szakasz
+  id: string; // pl. "r3c5" — 6x8-as rács, megerősítve (4. szakasz)
   row: number;
   col: number;
   /** null = ezen a pozíción nincs kincs (36/48 pozíció ilyen) — fix a teljes parti alatt. */
@@ -111,34 +114,49 @@ export type RamsesAction =
   | { type: 'SLIDE_PYRAMID'; fromCellId: string }; // fromCellId-nek szomszédosnak kell lennie emptyCellId-vel, és hasPyramid===true
 ```
 
-**A `reducer.ts` felelőssége `SLIDE_PYRAMID`-nál:**
+**A `reducer.ts` felelőssége `SLIDE_PYRAMID`-nál** (a 2.3 szakasz szabály-módosítása szerint — jó találat NEM váltja a soron lévő játékost, csak a rossz):
 1. Validálja: `fromCellId` szomszédos-e `emptyCellId`-vel, és van-e ott piramis (`rules.ts`, ugyanaz a minta, mint Dáma/Hotel `can*` predikátumai).
 2. Áthelyezi a piramist (`fromCellId.hasPyramid = false`, `emptyCellId.hasPyramid = true`), majd `emptyCellId = fromCellId` (a régi hely lesz az új üres).
 3. Megnézi az ÚJ üres mező `treasureId`-ját:
    - `null` → nincs egyéb állapotváltozás, a kör folytatódik (ugyanaz a játékos, ugyanaz az `activeCard`).
-   - `=== activeCard.treasureId` → a lap átkerül a játékos `wonCards`-ába, `activeCard = null`, `currentPlayerIndex` a következőre lép, majd (lásd alább) automatikusan húz egy új lapot.
-   - egyéb kincs → `currentPlayerIndex` a következőre lép, `activeCard` VÁLTOZATLAN marad.
-4. **Automatikus lap-húzás** (akárhányszor `activeCard` üresre vált, akár kezdéskor, akár győzelem után): a reducer lehúzza a pakli tetejét `activeCard`-nak; ha ennek `treasureId`-ja ÉPPEN megegyezik az `emptyCellId` aktuális `treasureId`-jával (2.3/2. pont "szerencsés eset"), azonnal átkerül a soron lévő játékos `wonCards`-ába, és a folyamat rekurzívan megismétlődik (következő játékos, új lap) — ez elvben egy rövid láncot indíthat el, ha többször egymás után "szerencséje van" valakinek.
+   - `=== activeCard.treasureId` → a lap átkerül a játékos `wonCards`-ába, `activeCard = null`, **`currentPlayerIndex` VÁLTOZATLAN marad** (ugyanő folytatja), majd (lásd alább) automatikusan húz egy új lapot.
+   - egyéb kincs → `currentPlayerIndex` a következőre lép, `activeCard` VÁLTOZATLAN marad (a következő játékos ugyanazt a célt keresi).
+4. **Automatikus lap-húzás** (akárhányszor `activeCard` üresre vált, akár kezdéskor, akár egy találat után — MINDIG a soron lévő, `currentPlayerIndex`-es játékos húz, ő maga, sosem a következő): a reducer lehúzza a pakli tetejét `activeCard`-nak; ha ennek `treasureId`-ja ÉPPEN megegyezik az `emptyCellId` aktuális `treasureId`-jával (2.3/2. pont "szerencsés eset"), azonnal átkerül a soron lévő játékos `wonCards`-ába (a `currentPlayerIndex` ekkor sem változik), és a folyamat rekurzívan megismétlődik (ugyanő húz tovább) — ez elvben egy hosszú láncot indíthat el, ha valaki egymás után többször is "szerencsés".
 5. Ha a `drawPile` kiürül az utolsó lap elvétele után, `status = 'FINISHED'`, kiszámolja a `winnerIds`-t (2.4 szakasz szabálya szerint).
 
-## 4. Tábla-topológia — NYITOTT KÉRDÉS
+## 4. Tábla-topológia — MEGERŐSÍTVE
 
-A 48 lyuk pontos rács-alakját (hányszor hány, és hogy a szomszédosság 4 vagy esetleg 8 irányú-e) **nem tudom biztosan** a szabálykönyv szövegéből — ehhez a fizikai tábla lefotózása/megszámolása kell. **Erre vársz vissza** (a beszélgetés korábbi pontján jelezted, hogy megnézed).
+**A tábla 6×8-as téglalap rács** — megerősítve a felhasználó által (6. szakasz). A szomszédosság-feltevés (4 irányú: fel/le/jobb/bal, NEM átlós) egyelőre változatlan, ésszerű alapértelmezés marad, amíg ellenkezője ki nem derül.
 
-Addig is a `board`/szomszédosság-számítás a `rules.ts`-ben **konfigurációból, nem hardcode-olva** épül fel (ugyanaz az elv, mint Hotel `adjacentLotIds`-je) — ha kiderül, hogy a rács alakja szabálytalan (pl. nem tökéletes téglalap, mint ahogy a fotón látszó dobozbetét sugallja), az egy konfigurációs változás, NEM motor-átírás.
+A `board`/szomszédosság-számítás a `rules.ts`-ben **konfigurációból, nem hardcode-olva** épül fel (ugyanaz az elv, mint Hotel `adjacentLotIds`-je) — ha a szomszédosság mégsem tisztán 4 irányú lenne, az egy konfigurációs változás, NEM motor-átírás.
 
-**Ideiglenes feltevés, amíg nem érkezik pontosítás:** 6×8-as téglalap rács, 4 irányú (fel/le/jobb/bal, NEM átlós) szomszédosság.
+## 5. Renderelő: 3D, VALÓDI kattintható 3D-elemekkel — MEGERŐSÍTVE
 
-## 5. Renderelő-választás: 2D (javaslat)
+A felhasználó döntése alapján a Ramses **3D renderelőt** kap (nem a korábban javasolt 2D-t) — **azzal a kikötéssel, hogy a 3D-ben megjelenített játéktér elemei (a piramisok) ténylegesen kattinthatók legyenek.**
 
-A `Projekt-conception.md` 3D/2D döntése (2026-07-22) a Hotelt/Gazdálkodj okosant/Monopolyt/Catant sorolta 3D-be ("térbeli tábla-élmény hozzáadott értéket ad"), a "kirakós jellegű" játékokat pedig 2D/SVG-be. A Ramses lényegében egy **rács-alapú kirakó** (a piramisok 3D alakja csak díszítés, a játékmenet szempontjából egy sima rács-mező felel meg neki) — ezért **2D/SVG vagy Canvas renderert javaslok**, a Sakk/Malom-féle `GridBoard2D` mintáját követve (`src/client/renderers/grid-2d/`), NEM a Hotel `LoopTrackBoard3D`-jét. Ha egyetértesz, ez lesz a terv; ha inkább 3D-t szeretnél (pl. mert a piramisok fizikai "billentése" szép animáció-lehetőség lenne), szólj.
+**Ez egy ÚJ mintát vezet be a projektbe, tudatosan eltérve a Hotel renderelő-architektúrájától:** a Hotel `LoopTrackBoard3D`-je (`docs/hotel-0a-specifikacio.md` §5) szándékosan **NEM** 3D-raycasting-alapú — csak megjelenít, a tényleges interakció egy különálló, képernyő-térbeli (screen-space) HTML overlay-en (`PlayerActionWheel`) fut, a `<Canvas>` fölött. Ramsesnél ez a minta NEM elég: itt maga a tábla EGYETLEN interakciós felülete (nincs külön menü/tárcsa — a "melyik piramist csúsztatod" kérdésre magán a 3D-s táblán kell rákattintani).
+
+**Terv:** egy új, game-agnosztikus `GridBoard3D` renderelő (`src/client/renderers/grid-3d/`), ami — a `LoopTrackBoard3D`/`GridBoard2D` mintájához hasonlóan tisztán prezentációs, semmit nem tud Ramses szabályairól — de a `renderCell`-nek visszaadott React Three Fiber mesh-ek valódi `onClick`/`onPointerDown` eseménykezelőket kapnak (az R3F natívan támogatja ezt, nincs kézzel írt raycasting-kód). A komponens egy `onCellClick(cellId: string)` callback-et ad vissza a szülőnek, ami ebből építi fel a `SLIDE_PYRAMID` action-t (validáció — hogy tényleg szomszédos-e az üres mezővel — a `rules.ts`-ben, nem a renderelőben, ugyanúgy, ahogy eddig is).
+
+**Miért lehet ez később más játékoknak is hasznos:** ha egy jövőbeli játék (pl. egy kirakós/puzzle jellegű) szintén rács-alapú, direkt kattintható 3D mezőket igényel, ez a `GridBoard3D` újrafelhasználható lesz — ugyanaz a "közös renderelő komponens, játék-specifikus adat" elv, mint a `LoopTrackBoard3D`/`GridBoard2D`-nél.
+
+### 5.1 Kincsek és célkártyák — placeholder generálás + későbbi képbetöltés
+
+A 12 kincs és a 30 célkártya pontos tartalma (6. szakasz) egyelőre nyitott — a felhasználó kérése szerint **Ramses-0a placeholder kincsekkel/kártyákkal induljon**, de a rendszer legyen felkészítve arra, hogy később VALÓDI képek (a felhasználó saját feladata, ugyanaz a minta, mint a Hotel-0c/0c.2 assetek) egyszerűen becsatlakoztathatók legyenek, kód-módosítás nélkül:
+
+- **Placeholder kincsek:** 12 darab, egyszerű geometriai/szimbólum-alapú (pl. eltérő szín + egyszerű alakzat vagy Unicode-ikon kombináció), egy config-tömbben (`treasureConfigs.ts`, a Hotel `hotelConfigs.ts` mintájára) — `id`, `label`, és egy `imagePath` mező, ami placeholder-ként egy generált/beépített ikonra mutat.
+- **Placeholder célkártyák:** a 30 kártya `treasureId`+`points` párokból generálva (egyenletes eloszlás a 12 kincs között, pontértékek 1–4 között kiegyensúlyozva) — ez is egy explicit config-lista, NEM procedurális generátor a `reducer.ts`-ben, hogy később könnyen felülírható legyen a valódi lap-lista pontos ismeretében.
+- **Képbetöltés később:** mind a kincs-, mind a kártya-renderelő komponens egy `imagePath`-ot vár (ugyanaz a minta, mint a Hotel `property-cards`/`banknotes` mappái) — ha a felhasználó elkészíti a valódi fotókat/szkennelt képeket, azok csak a megfelelő `public/assets/ramses/...` mappákba kerülnek, a config-fájlok `imagePath` mezői frissülnek, és a renderelő kód NEM változik (ugyanaz az elv, mint Hotel-0c-nél a geometriai placeholderek lecserélése).
 
 ## 6. Nyitott kérdések összefoglalva
 
-- [ ] **Tábla rács-alakja és szomszédosság** (4. szakasz) — a fizikai tábla lefotózása/megszámolása után pontosítandó.
-- [ ] **A 30 célkártya pontos tartalma** (melyik kincs, milyen pontértékkel, hányszor szerepel) — a szabálykönyv csak annyit közöl, hogy 1–4 pont közötti értékek vannak, a pontos lap-eloszlást a fizikai kártyapakli alapján érdemes rögzíteni (vagy egy ésszerű, egyenletes placeholder-eloszlással indulunk, és pontosítjuk, ha meglesz a pontos lista).
-- [ ] **2D vs 3D renderer** (5. szakasz) — 2D a javaslatom, megerősítésre vár.
+- [x] **Tábla rács-alakja és szomszédosság** (4. szakasz) — **MEGERŐSÍTVE: 6×8-as rács.** A szomszédosság-irány (4 irányú feltevés) egyelőre változatlan.
+- [x] **A 30 célkártya pontos tartalma** — **LEZÁRVA placeholderrel:** a pontos fizikai lap-lista egyelőre nem szükséges, Ramses-0a generált placeholder kincsekkel/kártyákkal indul, később a valódi tartalom (és a felhasználó által készített képek) egyszerűen becsatlakoztathatók lesznek kód-módosítás nélkül (lásd 5.1 szakasz).
+- [x] **2D vs 3D renderer** — **MEGERŐSÍTVE: 3D, valódi kattintható 3D-elemekkel** (nem képernyő-térbeli overlay, mint Hotelnél) — lásd 5. szakasz, új `GridBoard3D` komponens tervezve.
+- [x] **Szabály-módosítás elfogadva:** egy sikeres találat UTÁN a soron lévő játékos maga húz új lapot és folytatja a körét — a kör csakis egy ROSSZ kincs felfedésekor száll a következő játékosra (a hivatalos szabálykönyvtől eltérő, szándékos házi szabály). Lásd 2.3 szakasz, beépítve az adatmodellbe és a reducer-leírásba is.
 - **LEZÁRVA (a felhasználó döntése alapján):** a 4 speciális akció-kártya, a haladó (zsetonos) verzió és az 1 fős szóló verzió Ramses-0a-ban NINCS hatókörben — külön, jövőbeli fázis(ok) témája, amint a pontos szabályaik tisztázódnak.
+
+**Minden nyitott pont lezárva — a terv implementálásra kész**, amennyiben a lenti diagramok és az adatmodell rendben van számodra.
 
 ## 7. Diagram
 
