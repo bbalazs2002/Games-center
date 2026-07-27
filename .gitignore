@@ -9,6 +9,12 @@ build/
 temp/**
 !temp/.gitkeep
 
+# playwright
+.playwright-mcp/
+
+# claude
+.claude/
+
 # assets contains large files that are not versioned yet
 assets/**
 

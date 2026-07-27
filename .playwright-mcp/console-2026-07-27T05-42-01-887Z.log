@@ -1,2 +1,0 @@
-[ 1739651ms] [WARNING] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead. @ http://localhost:5173/node_modules/.vite/deps/chunk-BT6PJYSG.js?v=61b8fc5c:746
-[ 1740090ms] [LOG] THREE.WebGLRenderer: Context Lost. @ http://localhost:5173/node_modules/.vite/deps/chunk-BT6PJYSG.js?v=61b8fc5c:721
