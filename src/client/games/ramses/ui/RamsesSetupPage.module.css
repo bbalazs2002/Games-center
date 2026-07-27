@@ -12,6 +12,26 @@
   font-size: 1rem;
   border: 1px solid #cbd5e0;
   border-radius: 0.375rem;
+  flex: 1;
+}
+
+.playerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.aiToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.difficultyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .playerCountControls {

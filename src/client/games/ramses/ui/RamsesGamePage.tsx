@@ -3,6 +3,8 @@ import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { GridBoard3D, type GridBoard3DCell } from '../../../renderers/grid-3d/GridBoard3D';
+import { MaskedRamsesTransport } from './MaskedRamsesTransport';
+import { useRamsesHotSeatAi, type HotSeatAiSlots } from './useRamsesHotSeatAi';
 import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
 import { createInitialState } from '../../../../shared/games/ramses/engine/initialState';
 import { reducer } from '../../../../shared/games/ramses/engine/reducer';
@@ -115,24 +117,33 @@ export interface RamsesGamePageProps {
   transport?: GameTransport<RamsesState, RamsesAction>;
   /** Online mode only: which player slot the local client controls — gates board interactivity to "only on your turn". */
   myPlayer?: PlayerId;
+  /** Hot-seat only — which of THIS game's player slots (if any) are AI-controlled, and at what difficulty. Ignored once `transport` is provided, since online AI is already driven server-side by GameRoom. */
+  hotSeatAiSlots?: HotSeatAiSlots;
 }
 
 /**
- * Ramses-0a hot-seat vertical, generalized for Ramses-0b online play —
- * mirrors HotelGamePage's role: wires the shared reducer to a transport
- * (local or networked) and renders it via GridBoard3D (see
- * docs/ramses-0a-specifikacio.md §5, docs/ramses-0b-specifikacio.md §3.6).
+ * Ramses-0a hot-seat vertical, generalized for Ramses-0b online play and
+ * Ramses-0c AI opponents — mirrors HotelGamePage's role: wires the shared
+ * reducer to a transport (local or networked) and renders it via GridBoard3D
+ * (see docs/ramses-0a-specifikacio.md §5, docs/ramses-0b-specifikacio.md §3.6).
  * Unlike Hotel, the board itself IS the only interaction surface — no
  * separate action menu, since the engine only has one action type
  * (SLIDE_PYRAMID).
  */
-export function RamsesGamePage({ playerNames, transport: providedTransport, myPlayer }: RamsesGamePageProps) {
+export function RamsesGamePage({ playerNames, transport: providedTransport, myPlayer, hotSeatAiSlots }: RamsesGamePageProps) {
   const localTransport = useMemo(
     () => new LocalGameTransport<RamsesState, RamsesAction>(reducer, createInitialState(playerNames ?? [])),
     [playerNames],
   );
-  const transport = providedTransport ?? localTransport;
+  // Always wrapped — see docs/ramses-0c-ai-specifikacio.md §3.2: no consumer
+  // (rendering OR the hot-seat AI hook below) ever sees the true state,
+  // structurally, regardless of hot-seat or online mode.
+  const transport = useMemo(
+    () => new MaskedRamsesTransport(providedTransport ?? localTransport),
+    [providedTransport, localTransport],
+  );
   const [state, dispatch] = useGameTransport(transport);
+  useRamsesHotSeatAi(transport, hotSeatAiSlots ?? {});
   const pyramidColors = usePersistentPyramidColors(state);
 
   const winners = getWinners(state);
@@ -158,6 +169,10 @@ export function RamsesGamePage({ playerNames, transport: providedTransport, myPl
   const drawPileCount = getDrawPileCount(state);
   // Online only (myPlayer is undefined in hot-seat, where it's always "your" turn locally).
   const isMyTurn = !myPlayer || myPlayer === currentPlayer.id;
+  // Hot-seat only (hotSeatAiSlots is empty in online mode) — the board simply
+  // doesn't react while an AI-controlled slot's turn is being decided/applied,
+  // same "no reaction, no extra message" principle as the online !isMyTurn gate.
+  const isCurrentPlayerAi = (hotSeatAiSlots ?? {})[currentPlayer.id] !== undefined;
 
   const cells: GridBoard3DCell<RamsesCellViewData>[] = state.board.map((cell) => ({
     id: cell.id,
@@ -167,7 +182,7 @@ export function RamsesGamePage({ playerNames, transport: providedTransport, myPl
   }));
 
   function handleCellClick(cellId: string): void {
-    if (!isMyTurn || !slidableCellIds.includes(cellId)) return;
+    if (!isMyTurn || isCurrentPlayerAi || !slidableCellIds.includes(cellId)) return;
     dispatch({ type: 'SLIDE_PYRAMID', fromCellId: cellId });
   }
 

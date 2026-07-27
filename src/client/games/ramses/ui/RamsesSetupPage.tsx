@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from '../../../ui-kit/Button';
+import type { RamsesAiDifficulty } from '../../../../shared/games/ramses/ai';
 import { RamsesGamePage } from './RamsesGamePage';
+import type { HotSeatAiSlots } from './useRamsesHotSeatAi';
 import styles from './RamsesSetupPage.module.css';
 
 const MIN_PLAYERS = 2;
@@ -13,32 +15,53 @@ function defaultNames(count: number): string[] {
   return Array.from({ length: count }, (_, i) => `Játékos ${i + 1}`);
 }
 
+/** One shared difficulty applies to every AI-marked player in this game — mirrors Hotel's room-wide (not per-slot) AI difficulty choice. */
+function buildAiSlots(names: string[], aiFlags: boolean[], difficulty: RamsesAiDifficulty): HotSeatAiSlots {
+  const slots: HotSeatAiSlots = {};
+  names.forEach((_, index) => {
+    if (aiFlags[index]) slots[`player-${index + 1}`] = difficulty;
+  });
+  return slots;
+}
+
 /**
- * Collects player count/names before the engine starts, then hands off to
- * RamsesGamePage — mirrors HotelSetupPage's role (hot-seat only, no network,
- * so plain local state is enough).
+ * Collects player count/names (and, per-player, which are AI-controlled)
+ * before the engine starts, then hands off to RamsesGamePage — mirrors
+ * HotelSetupPage's role (hot-seat only, no network, so plain local state is
+ * enough). AI opponents reuse the exact same decision logic as online rooms
+ * (shared/games/ramses/ai) via useRamsesHotSeatAi — see
+ * docs/ramses-0c-ai-specifikacio.md §5.
  */
 export function RamsesSetupPage() {
   const [names, setNames] = useState<string[]>(defaultNames(MIN_PLAYERS));
+  const [aiFlags, setAiFlags] = useState<boolean[]>(() => Array(MIN_PLAYERS).fill(false));
+  const [difficulty, setDifficulty] = useState<RamsesAiDifficulty>('MEDIUM');
   const [started, setStarted] = useState(false);
 
   if (started) {
-    return <RamsesGamePage playerNames={names} />;
+    return <RamsesGamePage playerNames={names} hotSeatAiSlots={buildAiSlots(names, aiFlags, difficulty)} />;
   }
 
   function updateName(index: number, value: string): void {
     setNames((prev) => prev.map((name, i) => (i === index ? value : name)));
   }
 
+  function toggleAi(index: number): void {
+    setAiFlags((prev) => prev.map((flag, i) => (i === index ? !flag : flag)));
+  }
+
   function addPlayer(): void {
     setNames((prev) => (prev.length >= MAX_PLAYERS ? prev : [...prev, `Játékos ${prev.length + 1}`]));
+    setAiFlags((prev) => (prev.length >= MAX_PLAYERS ? prev : [...prev, false]));
   }
 
   function removePlayer(): void {
     setNames((prev) => (prev.length <= MIN_PLAYERS ? prev : prev.slice(0, -1)));
+    setAiFlags((prev) => (prev.length <= MIN_PLAYERS ? prev : prev.slice(0, -1)));
   }
 
   const canStart = names.every((name) => name.trim() !== '');
+  const anyAi = aiFlags.some(Boolean);
 
   return (
     <div className={styles.page}>
@@ -47,12 +70,17 @@ export function RamsesSetupPage() {
         Játékosok ({MIN_PLAYERS}–{MAX_PLAYERS} fő):
       </p>
       {names.map((name, index) => (
-        <input
-          key={index}
-          className={styles.nameInput}
-          value={name}
-          onChange={(event) => updateName(index, event.target.value)}
-        />
+        <div key={index} className={styles.playerRow}>
+          <input
+            className={styles.nameInput}
+            value={name}
+            onChange={(event) => updateName(index, event.target.value)}
+          />
+          <label className={styles.aiToggle}>
+            <input type="checkbox" checked={aiFlags[index]} onChange={() => toggleAi(index)} />
+            AI
+          </label>
+        </div>
       ))}
       <div className={styles.playerCountControls}>
         <Button variant="secondary" onClick={removePlayer} disabled={names.length <= MIN_PLAYERS}>
@@ -62,6 +90,16 @@ export function RamsesSetupPage() {
           Játékos hozzáadása
         </Button>
       </div>
+      {anyAi && (
+        <label className={styles.difficultyRow}>
+          AI nehézsége:{' '}
+          <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as RamsesAiDifficulty)}>
+            <option value="EASY">Könnyű</option>
+            <option value="MEDIUM">Közepes</option>
+            <option value="HARD">Nehéz</option>
+          </select>
+        </label>
+      )}
       <Button onClick={() => setStarted(true)} disabled={!canStart}>
         Játék indítása
       </Button>

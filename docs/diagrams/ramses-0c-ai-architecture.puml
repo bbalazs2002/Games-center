@@ -1,0 +1,128 @@
+@startuml ramses-0c-ai-architecture
+title Ramses-0c — megosztott AI-modul, hot-seat ÉS online egyszerre tervezve (2026-07-27, tervezet, getter-alapú maszkolással)
+
+class "toPublicRamsesState()" as Mask <<Ramses-0b>>
+note top of Mask
+  Már létező, 0b-ből — a hálózati
+  biztonságra épült, most az AI
+  tisztességéhez is ez a primitív kell.
+end note
+
+package "shared/games/ramses/ai" {
+  class "RevealMemory" as Memory <<Map<string,string|null>>> {
+    cellId -> utoljára ott látott treasureId
+    (null = üres) — EGYETLEN példány
+    a teljes játékra, nem szlotonkénti
+  }
+
+  note right of Memory
+    Minden résztvevő (ember ÉS AI)
+    ugyanazt a közös táblát nézi —
+    a memória ezért játék-globális,
+    nem per-AI-szlot.
+  end note
+
+  class "memory.ts" as MemoryFns {
+    createRevealMemory(): RevealMemory
+    observeRevealedState(memory, publicState): void
+    recall(memory, cellId, difficulty): string|null|undefined
+  }
+
+  note right of MemoryFns
+    "Szimulált felejtés" (a felhasználó
+    kérése, 2026-07-27): recall() a
+    Map-et SOHA nem módosítja, csak
+    döntésenként/cellánként újra-sorsolja,
+    hogy EBBEN a pillanatban "eszébe jut-e"
+    az AI-nak, amit valójában tud.
+    FORGET_CHANCE: EASY irreleváns,
+    MEDIUM sűrűbben (0.35), HARD ritkán
+    (0.08) felejt — kezdeti javaslat,
+    playteszteléssel finomítandó.
+  end note
+
+  class "strategy.ts" as Strategy {
+    {static} chooseRamsesAiAction(publicState, memory, slot, difficulty): RamsesAction?
+    ..EASY: véletlen, memóriát figyelmen kívül hagyja..
+    ..MEDIUM: kerüli az ismert ROSSZ cellát..
+    ..HARD: győzelem > ismert üres > ismeretlen > kényszer..
+  }
+
+  note bottom of Strategy
+    PONTOSÍTVA a felhasználó kérésére
+    (2026-07-27): ez a modul MÁR NEM
+    maszkol saját maga — a state
+    paraméter szerződése szerint MINDIG
+    a hívó adja át már maszkoltan (lásd
+    a gettereket lent). A felelősség
+    egyetlen, névvel ellátott helyen
+    van (getter), nem duplikálva itt is.
+  end note
+}
+
+package "server" {
+  class RamsesRoom {
+    -aiMemory: RevealMemory
+    -aiDifficulty: RamsesAiDifficulty
+    -getPublicGameState(): RamsesState
+    +syncState()
+    +computeAiMove(_state, slot): RamsesAction?
+    +aiMoveDelayMs(): 500
+  }
+}
+RamsesRoom::getPublicGameState ..> Mask : toPublicRamsesState(this.gameState)
+RamsesRoom ..> MemoryFns : syncState()-ben\nobserveRevealedState(aiMemory, getPublicGameState())
+RamsesRoom ..> Strategy : computeAiMove()-ban\nchooseRamsesAiAction(getPublicGameState(), ...)
+
+note left of RamsesRoom
+  A kapott nyers `_state` paramétert
+  (a GameRoom alaposztály mindig ezzel
+  hívja) szándékosan figyelmen kívül
+  hagyja — csak a saját gettere ad
+  AI-releváns állapotot.
+end note
+
+package "client" {
+  class MaskedRamsesTransport {
+    -inner: GameTransport<RamsesState,RamsesAction>
+    +getState(): RamsesState
+    +dispatch(action)
+    +subscribe(listener): unsubscribe
+  }
+  note top of MaskedRamsesTransport
+    KIEGÉSZÍTVE a felhasználó kérésére
+    (2026-07-27): NEM csak az AI kap
+    szűrt state-et — RamsesGamePage
+    MINDIG ezzel csomagolja be a kapott
+    transportot (hot-seat ÉS online is),
+    mielőtt bármi mást tenne vele.
+    Így strukturálisan lehetetlen, hogy
+    a renderelés VAGY az AI-hook valaha
+    a nyers state-hez jusson.
+    Online esetén idempotens (a
+    ColyseusGameTransport már eleve
+    maszkol) — konzisztencia, nem csak
+    "ott már megoldott".
+  end note
+  MaskedRamsesTransport ..> Mask : getState()/subscribe()\ntoPublicRamsesState(inner state)
+
+  class RamsesGamePage {
+    transport = new MaskedRamsesTransport(\n  providedTransport ?? localTransport)
+  }
+  RamsesGamePage ..> MaskedRamsesTransport : mindig becsomagolja
+
+  class "useRamsesHotSeatAi()" as HotSeatHook {
+    a MÁR becsomagolt transportot kapja
+    minden subscribe()-triggerre: observeRevealedState
+    AI körén: chooseRamsesAiAction
+  }
+  RamsesGamePage ..> HotSeatHook : ugyanazt a becsomagolt\ntransportot adja tovább
+}
+HotSeatHook ..> MemoryFns
+HotSeatHook ..> Strategy
+
+note "Ugyanaz a chooseRamsesAiAction/\nobserveRevealedState hívás mindkét\noldalon — a döntéshozó logika\nSOHA nincs duplikálva, a felhasználó\nkifejezett kérése szerint eleve\negyben tervezve, nem utólag\nösszevonva (mint Hotelnél történt)." as N1
+N1 .. RamsesRoom
+N1 .. HotSeatHook
+
+@enduml

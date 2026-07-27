@@ -84,13 +84,14 @@ function WaitingForPlayersScreen({
 /**
  * Connects to a Colyseus Ramses room (or creates a new one) and renders the
  * same RamsesGamePage as hot-seat mode with the resulting transport — the
- * Ramses-0b counterpart to HotelOnlineGamePage/DamaOnlineGamePage, sharing
+ * Ramses-0b/0c counterpart to HotelOnlineGamePage/DamaOnlineGamePage, sharing
  * the exact same game-agnostic `useOnlineGameRoom` connection lifecycle (see
  * docs/ramses-0b-specifikacio.md §3.6). This component is only the
- * Ramses-specific glue: option-building (just playerCount + password, no
- * AI — see docs/ramses-0b-specifikacio.md §1), decoding via the per-field
- * schema codec (which also masks still-covered treasures — see
- * ramsesStateCodec.ts), and rendering.
+ * Ramses-specific glue: option-building (playerCount + password +
+ * aiOpponentCount/aiDifficulty, same shape as Hotel's — see
+ * docs/ramses-0c-ai-specifikacio.md §6), decoding via the per-field schema
+ * codec (which also masks still-covered treasures — see ramsesStateCodec.ts),
+ * and rendering.
  */
 export function RamsesOnlineGamePage() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -122,6 +123,8 @@ export function RamsesOnlineGamePage() {
     decode: decodeRamsesState,
     buildCreateOptions: () => ({
       playerCount: Number(searchParams.get('playerCount')) || 2,
+      aiOpponentCount: Number(searchParams.get('aiCount')) || 0,
+      aiDifficulty: searchParams.get('aiDifficulty') ?? undefined,
       password: searchParams.get('password') ?? undefined,
     }),
     buildJoinOptions: () => ({
