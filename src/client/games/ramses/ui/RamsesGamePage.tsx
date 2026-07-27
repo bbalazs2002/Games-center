@@ -183,10 +183,7 @@ export function RamsesGamePage({ playerNames, transport: providedTransport, myPl
           boardColor={BOARD_COLOR}
         />
         <div className={styles.hud}>
-          <p className={styles.turnIndicator}>
-            {currentPlayer.name} köre
-            {!isMyTurn && ' — várakozás…'}
-          </p>
+          <p className={styles.turnIndicator}>{currentPlayer.name} köre</p>
           {activeTreasure && state.activeCard && (
             <div className={styles.activeCard}>
               <span className={styles.treasureSwatch} style={{ backgroundColor: activeTreasure.color }} />
