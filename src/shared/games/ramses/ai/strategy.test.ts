@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { chooseRamsesAiAction } from './strategy';
-import { createRevealMemory, observeRevealedState, type RevealMemory } from './memory';
+import { createRevealMemory, observeRevealedState, recallEasy, type RevealMemory } from './memory';
 import { reducer } from '../engine/reducer';
 import { createInitialState } from '../engine/initialState';
 import { toPublicRamsesState } from '../engine/rules';
@@ -36,17 +36,43 @@ describe('chooseRamsesAiAction', () => {
   });
 
   describe('EASY', () => {
-    it('ignores memory entirely — picks among slidable cells even when memory marks all of them as wrong', () => {
+    it('ignores the FULL memory (never avoids a known-wrong cell) — picks among slidable cells even when the full memory marks all of them as wrong', () => {
       let state = buildInteriorEmptyState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
       state = updateCell(state, 'r1c3', { treasureId: 'scarab' });
       state = updateCell(state, 'r3c3', { treasureId: 'lotus' });
       state = updateCell(state, 'r2c2', { treasureId: 'eye' });
       state = updateCell(state, 'r2c4', { treasureId: 'ibis' });
       const memory = createRevealMemory();
-      for (const cellId of ['r1c3', 'r3c3', 'r2c2', 'r2c4']) memory.set(cellId, state.board.find((c) => c.id === cellId)!.treasureId);
+      // Populate the FULL memory only (as MEDIUM/HARD would see it via recall()) — never the bounded recentKeys window.
+      for (const cellId of ['r1c3', 'r3c3', 'r2c2', 'r2c4']) memory.full.set(cellId, state.board.find((c) => c.id === cellId)!.treasureId);
 
       const action = chooseRamsesAiAction(state, memory, 'player-1', 'EASY');
       expect(action?.type).toBe('SLIDE_PYRAMID');
+      expect(['r1c3', 'r3c3', 'r2c2', 'r2c4']).toContain(action && 'fromCellId' in action ? action.fromCellId : undefined);
+    });
+
+    it('takes an obvious win if the winning cell is within its short-term (recallEasy) window — see docs/ramses-0c-ai-specifikacio.md §3.3.2', () => {
+      const state = buildInteriorEmptyState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
+      const stateWithTreasure = updateCell(state, 'r2c4', { treasureId: 'ankh' });
+      const memory = createRevealMemory();
+      // Simulate having JUST observed r2c4 (e.g. it was the empty cell a moment ago).
+      observeRevealedState(memory, { ...stateWithTreasure, emptyCellId: 'r2c4' });
+      expect(recallEasy(memory, 'r2c4')).toBe('ankh'); // sanity: within the recent window
+
+      const action = chooseRamsesAiAction(stateWithTreasure, memory, 'player-1', 'EASY');
+      expect(action).toEqual({ type: 'SLIDE_PYRAMID', fromCellId: 'r2c4' });
+    });
+
+    it('does NOT avoid a known-wrong cell even if it is within the recent window (unlike MEDIUM/HARD) — only recognizes wins, never dangers', () => {
+      let state = buildInteriorEmptyState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
+      state = updateCell(state, 'r1c3', { treasureId: 'scarab' }); // wrong treasure, but recently seen
+      const memory = createRevealMemory();
+      observeRevealedState(memory, { ...state, emptyCellId: 'r1c3' });
+      expect(recallEasy(memory, 'r1c3')).toBe('scarab'); // sanity: within the recent window, and NOT the active target
+
+      const action = chooseRamsesAiAction(state, memory, 'player-1', 'EASY');
+      expect(action?.type).toBe('SLIDE_PYRAMID');
+      // r1c3 remains a legitimate candidate — EASY has no concept of "avoid".
       expect(['r1c3', 'r3c3', 'r2c2', 'r2c4']).toContain(action && 'fromCellId' in action ? action.fromCellId : undefined);
     });
   });
@@ -58,7 +84,7 @@ describe('chooseRamsesAiAction', () => {
       state = updateCell(state, 'r1c3', { treasureId: 'scarab' }); // known WRONG treasure
       // r3c3/r2c2/r2c4 stay treasureId: null (blank) in the true state, but MEDIUM never looks at that directly — only at memory.
       const memory = createRevealMemory();
-      memory.set('r1c3', 'scarab');
+      memory.full.set('r1c3', 'scarab');
 
       const action = chooseRamsesAiAction(state, memory, 'player-1', 'MEDIUM');
       expect(action).toEqual({ type: 'SLIDE_PYRAMID', fromCellId: expect.not.stringMatching('r1c3') });
@@ -68,7 +94,7 @@ describe('chooseRamsesAiAction', () => {
       disableForgetting();
       const state = buildInteriorEmptyState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
       const memory = createRevealMemory();
-      for (const cellId of ['r1c3', 'r3c3', 'r2c2', 'r2c4']) memory.set(cellId, 'scarab'); // all wrong, none match "ankh"
+      for (const cellId of ['r1c3', 'r3c3', 'r2c2', 'r2c4']) memory.full.set(cellId, 'scarab'); // all wrong, none match "ankh"
 
       const action = chooseRamsesAiAction(state, memory, 'player-1', 'MEDIUM');
       expect(action?.type).toBe('SLIDE_PYRAMID');
@@ -81,10 +107,10 @@ describe('chooseRamsesAiAction', () => {
       disableForgetting();
       const state = buildInteriorEmptyState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
       const memory = createRevealMemory();
-      memory.set('r1c3', 'scarab'); // known wrong
-      memory.set('r3c3', null); // known blank
+      memory.full.set('r1c3', 'scarab'); // known wrong
+      memory.full.set('r3c3', null); // known blank
       // r2c2 left unknown (not in memory)
-      memory.set('r2c4', 'ankh'); // the winning cell
+      memory.full.set('r2c4', 'ankh'); // the winning cell
 
       const action = chooseRamsesAiAction(state, memory, 'player-1', 'HARD');
       expect(action).toEqual({ type: 'SLIDE_PYRAMID', fromCellId: 'r2c4' });
@@ -94,9 +120,9 @@ describe('chooseRamsesAiAction', () => {
       disableForgetting();
       const state = buildInteriorEmptyState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
       const memory = createRevealMemory();
-      memory.set('r1c3', 'scarab'); // known wrong
+      memory.full.set('r1c3', 'scarab'); // known wrong
       // r3c3 unknown
-      memory.set('r2c2', null); // the known-blank cell
+      memory.full.set('r2c2', null); // the known-blank cell
       // r2c4 unknown
 
       const action = chooseRamsesAiAction(state, memory, 'player-1', 'HARD');
@@ -107,9 +133,9 @@ describe('chooseRamsesAiAction', () => {
       disableForgetting();
       const state = buildInteriorEmptyState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
       const memory = createRevealMemory();
-      memory.set('r1c3', 'scarab'); // known wrong
-      memory.set('r3c3', 'lotus'); // known wrong
-      memory.set('r2c2', 'eye'); // known wrong
+      memory.full.set('r1c3', 'scarab'); // known wrong
+      memory.full.set('r3c3', 'lotus'); // known wrong
+      memory.full.set('r2c2', 'eye'); // known wrong
       // r2c4 stays unknown — the only non-bad option
 
       const action = chooseRamsesAiAction(state, memory, 'player-1', 'HARD');
@@ -120,7 +146,7 @@ describe('chooseRamsesAiAction', () => {
       disableForgetting();
       const state = buildInteriorEmptyState({ activeCard: { id: 'c1', treasureId: 'ankh', points: 2 } });
       const memory = createRevealMemory();
-      for (const cellId of ['r1c3', 'r3c3', 'r2c2', 'r2c4']) memory.set(cellId, 'scarab');
+      for (const cellId of ['r1c3', 'r3c3', 'r2c2', 'r2c4']) memory.full.set(cellId, 'scarab');
 
       const action = chooseRamsesAiAction(state, memory, 'player-1', 'HARD');
       expect(action?.type).toBe('SLIDE_PYRAMID');

@@ -1,7 +1,7 @@
 import type { RamsesAction } from '../engine/actions';
 import { getCurrentPlayer, getSlidableCellIds } from '../engine/selectors';
 import type { PlayerId, RamsesState } from '../engine/state';
-import { recall, type RamsesAiDifficulty, type RevealMemory } from './memory';
+import { recall, recallEasy, type RamsesAiDifficulty, type RevealMemory } from './memory';
 
 export type { RamsesAiDifficulty } from './memory';
 export { isRamsesAiDifficulty } from './memory';
@@ -18,8 +18,21 @@ function pickRandom<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-/** EASY: memory-blind, uniformly random among the slidable cells (mirrors Dáma's v1 AI). */
-function chooseEasyCell(slidable: readonly string[]): string {
+/**
+ * EASY: overwhelmingly random (mirrors Dáma's v1 AI) — but not literally
+ * amnesiac. A small "did I just see that?" recognition of the last few
+ * reveals (see recallEasy/EASY_RECENT_WINDOW in memory.ts): if a slidable
+ * cell happens to be one EASY can still recall from its short-term window
+ * AND it's the current target, it takes the obvious win. It never avoids
+ * known-bad cells and never seeks known-blanks — added 2026-07-27 after
+ * AI-only simulation showed EASY found zero treasures in 57% of games (see
+ * docs/ramses-0c-ai-specifikacio.md §7.1/§3.3.2), which felt too close to
+ * "completely useless" even for the weakest tier.
+ */
+function chooseEasyCell(state: RamsesState, memory: RevealMemory, slidable: readonly string[]): string {
+  const activeTreasureId = state.activeCard?.treasureId ?? null;
+  const recentlySeenWinning = slidable.filter((cellId) => activeTreasureId !== null && recallEasy(memory, cellId) === activeTreasureId);
+  if (recentlySeenWinning.length > 0) return pickRandom(recentlySeenWinning);
   return pickRandom(slidable);
 }
 
@@ -74,7 +87,7 @@ export function chooseRamsesAiAction(
 
   const fromCellId =
     difficulty === 'EASY'
-      ? chooseEasyCell(slidable)
+      ? chooseEasyCell(state, memory, slidable)
       : difficulty === 'MEDIUM'
         ? chooseMediumCell(state, memory, slidable)
         : chooseHardCell(state, memory, slidable);

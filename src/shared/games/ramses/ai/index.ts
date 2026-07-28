@@ -1,4 +1,4 @@
-export { createRevealMemory, observeRevealedState, recall, type RevealMemory } from './memory';
+export { createRevealMemory, observeRevealedState, recall, recallEasy, type RevealMemory } from './memory';
 export {
   chooseRamsesAiAction,
   isRamsesAiDifficulty,

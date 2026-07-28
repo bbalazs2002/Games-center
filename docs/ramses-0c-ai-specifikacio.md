@@ -102,7 +102,7 @@ Javasolt (nem véglegesített, playteszteléssel finomítható) viselkedés csú
 
 | Szint | Stratégia |
 |---|---|
-| **EASY** | Figyelmen kívül hagyja a memóriát — egyenletesen véletlen választás a csúsztatható cellák közül (mint Dáma v1 AI-ja). |
+| **EASY** | Túlnyomórészt véletlen választás — de egy szűk, korlátozott "mit láttam épp az imént" felismerés is van rajta (lásd 3.3.2, 2026-07-27-i kiegészítés): ha egy csúsztatható cella a legutóbb megfigyeltek között van ÉS épp a cél-kincset rejti, odacsúsztat. Sosem kerüli az ismert rossz cellákat. |
 | **MEDIUM** | Kerüli azokat a cellákat, amikről TUDJA (emlékszik rá), hogy ROSSZ kincset rejtenek (garantáltan véget vetne a körnek) — ha van más opció; egyébként véletlen. Nem keresi aktívan a győzelmet vagy az ismert üres cellákat. |
 | **HARD** | Teljes mohó stratégia: (1) ha ismer olyan csúsztatható cellát, ami a JELENLEGI cél-kincset rejti → oda csúsztat (biztos találat); (2) különben, ha ismer üres (biztonságos) cellát → oda; (3) különben egy sosem-látott (ismeretlen) cellát választ véletlenül; (4) csak akkor csúsztat ismert ROSSZ cellára, ha nincs más választása. |
 
@@ -132,6 +132,31 @@ function recall(memory: RevealMemory, cellId: string, difficulty: RamsesAiDiffic
 A MEDIUM/HARD stratégia minden ismert-cella-ellenőrzés (`memory.get(...)` a 3.3-as táblázat "ROSSZ kincset rejt" / "üres" / "jelenlegi cél-kincset rejti" ágaiban) ezen a `recall()` függvényen megy át közvetlen `memory.get()` helyett — egy "elfelejtett" cella egyszerűen ismeretlenként viselkedik az adott döntésben (ugyanúgy, mintha sosem látta volna), tehát a HARD-nál is előfordulhat, hogy egy valójában ismert rossz cellára csúsztat, ha "nem jut eszébe" — ritkábban, mint MEDIUM-nál, de nem nulla eséllyel, ez adja az emberi bizonytalanság érzetét.
 
 **A konkrét felejtési arányok (0.35 / 0.08) kezdeti javaslatok, nincsenek playtesztelve** — pontosan úgy, mint a nehézségi szintek egyéb súlyai Hotel-0d-nél, a finomhangolás a felhasználó saját feladata valódi próbajátékok alapján, nem Claude-é (lásd `docs/hotel-0d-ai-specifikacio.md` §1 precedense).
+
+### 3.3.2 EASY korlátozott rövid-távú emlékezete — a szimuláció alapján hozzáadva, 2026-07-27
+
+A 7.1 szakaszban leírt AI-only szimuláció rávilágított: EASY az esetek **57%-ában szó szerint egyetlen kincset sem talált** — a felhasználó megerősítette, hogy ez a "legyőzhető, de ne teljesen használhatatlan" elvárást sérti, és egy enyhe javítást kért.
+
+**Megoldás: EASY NEM kap teljes memóriát (ez a szint definíciója szerint elvi kérdés maradna, nem csak hangolás), hanem egy nagyon szűk, korlátozott "mit láttam épp az imént" ablakot** — a `RevealMemory` kiegészül egy `recentKeys: string[]` mezővel (a `full: Map` mellett, ami MEDIUM/HARD `recall()`-jának forrása marad, változatlanul):
+
+```ts
+// shared/games/ramses/ai/memory.ts
+const EASY_RECENT_WINDOW = 3; // csak az utolsó 3 megfigyelt cella
+
+export interface RevealMemory {
+  full: Map<string, string | null>;   // MEDIUM/HARD forrása, változatlan
+  recentKeys: string[];                // EASY forrása — a legutóbbi N megfigyelt cella id-je
+}
+
+/** EASY-nak SOSEM ad "ismert rossz" infót — csak azt jelzi, ha egy csúsztatható cella a JELENLEGI cél-kincset rejti, és ez a cella még a szűk ablakban van. */
+export function recallEasy(memory: RevealMemory, cellId: string): string | null | undefined { ... }
+```
+
+`observeRevealedState` egyetlen hívással mindkét struktúrát frissíti (a hívási pontok — `RamsesRoom`/`useRamsesHotSeatAi`/`simulate.ts` — változtatás nélkül maradtak, hiszen csak a `RevealMemory` belső alakja változott, a rajta kívüli szerződés nem).
+
+**EASY új viselkedése**: továbbra is túlnyomórészt véletlenszerű (nem kerüli az ismert rossz cellákat, nem keres aktívan üres mezőt) — az EGYETLEN változás, hogy ha egy csúsztatható cella a rövid-távú ablakban van ÉS épp a keresett kincset rejti, EASY felismeri és odacsúsztat ("ó, ezt épp most láttam!" — emberi, nem stratégiai felismerés). Ez szándékosan sokkal gyengébb, mint MEDIUM/HARD teljes memóriája — csak annyit ad, hogy EASY ne maradjon szisztematikusan esély nélkül.
+
+**Eredmény** (lásd 7.1 frissített adatai): EASY "0 lapos parti" aránya 57%-ról ~48%-ra csökkent három ismételt szimulációs kör átlagában — enyhe, de valódi javulás, a nehézségi sorrend (HARD > MEDIUM > EASY) továbbra is teljesen érintetlen.
 
 ### 3.4 Mikor frissül a memória
 
@@ -167,13 +192,58 @@ A MEDIUM/HARD stratégia minden ismert-cella-ellenőrzés (`memory.get(...)` a 3
 - `shared/games/ramses/ai/strategy.test.ts` — mindhárom nehézségi szint viselkedése kézzel felépített (nem véletlenszerű) `buildTestState`+kézzel töltött memória forgatókönyveken: EASY figyelmen kívül hagyja a memóriát (statisztikai teszt sok mintával, vagy egy Math.random mock), MEDIUM kerüli az ismert rossz cellát ha van alternatíva, HARD sorrendben preferál (győzelem > ismert üres > ismeretlen > kényszerű rossz). Plusz egy Hotel `strategy.test.ts`-hez hasonló **"AI-only full game" smoke teszt**: vegyes nehézségű, csak-AI parti sok lépésen át fut hiba nélkül — Hotel precedense szerint NEM várja el, hogy a lépéskorláton belül `FINISHED`-be jusson (egy EASY-t is tartalmazó valós Ramses-parti korlátlan-farkú véletlen folyamat, ~15 000–20 000 csúsztatást is igényelhet).
 - Élő ellenőrzés: a Ramses-0b-nél már bevált háromszintű minta (vitest + `temp/`-beli valós `@colyseus/schema`/Colyseus smoke teszt + élő böngészős Playwright-teszt, hot-seat AI-kapcsolóval).
 
+### 7.1 IMPLEMENTÁLVA: `simulateRamsesGame` szimulációs modul + hangolási kör (2026-07-27, a felhasználó kérésére)
+
+A felhasználó kifejezetten kérte a Hotel-0d-nél bevált módszer megismétlését: csak-AI szimulációk futtatása a nehézségi szintek teszteléséhez/beállításához. Új, önálló modul (`shared/games/ramses/ai/simulate.ts`, 1:1 Hotel `simulate.ts` mintája — nincs lobby UI, `GameRoom`/Colyseus, adatbázis, mesterséges "AI gondolkodik" késleltetés) + kötegelt futtató script (`scripts/simulate-ramses-ai-games.ts`, `npm run ai:simulate-ramses`).
+
+**Fontos, empirikusan feltárt tény a modul megírása közben** (nem hiba, csak tervezési korrekció): mivel minden Ramses AI-döntés lényegében azonnali (nincs Hotel-szerű expectimax keresés), egy TELJES, valódi befejezésig lejátszott parti is olcsó — a szimulátor ezért (Hotel "vezetés a lépéskorlátnál" kompromisszumával ellentétben) VALÓDI, egyértelmű győzteseket vár be, `maxSteps=60 000` biztonsági korláttal (egy vegyes nehézségű, EASY-t is tartalmazó parti empirikusan ~15 000–20 000 lépést igényelhet).
+
+**Eredmények (589 253 összlépés, 27 játék, 8,9 másodperc alatt lefutva):**
+
+| Szint | Részvétel | Győzelem | Átlag pontszám | Átlag lapszám |
+|---|---|---|---|---|
+| EASY | 21 | 0 (0%) | 6,6 | 2,9 |
+| MEDIUM | 15 | 5 (33%) | 19,6 | 7,8 |
+| HARD | 31 | 22 (71%) | 50,5 | 20,8 |
+
+A nehézségi létra a szándéknak megfelelően **monoton**: HARD > MEDIUM > EASY minden mérésben, minden összeállításban (2/3/4 fős vegyes lineupok is). Két konkrét megfigyelés, mindkettő megvizsgálva, egyik sem bizonyult hibának:
+
+- **EASY 0%-os győzelmi aránya** — első pillantásra riasztónak tűnhet, de a tervezett viselkedésből (a memóriát teljesen figyelmen kívül hagyja) egyenesen következik egy memóriajátékban: aki semmit nem jegyez meg, gyakorlatilag esély nélkül marad bárkivel szemben, aki használ valamennyi memóriát — ez a FIZIKAI játék jellegéből fakad, nem AI-hibából. (Néhány pontot azért néha szerzett EASY MEDIUM ellen — nem teljesen esély nélküli, csak nagyon gyenge, ami egy kezdő/gyerek-barát szintnek pont megfelelő.)
+- **MEDIUM 0/10-es vereség-sorozata konkrétan HARD ellen** (a 33%-os összesített arány kizárólag a Könnyű-elleni győzelmekből jön) — megvizsgálva: ez a `chooseMediumCell` szándékos, már a tervben rögzített viselkedéséből ered (csak az ismerten ROSSZ cellákat kerüli, de NEM keresi aktívan az ismert győzelmet/üres mezőt, még ha "tudná" is) — ez a tervezett különbség MEDIUM és HARD stratégiája között, nem kódhiba.
+- **Kontroll-mérés (HARD vs HARD, azonos szint) egy külön, 20 játékos utólagos próbában**: az eredeti 5 játékos kötegben véletlenül 4/4-ben az 1. játékos (mindig ő kezd) nyert, ami elsőre kör-sorrendi torzításnak tűnhetett — egy nagyobb, 20 játékos külön próbában (`temp/`-ben, nem megtartva) 8-10 arányban oszlott meg, tehát **statisztikai véletlen volt, nem valódi elsőkörös előny**.
+
+**Konklúzió (első kör)**: nem találtam valódi hibát (szemben Hotel-0d-vel, ahol a szimuláció egy tényleges fizetési hibát és egy kockázat-alulbecslést is feltárt) — a jelenlegi `FORGET_CHANCE` értékek (MEDIUM 0,35 / HARD 0,08) és a nehézségi szintek viselkedése első körben változatlanul hagyva, mivel az adatok nem mutattak diszfunkciót, csak a szándékolt nehézség-differenciálódást igazolták vissza.
+
+### 7.2 Második kör: "talált-e egyáltalán kincset EASY/MEDIUM?" — a felhasználó kifejezett kérése, 2026-07-27, ugyanaznap
+
+A felhasználó külön rákérdezett: a log alapján EASY/MEDIUM tényleg talál-e kincset, mert nem szeretné, ha teljesen használhatatlanok lennének. A szimulációs eszköz kapott egy új, pontos mérőszámot (**"0 lapos parti" arány** — hány játékban nem talált a szereplő EGYETLEN kincset SEM):
+
+```
+EASY   — 0 lapos parti: 12/21 (57%)
+MEDIUM — 0 lapos parti: 3/15 (20%)
+HARD   — 0 lapos parti: 2/31 (6%)
+```
+
+**Kiváltó ok**: nem AI-hiba, hanem a házi szabály (sikeres találat folytatja a kört) lavina-effektusa — ha egy memóriával rendelkező játékos (HARD) egyszer belelendül, akár az egész paklit végigviheti egyetlen megszakítatlan körben, mielőtt a gyengébb ellenfél egyáltalán lépne. Megkérdeztem a felhasználót: elfogadható-e ez egy explicit "legkönnyebb" szintnél, vagy javítsak rajta — **a válasz: enyhe javítás kérve, EASY maradjon egyértelműen a leggyengébb, de ne legyen ennyire esély nélküli.**
+
+**Megvalósítva: EASY korlátozott rövid-távú emlékezete** (lásd 3.3.2 — `recallEasy`, `EASY_RECENT_WINDOW = 3`). Három ismételt szimulációs kör után:
+
+```
+EASY 0 lapos parti aránya: 57% → 48% → 48%  (enyhe, konzisztens javulás)
+```
+
+MEDIUM/HARD teljesen érintetlen (a rájuk mért ingadozás — 20%/33%/40% MEDIUM-nál — pusztán a kis mintaméret zaja, semmi nem változott a kódjukban).
+
+**Konklúzió (második kör)**: a `FORGET_CHANCE` súlyok továbbra sem változtak, csak EASY kapott egy célzott, minimális kiegészítést. A pontos finomhangolás (pl. további arányok) változatlanul a felhasználó saját, valódi próbajátékokon alapuló döntése — lásd `docs/hotel-0d-ai-specifikacio.md` §1 precedense.
+
 ## 8. Diagram
 
 Lásd [`docs/diagrams/ramses-0c-ai-architecture.puml`](./diagrams/ramses-0c-ai-architecture.puml) — a megosztott AI-modul és a két fogyasztója (RamsesRoom, useRamsesHotSeatAi), valamint a maszkolás pontos helye a döntési láncban.
 
 ## 9. Nyitott kérdés a felhasználó felé
 
-- [ ] **A 3.2 szakaszban leírt tervezési döntés — a maszkolás felelőssége szerveren a `RamsesRoom.getPublicGameState()` getternél, kliensen pedig a `RamsesGamePage`-be épített, MINDEN fogyasztóra (rendereléshez ÉS AI-hoz egyaránt) érvényes `MaskedRamsesTransport`-nál van, nem a megosztott AI-modulban —, a nehézségi szintek 3.3 szerinti viselkedése, a 3.3.1-es szimulált felejtés (0.35/0.08 kezdeti arányok), és az 500ms mesterséges késleltetés — rendben van-e ebben a formában, vagy változtatnál rajta indulás előtt?** Minden más (memória szerkezete, integrációs pontok, teszt terv) ebből következik, ezért ezt érdemes elsőként megerősíteni.
+- [x] **A 3.2 szakaszban leírt tervezési döntés** — **jóváhagyva, változtatás nélkül implementálva.**
+- [x] **EASY 57%-os "0 lapos parti" aránya (7.1/7.2) — jóváhagyott, enyhe javítás implementálva** (3.3.2: korlátozott rövid-távú emlékezet).
 
 ## 10. Terv állapota
 
@@ -190,3 +260,5 @@ Első tervezési kör, 2026-07-27, ugyanazon a napon implementálva is.
 - **Élő böngészős ellenőrzés Playwright-tal mindkét módban**: hot-seat (AI-jelölőnégyzet bekapcsolva, a parti lépked, az AI a maga körén automatikusan lép, a kör helyesen vissza is száll az emberre rossz kincs felfedésekor); online (a lobby "Új szoba" modalja helyesen mutatja az AI-darabszám+nehézség választót, a létrehozott szobában az AI automatikusan lép, a pontszámítás/kártyahúzás/kör-váltás mind helyesen szinkronizálódik). Mindkét esetben nulla konzol-hiba (csak a már ismert, ártalmatlan `THREE.Clock` figyelmeztetés).
 
 `tsc` (kliens+szerver), `eslint`, `vitest` (189/189), `vite build` (a `RamsesGamePage` lazy chunkja kicsit nőtt az AI-logikával, code-splitting sértetlen) mind zöldek.
+
+**Második kör, ugyanaznap (2026-07-27) — a felhasználó kifejezett kérésére**: AI-only szimulációk `simulateRamsesGame`/`npm run ai:simulate-ramses`-szel (lásd 7.1/7.2), majd egy célzott, adat-vezérelt kiegészítés (EASY korlátozott rövid-távú emlékezete, 3.3.2) az 57%-os EASY "0 lapos parti" arány mérséklésére. A `RevealMemory` típus `Map`-ből egy `{full, recentKeys}` interfésszé alakult át — ez KIZÁRÓLAG `memory.ts`/`strategy.ts`-t és saját teszteiket érintette, a `RamsesRoom`/`useRamsesHotSeatAi`/`simulate.ts` integrációs pontok egyáltalán nem változtak (a `RevealMemory`-t mindig átlátszóan adják tovább, sosem nyúlnak bele közvetlenül). 60/60 Ramses-teszt zöld (54→60, +6), 3 ismételt szimulációs kör után EASY "0 lapos parti" aránya 57%→48%-ra csökkent, MEDIUM/HARD teljesen érintetlen.
