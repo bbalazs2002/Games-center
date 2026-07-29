@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
+import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
 import { GridBoard2D, type GridPosition } from '../../../renderers/grid-2d/GridBoard2D';
 import theme from '../../../renderers/grid-2d/clusterBTheme.module.css';
 import type { DamaAction } from '../../../../shared/games/dama/engine/actions';
@@ -126,7 +127,8 @@ export function DamaGamePage({ transport: providedTransport, myPlayer, hotSeatAi
     () => new LocalGameTransport<DamaState, DamaAction>(reducer, createInitialState()),
     [],
   );
-  const transport = providedTransport ?? localTransport;
+  const loggedLocalTransport = useLocalGameLogger(localTransport, 'dama');
+  const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
   useDamaHotSeatAi(transport, hotSeatAiSlots ?? {});
   const [selected, setSelected] = useState<GridPosition | null>(null);

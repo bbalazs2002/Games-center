@@ -75,5 +75,9 @@ export function ScannedModel({ objUrl, mtlUrl, colorTint, fallback = null, scale
   const tinted = useMemo(() => (loaded ? cloneWithTint(loaded, colorTint) : null), [loaded, colorTint]);
 
   if (!tinted) return <>{fallback}</>;
-  return <primitive object={tinted} scale={scale} />;
+  // dispose={null} — see GLTFSceneObject's identical comment: `tinted`'s
+  // geometry/texture references point back into the shared `modelCache`
+  // entry, and R3F's default auto-dispose-on-unmount would otherwise
+  // permanently break every other consumer sharing that same cached model.
+  return <primitive object={tinted} scale={scale} dispose={null} />;
 }

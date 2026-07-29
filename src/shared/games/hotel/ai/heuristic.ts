@@ -42,6 +42,30 @@ function cashSafetyPenalty(cash: number): number {
 // is safe from this rule and gets full credit again.
 const UNBUILT_LOT_PORTFOLIO_FACTOR = 0.65;
 
+// UNBUILT_LOT_PORTFOLIO_FACTOR alone makes buying ANY unbuilt lot score as a
+// guaranteed loss in the one-ply (EASY) evaluation — the lot's price is paid
+// in full but only 65% of it comes back as portfolio credit, and rent
+// potential stays 0 until a LATER turn's construction (impossible within the
+// same turn: buying only ever happens on a PURCHASE space, building only on
+// a CONSTRUCTION space — see rules.ts's canStartConstruction). Nothing in
+// the heuristic ever credited the real strategic value of simply HAVING a
+// lot to build on later, so an AI already holding nothing kept finding
+// END_TURN scored higher than buying — confirmed as a real playtest
+// complaint (2026-07-29): "Az AI vásárolhatna és építkezhetne kicsit
+// agresszívebben főleg, ha még egyáltalán nincs hotele." Tapered by how many
+// lots the player already owns (steep for the first, gone by the third) so
+// this only nudges an empty-handed AI toward its FIRST foothold, without
+// distorting later, already-invested portfolio decisions where the plain
+// cash/rent math (already well-tuned, see UNBUILT_LOT_PORTFOLIO_FACTOR's own
+// history above) should keep deciding things on its own.
+const FIRST_LOTS_BONUS = [1300, 500] as const;
+
+function firstLotsBonus(ownedLotCount: number): number {
+  let bonus = 0;
+  for (let i = 0; i < ownedLotCount && i < FIRST_LOTS_BONUS.length; i += 1) bonus += FIRST_LOTS_BONUS[i];
+  return bonus;
+}
+
 function portfolioCredit(lot: HotelLot): number {
   const value = computeHotelValue(lot);
   const isUnbuilt = lot.buildingsBuilt === 0 && !lot.hasGarden;
@@ -75,8 +99,9 @@ export function evaluateState(state: HotelState, forPlayerId: PlayerId): number 
   const me = getPlayer(state, forPlayerId);
   if (me.bankrupt) return BANKRUPT_PENALTY;
 
-  let score = me.cash + cashSafetyPenalty(me.cash);
-  for (const lot of ownedLotsOf(state, forPlayerId)) {
+  const ownedLots = ownedLotsOf(state, forPlayerId);
+  let score = me.cash + cashSafetyPenalty(me.cash) + firstLotsBonus(ownedLots.length);
+  for (const lot of ownedLots) {
     score += portfolioCredit(lot) * PORTFOLIO_WEIGHT;
     score += estimateRentPotential(lot) * RENT_POTENTIAL_WEIGHT;
   }

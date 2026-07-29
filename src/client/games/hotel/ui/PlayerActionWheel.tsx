@@ -3,6 +3,7 @@ import type { HotelAction } from '../../../../shared/games/hotel/engine/actions'
 import {
   canBuildWithoutPermit,
   computeConstructionCost,
+  computeLotPurchasePrice,
   getCurrentPlayer,
   getLot,
 } from '../../../../shared/games/hotel/engine/rules';
@@ -11,6 +12,8 @@ import { Button } from '../../../ui-kit/Button';
 import { Modal } from '../../../ui-kit/Modal';
 import { WheelMenu, type WheelMenuSlice } from '../../../ui-kit/WheelMenu';
 import { DiceHUD } from './DiceHUD';
+import { propertyCardUrl } from './hotelModelAssets';
+import modalTheme from './hotelModalTheme.module.css';
 import {
   auctionBiddingSlices,
   constructionLotSlices,
@@ -60,12 +63,13 @@ function computeSlices(
   addToPending: (item: ConstructionPlanItem) => void,
   onRequestForfeit: () => void,
   onStartStaircasePlacement: (mode: StaircasePlacementMode) => void,
+  onSelectLotToBuy: (lotId: string) => void,
 ): WheelMenuSlice[] {
   switch (level.kind) {
     case 'root':
       return rootSlices(state, dispatch, nav, onRequestForfeit, onStartStaircasePlacement);
     case 'purchase-lots':
-      return purchaseLotSlices(state, dispatch);
+      return purchaseLotSlices(state, onSelectLotToBuy);
     case 'construction-lots':
       return constructionLotSlices(state, pending, addToPending);
     case 'staircase-right-lots':
@@ -84,6 +88,93 @@ function describeSelection(item: ConstructionPlanItem): string {
   if (item.buildingCount > 0) parts.push(`+${item.buildingCount} épület`);
   if (item.buildGarden) parts.push('kert');
   return parts.join(', ');
+}
+
+/**
+ * Full data for a lot the player is about to buy (name, telek/lépcső ára,
+ * minden építkezési ár, éjszaka-árak táblázatban) — a real playtest request
+ * (2026-07-27): buying used to fire immediately on picking a lot from the
+ * wheel, with no chance to review what it, its staircase, or its buildings
+ * would cost. Shows both the real property-card photos AND the same numbers
+ * as plain, readable text/tables — the photos alone weren't considered
+ * readable enough on their own.
+ */
+function PurchaseConfirmModal({
+  state,
+  lotId,
+  onConfirm,
+  onCancel,
+}: {
+  state: HotelState;
+  lotId: string | null;
+  onConfirm: (lotId: string) => void;
+  onCancel: () => void;
+}) {
+  const lot = lotId ? getLot(state, lotId) : undefined;
+
+  return (
+    <Modal open={lot !== undefined} onClose={onCancel} className={modalTheme.hotelModal}>
+      {lot && (
+        <div className={styles.purchaseConfirm}>
+          <h2>{lot.name}</h2>
+          <div className={styles.purchaseCardImages}>
+            <img src={propertyCardUrl(lot.id, 'const')} alt="Építési árak" />
+            <img src={propertyCardUrl(lot.id, 'nights')} alt="Éjszaka-árak" />
+          </div>
+          <dl className={styles.purchaseFacts}>
+            <dt>Telek ára</dt>
+            <dd>{computeLotPurchasePrice(lot)}</dd>
+            <dt>Lépcső ára</dt>
+            <dd>{lot.staircasePrice}</dd>
+          </dl>
+          <h3>Építkezés költsége</h3>
+          <ul className={styles.purchaseBuildList}>
+            {lot.buildingPrices.map((price, index) => (
+              <li key={index}>
+                {index + 1}. épület: {price}
+              </li>
+            ))}
+            <li>Kert: {lot.gardenPrice}</li>
+          </ul>
+          <h3>Éjszakák ára</h3>
+          <div className={styles.purchaseNightsTableWrap}>
+            <table className={styles.purchaseNightsTable}>
+              <thead>
+                <tr>
+                  <th>Épület</th>
+                  {lot.nightlyRates[0].map((_, nightIndex) => (
+                    <th key={nightIndex}>{nightIndex + 1} éj</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {lot.nightlyRates.map((row, tierIndex) => (
+                  <tr key={tierIndex}>
+                    <th>{tierIndex + 1}.</th>
+                    {row.map((price, nightIndex) => (
+                      <td key={nightIndex}>{price}</td>
+                    ))}
+                  </tr>
+                ))}
+                <tr>
+                  <th>+kert</th>
+                  {lot.gardenNightlyRates.map((price, nightIndex) => (
+                    <td key={nightIndex}>{price}</td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className={styles.selectionActions}>
+            <Button variant="secondary" onClick={onCancel}>
+              Mégse
+            </Button>
+            <Button onClick={() => onConfirm(lot.id)}>Megvásárlom ({computeLotPurchasePrice(lot)})</Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
 }
 
 /** Not our turn online, OR a staircase placement is armed (the real choice now happens by clicking a preview on the board, not here) — still show every slice (open information), just force them all disabled rather than re-deriving each one's own condition. */
@@ -143,6 +234,7 @@ export function PlayerActionWheel({
   const [stack, setStack] = useState<MenuLevel[]>([{ kind: 'root' }]);
   const [pending, setPending] = useState<ConstructionPlanItem[]>([]);
   const [forfeitConfirmOpen, setForfeitConfirmOpen] = useState(false);
+  const [pendingPurchaseLotId, setPendingPurchaseLotId] = useState<string | null>(null);
 
   const currentPlayer = getCurrentPlayer(state);
 
@@ -151,6 +243,7 @@ export function PlayerActionWheel({
     setStack([{ kind: 'root' }]);
     setPending([]);
     setForfeitConfirmOpen(false);
+    setPendingPurchaseLotId(null);
   }, [state.currentPlayerIndex, currentPlayer.position]);
 
   function push(level: MenuLevel): void {
@@ -217,6 +310,11 @@ export function PlayerActionWheel({
     dispatchAndReturnToRoot({ type: 'FORFEIT' });
   }
 
+  function confirmPurchase(lotId: string): void {
+    setPendingPurchaseLotId(null);
+    dispatchAndReturnToRoot({ type: 'BUY_LOT', lotId });
+  }
+
   if (!open) {
     return (
       <button className={styles.collapsedButton} onClick={() => setOpen(true)}>
@@ -235,6 +333,7 @@ export function PlayerActionWheel({
     addToPending,
     () => setForfeitConfirmOpen(true),
     startStaircasePlacement,
+    setPendingPurchaseLotId,
   );
   const slices = resolveSlices(rawSlices, interactive, staircasePlacement);
   // Shown so the player can weigh the risk before requesting the permit — a
@@ -290,7 +389,11 @@ export function PlayerActionWheel({
           </div>
         </div>
       )}
-      <Modal open={forfeitConfirmOpen} onClose={() => setForfeitConfirmOpen(false)}>
+      <Modal
+        open={forfeitConfirmOpen}
+        onClose={() => setForfeitConfirmOpen(false)}
+        className={modalTheme.hotelModal}
+      >
         <h2>Feladod a játékot?</h2>
         <p>Minden telked a bankhoz kerül, és kiesel a játékból. Ez nem vonható vissza.</p>
         <div className={styles.selectionActions}>
@@ -300,6 +403,12 @@ export function PlayerActionWheel({
           <Button onClick={confirmForfeit}>Igen, feladom</Button>
         </div>
       </Modal>
+      <PurchaseConfirmModal
+        state={state}
+        lotId={pendingPurchaseLotId}
+        onConfirm={confirmPurchase}
+        onCancel={() => setPendingPurchaseLotId(null)}
+      />
     </>
   );
 }

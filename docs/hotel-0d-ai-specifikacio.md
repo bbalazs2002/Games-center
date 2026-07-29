@@ -156,6 +156,12 @@ A [scripts/simulate-hotel-ai-games.ts](../scripts/simulate-hotel-ai-games.ts)-se
 
 **Végső, elfogadott eredmény** (400 lépés, nettó vagyon alapján, 0 csőd egyik meccsben sem): EASY 50% (6/12), MEDIUM 50% (2/4), HARD 33% (3/9) — a Nehéz enyhén alulteljesít, de ez a mintaméret mellett (N=9) még belefér a statisztikai zajba, nem szisztematikus probléma többé. **Itt megálltunk** — a finomabb egyensúly-kérdéseket (súlyok pontos hangolása, miért pont 33% a Nehéz) implementáció utáni, valódi emberekkel való playtesztelésre hagytuk, az eredeti terv szerint (1. szakasz, "Nincs hatókörben").
 
+### 8.2 Valódi (emberrel közös) playteszt visszajelzés alapján: passzív vásárlás nulla telekkel
+
+Az első valódi ember+AI hot-seat playteszt (2026-07-27) visszajelzése szerint az AI túl passzívan vásárolt/épített, főleg amíg egyáltalán nem volt hotele. Visszavezetve: a 8.1/2. pontban leírt `UNBUILT_LOT_PORTFOLIO_FACTOR` (0.65) önmagában, ellensúlyozás nélkül **minden** beépítetlen telek megvásárlását nettó veszteségnek értékelte az egy-lépéses (EASY) kiértékelésben — a telek ára teljes egészében levonódik a készpénzből, de csak 65%-a térül meg portfólió-értékként, a bérleti potenciál pedig (beépítetlen telken) 0, egészen egy KÉSŐBBI körben történő építkezésig (ami ugyanabban a körben sosem történhet meg — vásárlás csak PURCHASE, építkezés csak CONSTRUCTION mezőn). Emiatt egy nulla telekkel induló AI a "kör vége" opciót következetesen jobbnak látta bármelyik vásárlásnál.
+
+**Javítás** (`heuristic.ts`: `FIRST_LOTS_BONUS = [1300, 500]`): egy, a birtokolt telkek számával lecsengő bónusz, ami csak az ELSŐ (majd kisebb súllyal a MÁSODIK) telek megszerzését segíti — a 8 hotel mindegyikének ára (500–3500) mellett az első vásárlás így nettó pozitívvá válik nulla telekkel indulva, miközben a már befektetett, nagyobb portfóliójú döntéseket változatlanul a meglévő készpénz/bérlet-számítás vezérli. Regressziós teszt: [strategy.test.ts](../src/shared/games/hotel/ai/strategy.test.ts) — EASY szinten, nulla telekkel, egy elérhető PURCHASE mezőn a választott akció `BUY_LOT`.
+
 ## 7. Hotel-0d.2 (jövőbeli fázis): csak-AI játékok végignézése és elemzése
 
 Külön, jövőbeli fázisként megjelölve (nem ezzel a körrel egyszerre) érdemes lesz olyan teljes játékokat lejátszatni/végignézni, ahol **minden szlotot AI tölt ki**, akár vegyes nehézségi szinteken (pl. Könnyű vs. Közepes vs. Nehéz egy 3-4 fős szobában) — ez adja a legkönnyebb módot arra, hogy:

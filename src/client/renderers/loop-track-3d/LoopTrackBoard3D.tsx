@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { a, useSpring } from '@react-spring/three';
@@ -68,6 +68,15 @@ export interface LoopTrackBoard3DProps<TSpaceData, TToken> {
    * off its real, correctly-positioned spot for no reason.
    */
   tokenSpreadRadius?: number;
+  /**
+   * Fires whenever the set of currently-mid-slide tokens goes from empty to
+   * non-empty or back — lets a game lock player input while ANY token is
+   * still animating (see docs/hotel-0c-specifikacio.md §5.11.1 — a real
+   * playtest request, "ne lehessen semmit csinálni amíg a lépés-animáció
+   * tart"). Deliberately game-agnostic: this component only reports the
+   * fact, a game decides what "locked" means for its own UI.
+   */
+  onAnyTokenAnimatingChange?: (animating: boolean) => void;
 }
 
 function inwardDirection(position: { x: number; z: number }): InwardDirection {
@@ -95,7 +104,28 @@ function stepPath(from: number, to: number, boardLength: number): number[] {
 
 const IDENTITY_QUATERNION = new Quaternion();
 
+/**
+ * `q` and `-q` represent the IDENTICAL rotation, but react-spring
+ * interpolates a quaternion tuple component-wise (not via SLERP) — animating
+ * between two target quaternions that happen to have opposite sign takes the
+ * long way around (visibly a 360°+ spin before settling on the correct final
+ * orientation, confirmed via a real playtest, 2026-07-29), even though the
+ * start/end orientations themselves are correct. Flipping `target`'s sign to
+ * match whichever the spring is already closer to (dot product >= 0) picks
+ * the equivalent representation that keeps this hop on the shortest path,
+ * without switching interpolation strategies.
+ */
+function alignQuaternionSign(
+  target: [number, number, number, number],
+  reference: [number, number, number, number],
+): [number, number, number, number] {
+  const dot = target[0] * reference[0] + target[1] * reference[1] + target[2] * reference[2] + target[3] * reference[3];
+  if (dot >= 0) return target;
+  return [-target[0], -target[1], -target[2], -target[3]];
+}
+
 interface AnimatedTokenProps {
+  id: string;
   spaceIndex: number;
   positions: Vector3[];
   rotations?: Quaternion[];
@@ -103,6 +133,7 @@ interface AnimatedTokenProps {
   tokenHeightOffset: number;
   offTrackPosition?: Vector3;
   offTrackRotation?: Quaternion;
+  onAnimatingChange?: (id: string, animating: boolean) => void;
   children: ReactNode;
 }
 
@@ -116,6 +147,7 @@ interface AnimatedTokenProps {
  * interpolate.
  */
 function AnimatedToken({
+  id,
   spaceIndex,
   positions,
   rotations,
@@ -123,6 +155,7 @@ function AnimatedToken({
   tokenHeightOffset,
   offTrackPosition,
   offTrackRotation,
+  onAnimatingChange,
   children,
 }: AnimatedTokenProps) {
   const previousIndexRef = useRef(spaceIndex);
@@ -158,14 +191,26 @@ function AnimatedToken({
       return;
     }
     const path = stepPath(from, spaceIndex, positions.length);
-    void api.start({
-      to: async (next) => {
-        for (const index of path) {
-          await next({ position: groupPositionAt(index), quaternion: groupQuaternionAt(index) });
-        }
-      },
-      config: { tension: 210, friction: 24 },
-    });
+    // Anchored to the spring's ACTUAL current value (not the logical "from"
+    // node's own baked quaternion) — matters if this move interrupts an
+    // already-in-flight animation, since react-spring continues from
+    // wherever the spring physically is, not from `from`.
+    let lastQuaternion = spring.quaternion.get() as [number, number, number, number];
+    onAnimatingChange?.(id, true);
+    // api.start() returns one AsyncResult (Promise) PER controlled spring —
+    // just one here, but Promise.all keeps this correct regardless.
+    void Promise.all(
+      api.start({
+        to: async (next) => {
+          for (const index of path) {
+            const targetQuaternion = alignQuaternionSign(groupQuaternionAt(index), lastQuaternion);
+            lastQuaternion = targetQuaternion;
+            await next({ position: groupPositionAt(index), quaternion: targetQuaternion });
+          }
+        },
+        config: { tension: 210, friction: 24 },
+      }),
+    ).then(() => onAnimatingChange?.(id, false));
     // groupPositionAt/groupQuaternionAt close over positions/rotations/offTrackPosition/offTrackRotation, so those are the real dependencies alongside spaceIndex.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spaceIndex, positions, rotations, offTrackPosition, offTrackRotation]);
@@ -204,11 +249,28 @@ export function LoopTrackBoard3D<TSpaceData, TToken>({
   sceneScale = 1,
   tokenHeightOffset,
   tokenSpreadRadius,
+  onAnyTokenAnimatingChange,
 }: LoopTrackBoard3DProps<TSpaceData, TToken>) {
   const generatedPositions = useMemo(() => computeLoopPositions(spaces.length), [spaces.length]);
   const positions = customPositions ?? generatedPositions;
   const resolvedTokenHeightOffset = tokenHeightOffset ?? 0.5 * sceneScale;
   const resolvedTokenSpreadRadius = tokenSpreadRadius ?? 0.3 * sceneScale;
+
+  // Tracks WHICH tokens are currently animating (not just a count), so two
+  // overlapping moves don't fire a spurious "stopped" the instant the first
+  // of them finishes while the second is still going.
+  const animatingTokenIdsRef = useRef<Set<string>>(new Set());
+  const handleTokenAnimatingChange = useCallback(
+    (id: string, animating: boolean) => {
+      const ids = animatingTokenIdsRef.current;
+      const wasAnyAnimating = ids.size > 0;
+      if (animating) ids.add(id);
+      else ids.delete(id);
+      const isAnyAnimating = ids.size > 0;
+      if (wasAnyAnimating !== isAnyAnimating) onAnyTokenAnimatingChange?.(isAnyAnimating);
+    },
+    [onAnyTokenAnimatingChange],
+  );
 
   return (
     <Canvas className={styles.canvas} camera={{ position: [0, 14 * sceneScale, 11 * sceneScale], fov: 50 }}>
@@ -236,6 +298,7 @@ export function LoopTrackBoard3D<TSpaceData, TToken>({
       {tokens.map(({ id, spaceIndex, token, offTrackPosition, offTrackRotation }, tokenIndex) => (
         <AnimatedToken
           key={id}
+          id={id}
           spaceIndex={spaceIndex}
           positions={positions}
           rotations={rotations}
@@ -243,6 +306,7 @@ export function LoopTrackBoard3D<TSpaceData, TToken>({
           tokenHeightOffset={resolvedTokenHeightOffset}
           offTrackPosition={offTrackPosition}
           offTrackRotation={offTrackRotation}
+          onAnimatingChange={handleTokenAnimatingChange}
         >
           {renderToken(token)}
         </AnimatedToken>

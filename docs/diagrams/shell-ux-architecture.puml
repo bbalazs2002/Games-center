@@ -1,0 +1,103 @@
+@startuml shell-ux-architecture
+title Játékfüggetlen UX-fejlesztések (2026-07-29, tervezés alatt)
+
+package "src/client/shell/" {
+  class gamesRegistry <<módosul>> {
+    +theme?: () => Promise<{default: string}>
+    +rules?: () => Promise<{default: ComponentType}>
+    +coverImage?: string
+  }
+  class useGameTheme <<új>> {
+    +useGameTheme(gameId): string | undefined
+  }
+  useGameTheme ..> gamesRegistry : lustán betölti .theme()
+
+  class RootLayout <<új>> {
+    <<layout route, <Outlet/>>>
+    FeedbackButton + FeedbackContext.Provider
+  }
+  class HomePage <<átírva>> {
+    csempe-rács, dobozkép + név
+    NEM game-témázott — semleges
+  }
+  class GameModeSelectPage <<módosul>> {
+    "Lokális játék" / "Multiplayer" / "Játékszabály"
+  }
+  class LobbyPage <<módosul>> {
+    useGameTheme(gameId) a wrapperen
+  }
+  RootLayout --> HomePage
+  RootLayout --> GameModeSelectPage
+  RootLayout --> LobbyPage
+  RootLayout --> "minden GamePage (Hotel/Dáma/Ramses)"
+  GameModeSelectPage ..> useGameTheme
+  LobbyPage ..> useGameTheme
+}
+
+package "src/client/ui-kit/" {
+  class RulesModal <<új>> {
+    gameId alapján lustán tölti be
+    a játék .rules() komponensét
+  }
+  class LoadingScreen <<új>> {
+    +gameId?: string
+    pulzáló "BETÖLTÉS…" felirat
+  }
+  class FeedbackButton <<új>>
+  class FeedbackModal <<új>> {
+    típus (Hiba/Javaslat) + szöveg
+    + FeedbackContext-ből olvasott
+      játék-kontextus, ha van
+  }
+  class FeedbackContext <<új>> {
+    useReportFeedbackContext(gameId, state)
+  }
+  RulesModal ..> useGameTheme
+  RulesModal ..> gamesRegistry : .rules()
+  LoadingScreen ..> useGameTheme
+  FeedbackModal ..> FeedbackContext : olvassa a legutóbb\npublikált {gameId, state}-et
+  FeedbackButton --> FeedbackModal
+}
+
+package "src/client/games/hotel|ramses|dama/ui/" {
+  class hotelTheme.module.css <<új>>
+  class ramsesTheme.module.css <<új>>
+  class "clusterBTheme.module.css\n(változatlan)" as damaTheme
+  class HotelGamePage {
+    useReportFeedbackContext('hotel', state)
+  }
+  hotelTheme.module.css <.. gamesRegistry : Hotel .theme()
+  ramsesTheme.module.css <.. gamesRegistry : Ramses .theme()
+  damaTheme <.. gamesRegistry : Dáma .theme()
+  HotelGamePage ..> FeedbackContext : publikálja a state-et\n(players + log)
+}
+
+package "MOTOR-BŐVÍTÉS a hibabejelentő kontextusához (4.2.1, eldöntve 2026-07-29)" {
+  class "DamaState.log: MoveLogEntry[]" as DamaLog <<új mező>>
+  class "RamsesState.log: RamsesLogEntry[]" as RamsesLog <<új mező>>
+}
+
+note bottom of HomePage
+  Mindhárom motor eseménynaplót ad a hibabejelentőnek (4.2.1):
+  Hotel: players + log (state.log, már ma is létezik).
+  Ramses: players + log (state.log, ÚJ ebben a körben).
+  Dáma: log (ÚJ), de nincs önálló "players" fogalma —
+  csak currentPlayer/board, a szabály természetéből adódóan.
+end note
+
+package "src/server/core/" {
+  class feedbackRoutes <<új>> {
+    POST /api/feedback
+    auth OPCIONÁLIS (hot-seat token nélkül is)
+  }
+}
+package "prisma/" {
+  class FeedbackReport <<új tábla>> {
+    type, message, gameType,
+    contextJson, userId?, createdAt
+  }
+}
+FeedbackModal --> feedbackRoutes : POST
+feedbackRoutes --> FeedbackReport
+
+@enduml

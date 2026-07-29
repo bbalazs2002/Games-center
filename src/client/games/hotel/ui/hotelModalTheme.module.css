@@ -1,0 +1,26 @@
+/**
+ * Shared "dark glass" theme for every Hotel modal (PlayerActionWheel.tsx AND
+ * HotelGamePage.tsx both import this — a plain CSS module, not a component,
+ * since CSS Modules classes can't cross a file boundary any other way).
+ * Passed to the shared ui-kit `Modal`'s `className` prop, which otherwise
+ * defaults to a plain white box — matching that default left every Hotel
+ * modal with pale, dark-theme-only text (originally tuned for the panels'
+ * own translucent dark backgrounds, e.g. `.lotDetail`) sitting on white,
+ * nearly unreadable — a real playtest complaint (2026-07-29). Matches the
+ * rest of Hotel's floating glass panels (StatusChip, OwnedLotsPanel, ...)
+ * instead of introducing a third, one-off look.
+ */
+.hotelModal {
+  background: rgba(15, 23, 32, 0.92);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  color: #f3ecd9;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(5, 10, 20, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.hotelModal h2,
+.hotelModal h3 {
+  color: #d4af37;
+}

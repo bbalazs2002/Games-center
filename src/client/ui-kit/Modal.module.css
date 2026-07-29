@@ -1,15 +1,57 @@
 .overlay {
   position: fixed;
   inset: 0;
+  /* Above every other floating layer in the app (game HUD panels, the 3D
+     canvas, wheel menus) — a modal is a hard interruption and must never be
+     partially covered by something else's own stacking context. */
+  z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* A modal taller than the viewport (e.g. a long lot detail list on a short
+     screen) scrolls the OVERLAY itself as a last resort, on top of .content's
+     own internal scroll below — belt and suspenders, never lets content run
+     off-screen with no way to reach it. */
+  overflow-y: auto;
+  padding: 2rem 1rem;
+}
+
+.content {
+  position: relative;
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem 2.75rem 1.5rem 1.5rem;
+  min-width: 20rem;
+  max-width: min(90vw, 40rem);
+  max-height: 85vh;
+  overflow-y: auto;
+  /* Explicit, not left to the CSS overflow spec's "visible → auto" pairing
+     rule (which `overflow-y: auto` alone would trigger) — any content wide
+     enough to need its own horizontal scroll (e.g. the nightly-rate table)
+     already scrolls itself via its own wrapper; the modal box itself should
+     never grow a second, redundant horizontal scrollbar. */
+  overflow-x: hidden;
+}
+
+.closeButton {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.content {
-  background: white;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  min-width: 20rem;
+.closeButton:hover {
+  background: rgba(0, 0, 0, 0.16);
 }

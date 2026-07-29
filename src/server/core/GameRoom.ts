@@ -2,7 +2,6 @@ import { Room, type Client } from 'colyseus';
 import type { Prisma } from '@prisma/client';
 import { ArraySchema, type Schema } from '@colyseus/schema';
 import { createWriteStream, mkdirSync, type WriteStream } from 'node:fs';
-import { join } from 'node:path';
 import type { GameRoomState } from '../../shared/core/GameRoomState';
 import { OpaqueGameStateSchema } from '../../shared/core/OpaqueGameStateSchema';
 import { PendingJoinRequest } from '../../shared/core/PendingJoinRequestSchema';
@@ -11,6 +10,7 @@ import type { Reducer } from '../../shared/core/types';
 import { verifyToken, type AuthPayload } from '../auth/jwt';
 import { prisma } from '../db/prismaClient';
 import { ensureAiUser } from './aiUsers';
+import { GAME_LOG_DIR, gameLogFilePath } from './gameLogFile';
 
 const FLUSH_INTERVAL_MS = 5000;
 // Defensive upper bound for a chain-capture-triggered run of consecutive AI
@@ -21,11 +21,13 @@ const MAX_AI_MOVES_PER_TRIGGER = 40;
 // this is a casual family app, not a competitive one. Widened 120s -> 300s
 // (2026-07-24, Hotel-0b planning) — same reasoning, just more generous.
 const RECONNECTION_WINDOW_SECONDS = 300;
-// Off by default — meant for offline analysis of AI-only test games (see
-// docs/hotel-0d-ai-specifikacio.md §4.8/7), not regular play, so it isn't
-// wired into any lobby UI yet, only reachable by passing enableGameLog at
-// room-creation time.
-const GAME_LOG_DIR = join(process.cwd(), 'logs', 'games');
+// Off by default for ONLINE rooms — meant for offline analysis of AI-only
+// test games (see docs/hotel-0d-ai-specifikacio.md §4.8/7), not regular
+// online play, so it isn't wired into any lobby UI, only reachable by
+// passing enableGameLog at room-creation time. Local/hot-seat games log
+// unconditionally instead, via the separate localGameLogRoutes.ts HTTP path
+// (2026-07-29) — GAME_LOG_DIR/gameLogFilePath are shared with that module so
+// both write into the exact same logs/games/ convention.
 
 export interface GameRoomCreateOptions {
   token?: string;
@@ -215,9 +217,7 @@ export abstract class GameRoom<
 
     if (options.enableGameLog) {
       mkdirSync(GAME_LOG_DIR, { recursive: true });
-      this.gameLogStream = createWriteStream(join(GAME_LOG_DIR, `${this.gameType}-${this.dbSessionId}.jsonl`), {
-        flags: 'a',
-      });
+      this.gameLogStream = createWriteStream(gameLogFilePath(this.gameType, this.dbSessionId), { flags: 'a' });
     }
 
     this.onMessage('action', (client: Client, action: unknown) => {

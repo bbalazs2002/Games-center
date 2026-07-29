@@ -135,12 +135,19 @@ export function rootSlices(
   ];
 }
 
-export function purchaseLotSlices(state: HotelState, dispatch: Dispatch): WheelMenuSlice[] {
+/**
+ * Picking a lot only ARMS the purchase — the actual `BUY_LOT` dispatch
+ * happens from `PurchaseConfirmModal`'s own confirm button once the player
+ * has seen the lot's full data (name, telek/lépcső/építkezés/éjszaka árak) —
+ * a real playtest request (2026-07-27): buying used to fire immediately on
+ * this one tap, with no chance to review what it'd cost.
+ */
+export function purchaseLotSlices(state: HotelState, onSelectLot: (lotId: string) => void): WheelMenuSlice[] {
   return getValidActions(state).buyableLots.map((lot) => ({
     id: `buy-${lot.id}`,
     label: `${lot.name} (${computeLotPurchasePrice(lot)})`,
     icon: <ShoppingCart />,
-    onSelect: () => dispatch({ type: 'BUY_LOT', lotId: lot.id }),
+    onSelect: () => onSelectLot(lot.id),
   }));
 }
 

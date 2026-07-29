@@ -320,6 +320,29 @@ describe('reducer — staircase rent (nights)', () => {
     expect(next.pendingNightsRollLotId).toBeNull();
   });
 
+  it('also skips the nights-roll procedure at a fully-built lot the landing player owns themself (rent would always be 0)', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 2 });
+    state = updateSpace(state, 'space-3', { staircaseForLotId: 'fujiyama' });
+    state = updatePlayer(state, 'player-1', { position: 1 }); // +1 roll lands on space-3
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+    expect(next.pendingNightsRollLotId).toBeNull();
+    expect(getPlayer(next, 'player-1').cash).toBe(15000);
+  });
+
+  it('still requires the nights roll landing on another owner\'s built-up staircase lot (unaffected by the self-owned skip)', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 2 });
+    state = updateSpace(state, 'space-3', { staircaseForLotId: 'fujiyama' });
+    state = updatePlayer(state, 'player-1', { position: 1 }); // +1 roll lands on space-3
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(next.turnPhase).toBe('AWAITING_NIGHTS_ROLL');
+    expect(next.pendingNightsRollLotId).toBe('fujiyama');
+  });
+
   it('a shortfall parks the turn in AWAITING_DEBT_RESOLUTION instead of going negative', () => {
     let state = twoPlayerState();
     state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 2 });

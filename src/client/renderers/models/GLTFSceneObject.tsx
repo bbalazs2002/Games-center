@@ -29,5 +29,14 @@ export function GLTFSceneObject({ url, objectName, colorTint, fallback = null, s
   const tinted = useMemo(() => (found ? cloneWithTint(found, colorTint) : null), [found, colorTint]);
 
   if (!tinted) return <>{fallback}</>;
-  return <primitive object={tinted} scale={scale} />;
+  // dispose={null}: `tinted`'s geometry (and any texture reference inside a
+  // cloned material — THREE.Material.clone() shares textures, doesn't
+  // deep-copy them) points back into the shared, cached `useGLTFScene` scene
+  // graph. R3F auto-disposes a <primitive>'s resources on unmount by
+  // default, which would otherwise permanently break that shared
+  // geometry/texture for every OTHER consumer of the same named object the
+  // moment any one instance unmounts (confirmed real bug via Hotel's
+  // GLTFSceneObject-alike staircase preview, see docs/hotel-0c-specifikacio.md
+  // §5.11.1) — never safe to skip for an object sourced from a shared cache.
+  return <primitive object={tinted} scale={scale} dispose={null} />;
 }

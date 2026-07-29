@@ -107,3 +107,19 @@ export function hotelStairsObjectName(spaceNumber: number, lotId: string): strin
 export function hotelCarObjectName(spaceNumber: number): string {
   return `car-${spaceNumber}`;
 }
+
+/** File-name prefix for each hotel's already-curated photos — gardens/{name}-garden.png, property-cards/{name}-{const,nights}.jpg. */
+export const HOTEL_IMAGE_NAME: Record<string, string> = {
+  waikiki: 'Waikiki',
+  royal: 'Royal',
+  letoile: 'Letoile',
+  boomerang: 'Boomerang',
+  tajmahal: 'TajMahal',
+  safari: 'Safari',
+  president: 'President',
+  fujiyama: 'Fujiyama',
+};
+
+export function propertyCardUrl(lotId: string, kind: 'const' | 'nights'): string {
+  return `/assets/hotel/property-cards/${HOTEL_IMAGE_NAME[lotId]}-${kind}.jpg`;
+}

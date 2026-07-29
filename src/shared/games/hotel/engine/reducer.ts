@@ -101,6 +101,21 @@ function afterDebtRaisingAction(state: HotelState, playerId: PlayerId): HotelSta
   return { ...next, pendingDebt: null, turnPhase: 'RESOLVING_SPACE' };
 }
 
+// A staircase right can be bought before anything is built on the lot (see
+// computeNightlyRent's own note), and a player never owes themselves rent
+// (applyRollNights' own isOwnHotel check) — both cases mean the roll's
+// outcome is a GUARANTEED zero, so applyRollMoveDice skips the whole
+// nights-roll procedure entirely instead of asking the landing player to
+// roll for a result that can never matter. Returns null (falls through to
+// the space's own type handling) in every other case, exactly as if there
+// were no staircase here at all.
+function staircaseLotWithPossibleRent(state: HotelState, playerId: PlayerId, space: HotelState['board'][number]): string | null {
+  if (!space.staircaseForLotId) return null;
+  const staircaseLot = getLot(state, space.staircaseForLotId);
+  const rentCouldBeOwed = staircaseLot.ownerId !== playerId && (staircaseLot.buildingsBuilt > 0 || staircaseLot.hasGarden);
+  return rentCouldBeOwed ? space.staircaseForLotId : null;
+}
+
 function applyRollMoveDice(state: HotelState, value: number): HotelState {
   if (!canRollMoveDice(state)) return state;
   const player = getCurrentPlayer(state);
@@ -129,17 +144,9 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
   }
 
   const space = next.board[newPosition];
-  // A staircase right can be bought before anything is built on the lot (see
-  // computeNightlyRent's own note) — in that case the rent would always be
-  // 0, so skip the whole nights-roll procedure entirely instead of asking
-  // the landing player to roll for a guaranteed-zero result. Falls through
-  // to the space's own type handling below, exactly as if there were no
-  // staircase here at all.
-  if (space.staircaseForLotId) {
-    const staircaseLot = getLot(next, space.staircaseForLotId);
-    if (staircaseLot.buildingsBuilt > 0 || staircaseLot.hasGarden) {
-      return { ...next, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: space.staircaseForLotId };
-    }
+  const owedStaircaseLotId = staircaseLotWithPossibleRent(next, player.id, space);
+  if (owedStaircaseLotId) {
+    return { ...next, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: owedStaircaseLotId };
   }
   if (space.type === 'START') return finishTurn(next);
   // FREE_BUILDING resolves automatically on landing — there's nothing for the

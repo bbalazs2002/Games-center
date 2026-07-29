@@ -31,6 +31,21 @@ describe('chooseHotelAiAction', () => {
     const action = chooseHotelAiAction(state, 'player-1', 'HARD');
     expect(action?.type).not.toBe('FORFEIT');
   });
+
+  // Regression test for a real playtest complaint (2026-07-29): "Az AI
+  // vásárolhatna és építkezhetne kicsit agresszívebben főleg, ha még
+  // egyáltalán nincs hotele." — root cause was UNBUILT_LOT_PORTFOLIO_FACTOR
+  // (heuristic.ts) alone making ANY unbuilt-lot purchase score as a net loss
+  // in the one-ply evaluation, with nothing crediting the strategic value of
+  // simply owning a first lot to build on later. Checked at EASY (own-ply
+  // depth 1) specifically, since that's the shallowest, most exposed case.
+  it('buys an available lot at EASY when it currently owns none (was skipped in favor of ending the turn)', () => {
+    const state = createInitialState(['Alice', 'Bob']);
+    // From the parkoló, a roll of 3 lands on space-3 (PURCHASE, fujiyama/boomerang both unowned).
+    const onPurchaseSpace = reducer(state, { type: 'ROLL_MOVE_DICE', value: 3 });
+    const action = chooseHotelAiAction(onPurchaseSpace, 'player-1', 'EASY');
+    expect(action?.type).toBe('BUY_LOT');
+  });
 });
 
 describe('AI-only full game (smoke test)', () => {

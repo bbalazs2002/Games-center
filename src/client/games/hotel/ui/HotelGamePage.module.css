@@ -207,10 +207,6 @@
   color: rgba(243, 236, 217, 0.65);
 }
 
-.cardPreview {
-  color: #1a202c;
-}
-
 .cardPreview h3 {
   margin: 0 0 0.75rem;
 }
@@ -226,4 +222,134 @@
   max-height: 70vh;
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.25);
+}
+
+/** Always-visible player list, bottom-right — the one corner not already
+    claimed by ownedLots (top-left), the wheel (top-right), or the game log
+    (bottom-left). See PlayerRoster's doc comment. */
+.roster {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  background: rgba(15, 23, 32, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(5, 10, 20, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.rosterRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: none;
+  padding: 0.2rem 0.3rem;
+  border-radius: 0.4rem;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rosterRow:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rosterRow:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.rosterRowBankrupt .rosterCash {
+  font-style: italic;
+}
+
+.rosterName {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.rosterCash {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(243, 236, 217, 0.75);
+}
+
+.playerInfoModal {
+  min-width: 16rem;
+}
+
+.playerInfoModal h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.playerInfoModal h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.playerInfoCash {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.playerInfoLots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.playerInfoLots li {
+  display: flex;
+  flex-direction: column;
+}
+
+.topCenterControls {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.topCenterButton {
+  border: none;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 32, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  color: rgba(243, 236, 217, 0.85);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(5, 10, 20, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.topCenterButton:hover {
+  color: #f3ecd9;
+}
+
+.newGameConfirmActions {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }

@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
+import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
 import { GridBoard3D, type GridBoard3DCell } from '../../../renderers/grid-3d/GridBoard3D';
 import { MaskedRamsesTransport } from './MaskedRamsesTransport';
 import { useRamsesHotSeatAi, type HotSeatAiSlots } from './useRamsesHotSeatAi';
@@ -135,12 +136,17 @@ export function RamsesGamePage({ playerNames, transport: providedTransport, myPl
     () => new LocalGameTransport<RamsesState, RamsesAction>(reducer, createInitialState(playerNames ?? [])),
     [playerNames],
   );
+  // Logs the TRUE (unmasked) state, deliberately wrapped before masking below
+  // — see LoggingGameTransport.ts. Only ever feeds into the `providedTransport
+  // ?? ...` fallback, so online play (which supplies its own transport) is
+  // unaffected, same as localTransport itself already was.
+  const loggedLocalTransport = useLocalGameLogger(localTransport, 'ramses');
   // Always wrapped — see docs/ramses-0c-ai-specifikacio.md §3.2: no consumer
   // (rendering OR the hot-seat AI hook below) ever sees the true state,
   // structurally, regardless of hot-seat or online mode.
   const transport = useMemo(
-    () => new MaskedRamsesTransport(providedTransport ?? localTransport),
-    [providedTransport, localTransport],
+    () => new MaskedRamsesTransport(providedTransport ?? loggedLocalTransport),
+    [providedTransport, loggedLocalTransport],
   );
   const [state, dispatch] = useGameTransport(transport);
   useRamsesHotSeatAi(transport, hotSeatAiSlots ?? {});

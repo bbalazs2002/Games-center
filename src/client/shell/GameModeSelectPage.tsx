@@ -16,7 +16,7 @@ export function GameModeSelectPage() {
     <div className={styles.page}>
       <h1>{game.label}</h1>
       <div className={styles.modes}>
-        <Button onClick={() => navigate(`/games/${game.id}/local`)}>Egyjátékos (hot-seat)</Button>
+        <Button onClick={() => navigate(`/games/${game.id}/local`)}>Lokális játék</Button>
         <Button variant="secondary" onClick={() => navigate(`/games/${game.id}/lobby`)}>
           Multiplayer
         </Button>

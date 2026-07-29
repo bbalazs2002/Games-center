@@ -1,0 +1,63 @@
+@startuml ramses-0a-special-cards-draft
+title Ramses-0a §8.2 — speciális kártyák adatmodell-kiegészítése (JAVASOLT VÁZLAT, még nem implementálva)
+
+note as N1
+  Ez a diagram CSAK azt a részt modellezi, ami már most,
+  nyitott kérdések nélkül eldönthető (lásd docs/ramses-0a-specifikacio.md
+  §8.2). A Homokvihar/Záró kártya feldolgozása pontosan megtervezhető;
+  az Ajándék/Kockázat/Fata Morgana/Sivatagi póker pontos, lépésenkénti
+  folyamata NYITOTT kérdés (§2.5) — ezeknek nincs itt turn-flow ága,
+  amíg a szabály nem tisztázódik.
+end note
+
+abstract class DrawnCard {
+  id: string
+}
+
+class TreasureCard {
+  treasureId: string
+  points: number
+}
+
+class SpecialCard {
+  specialType: SpecialCardType
+}
+
+enum SpecialCardType {
+  SANDSTORM
+  GIFT
+  RISK
+  FATA_MORGANA
+  POKER
+  FINISH
+}
+
+DrawnCard <|-- TreasureCard
+DrawnCard <|-- SpecialCard
+SpecialCard -- SpecialCardType
+
+class RamsesState {
+  board: RamsesCell[]
+  emptyCellId: string
+  drawPile: DrawnCard[]
+  activeCard: TreasureCard | null
+  treasureLayerRotated: boolean
+  players: Player[]
+  currentPlayerIndex: number
+  status: RamsesStatus
+  winnerIds: PlayerId[]
+}
+note right of RamsesState::treasureLayerRotated
+  Homokvihar hatása — a 6x8 rács 180°-ra
+  szimmetrikus, ezért egy flag elég: a
+  "hatékony" treasureId a flag alapján a
+  cella sajátja vagy a 180°-kal átellenes
+  cella EREDETI treasureId-je.
+  NYITOTT: vonatkozik-e a már felfedett
+  mezőkre is (§2.5/5. kérdés).
+end note
+
+RamsesState "1" *-- "0..*" DrawnCard : drawPile
+RamsesState "1" o-- "0..1" TreasureCard : activeCard
+
+@enduml

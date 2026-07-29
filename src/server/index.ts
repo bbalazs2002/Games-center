@@ -5,6 +5,7 @@ import { LobbyRoom, Server as ColyseusServer } from 'colyseus';
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { authRouter } from './auth/authRoutes';
+import { localGameLogRouter } from './core/localGameLogRoutes';
 import { DamaRoom } from './games/dama/DamaRoom';
 import { HotelRoom } from './games/hotel/HotelRoom';
 import { RamsesRoom } from './games/ramses/RamsesRoom';
@@ -13,6 +14,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRouter);
+app.use('/api/game-log', localGameLogRouter);
 
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error(error);

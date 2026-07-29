@@ -1,10 +1,13 @@
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTexture } from '@react-three/drei';
 import { a, useSpring } from '@react-spring/three';
 import { Vector3 } from 'three';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
+import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { Button } from '../../../ui-kit/Button';
 import { Modal } from '../../../ui-kit/Modal';
 import { cloneWithOpacity, cloneWithTint } from '../../../renderers/models/materialTint';
 import { useGLTFScene } from '../../../renderers/models/useGLTFScene';
@@ -12,20 +15,29 @@ import { LoopTrackBoard3D, type LoopTrackSpace, type LoopTrackToken } from '../.
 import { computeSplineLoopPositions } from '../../../renderers/loop-track-3d/computeLoopPositions';
 import { BOARD_SIZE, HOTEL_BOARD_CONTROL_POINTS, HOTEL_ZONE_CENTERS } from './hotelBoardLayout';
 import {
+  HOTEL_IMAGE_NAME,
   HOTEL_MODEL_URL,
   HOTEL_SCENE_SCALE,
   HOTEL_UP_ROTATION,
   hotelBuildingObjectName,
   hotelGardenObjectName,
   hotelStairsObjectName,
+  propertyCardUrl,
 } from './hotelModelAssets';
+import { clearPersistedHotelLocalGame, saveHotelLocalGame } from './hotelLocalGamePersistence';
 import { type StaircasePlacementMode } from './hotelMenuLevels';
+import modalTheme from './hotelModalTheme.module.css';
 import { useHotelParkingPositions, type HotelParkingTransform } from './useHotelParkingPositions';
 import { useHotelSpacePositions } from './useHotelSpacePositions';
 import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
 import { createInitialState } from '../../../../shared/games/hotel/engine/initialState';
 import { reducer } from '../../../../shared/games/hotel/engine/reducer';
-import { getFreeStaircaseCandidates, getStaircaseSpaceOptions, type FreeStaircaseCandidate } from '../../../../shared/games/hotel/engine/rules';
+import {
+  getFreeStaircaseCandidates,
+  getRemainingBidderIds,
+  getStaircaseSpaceOptions,
+  type FreeStaircaseCandidate,
+} from '../../../../shared/games/hotel/engine/rules';
 import { getOwnedLots, getWinner } from '../../../../shared/games/hotel/engine/selectors';
 import type { HotelLot, HotelState, Player, PlayerId } from '../../../../shared/games/hotel/engine/state';
 import { GameLogPanel } from './GameLogPanel';
@@ -42,6 +54,7 @@ const PLAYER_COLOR_NAMES = ['piros', 'kék', 'zöld', 'sárga'];
 
 interface HotelTokenData {
   color: string;
+  playerId: PlayerId;
 }
 
 /**
@@ -103,7 +116,14 @@ function HotelModelObject({
   if (!prepared) return <>{fallback}</>;
   return (
     <group rotation={HOTEL_UP_ROTATION}>
-      <primitive object={prepared} />
+      {/* dispose={null}: `prepared`'s geometry is a SHARED reference into the
+          cached `useGLTFScene` scene graph (three.js's own Mesh.copy never
+          deep-clones geometry) — R3F's default auto-dispose-on-unmount would
+          otherwise permanently destroy that shared geometry for every other
+          consumer of the same named object the moment ANY one of them
+          unmounts (confirmed root cause of "lépcső eltűnik lerakás után",
+          see docs/hotel-0c-specifikacio.md §5.11.1). */}
+      <primitive object={prepared} dispose={null} />
     </group>
   );
 }
@@ -125,18 +145,6 @@ function HotelBoardModel() {
     </>
   );
 }
-
-/** File-name prefix for each hotel's already-curated photos — gardens/{name}-garden.png, property-cards/{name}-{const,nights}.jpg. */
-const HOTEL_IMAGE_NAME: Record<string, string> = {
-  waikiki: 'Waikiki',
-  royal: 'Royal',
-  letoile: 'Letoile',
-  boomerang: 'Boomerang',
-  tajmahal: 'TajMahal',
-  safari: 'Safari',
-  president: 'President',
-  fujiyama: 'Fujiyama',
-};
 
 /** The real garden photo, flat on the board next to the hotel's buildings — a separate Suspense boundary so a garden texture loading later doesn't flicker the rest of the board. Pops/fades in on mount (i.e. the moment `hasGarden` first flips true) — see docs/hotel-animacio-specifikacio.md §4.3. Used as the fallback for the real Hotel-0c.2 garden model, so it now takes an explicit `center` (absolute position) instead of relying on a wrapping group. */
 function GardenDecal({ lotId, center }: { lotId: string; center: Vector3 }) {
@@ -311,7 +319,12 @@ function StaircaseCandidateMarker({
         document.body.style.cursor = 'auto';
       }}
     >
-      <primitive object={prepared} />
+      {/* dispose={null} — see HotelModelObject's identical comment. This is
+          the component whose unmount (on commit OR Mégse) originally
+          triggered the bug: its geometry AND its material's own texture
+          reference (THREE.Material.clone() shares textures, doesn't deep-copy
+          them either) both point back into the shared cached scene. */}
+      <primitive object={prepared} dispose={null} />
     </group>
   );
 }
@@ -367,10 +380,6 @@ function describeLot(state: HotelState, lot: HotelLot): string {
   return parts.join(', ');
 }
 
-function propertyCardUrl(lotId: string, kind: 'const' | 'nights'): string {
-  return `/assets/hotel/property-cards/${HOTEL_IMAGE_NAME[lotId]}-${kind}.jpg`;
-}
-
 /**
  * The current player's own lots, so they can plan construction/staircase
  * moves without hunting the board. Each row's thumbnail is the real
@@ -413,7 +422,7 @@ function OwnedLotsPanel({ state }: { state: HotelState }) {
           which (per the CSS spec) makes it a containing block for `position:
           fixed` descendants — the modal would end up clipped/positioned
           inside the small panel instead of centered over the whole page. */}
-      <Modal open={previewLot !== undefined} onClose={() => setPreviewLotId(null)}>
+      <Modal open={previewLot !== undefined} onClose={() => setPreviewLotId(null)} className={modalTheme.hotelModal}>
         {previewLot && (
           <div className={styles.cardPreview}>
             <h3>{previewLot.name}</h3>
@@ -493,6 +502,82 @@ function StatusChip({ state, myPlayer, isCurrentPlayerAi }: { state: HotelState;
   );
 }
 
+/**
+ * Always-visible roster of every player (name, color, cash) — a real
+ * playtest request (2026-07-27): before this, only the CURRENT player's
+ * money/lots were visible anywhere on screen, so checking an opponent's
+ * standing meant waiting for their turn. Clicking a row (or a player's own
+ * token on the board, see `HotelCarToken`) opens `PlayerInfoModal` with that
+ * player's full detail, regardless of whose turn it currently is.
+ */
+function PlayerRoster({ state, onInspect }: { state: HotelState; onInspect: (playerId: PlayerId) => void }) {
+  return (
+    <div className={styles.roster}>
+      {state.players.map((player, index) => (
+        <button
+          key={player.id}
+          className={[styles.rosterRow, player.bankrupt && styles.rosterRowBankrupt].filter(Boolean).join(' ')}
+          onClick={() => onInspect(player.id)}
+          disabled={player.bankrupt}
+        >
+          <span className={styles.colorSwatch} style={{ backgroundColor: PLAYER_COLORS[index % PLAYER_COLORS.length] }} />
+          <span className={styles.rosterName}>{player.name}</span>
+          <span className={styles.rosterCash}>
+            {player.bankrupt ? 'csődben' : player.cash.toLocaleString('hu-HU')}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Full detail (name, color, cash, owned lots) for ANY player, opened either
+ * from `PlayerRoster` or by clicking that player's token on the board — see
+ * `PlayerRoster`'s doc comment for the playtest request behind this.
+ */
+function PlayerInfoModal({
+  state,
+  playerId,
+  onClose,
+}: {
+  state: HotelState;
+  playerId: PlayerId | null;
+  onClose: () => void;
+}) {
+  const playerIndex = playerId ? state.players.findIndex((p) => p.id === playerId) : -1;
+  const player = playerIndex >= 0 ? state.players[playerIndex] : undefined;
+  const lots = player ? getOwnedLots(state, player.id) : [];
+
+  return (
+    <Modal open={player !== undefined} onClose={onClose} className={modalTheme.hotelModal}>
+      {player && (
+        <div className={styles.playerInfoModal}>
+          <h2>
+            <span className={styles.colorSwatch} style={{ backgroundColor: PLAYER_COLORS[playerIndex % PLAYER_COLORS.length] }} />
+            {player.name}
+          </h2>
+          <p className={styles.playerInfoCash}>Pénz: {player.cash.toLocaleString('hu-HU')}</p>
+          {player.bankrupt && <p>Ez a játékos csődbe ment.</p>}
+          <h3>Telkek</h3>
+          {lots.length === 0 ? (
+            <p>Nincs telke.</p>
+          ) : (
+            <ul className={styles.playerInfoLots}>
+              {lots.map((lot) => (
+                <li key={lot.id}>
+                  <span className={styles.lotName}>{lot.name}</span>
+                  <span className={styles.lotDetail}>{describeLot(state, lot)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 function PlaceholderToken({ color }: { color: string }) {
   const s = HOTEL_SCENE_SCALE;
   return (
@@ -516,7 +601,7 @@ function PlaceholderToken({ color }: { color: string }) {
  * absolute" usage for buildings/board (which has no outer group already
  * supplying its own orientation). Falls back to the placeholder cone.
  */
-function HotelCarToken({ color }: { color: string }) {
+function HotelCarToken({ color, onClick }: { color: string; onClick: () => void }) {
   const scene = useGLTFScene(HOTEL_MODEL_URL);
   const tinted = useMemo(() => {
     const source = scene?.getObjectByName('car-1');
@@ -529,12 +614,38 @@ function HotelCarToken({ color }: { color: string }) {
     return clone;
   }, [scene, color]);
 
-  if (!tinted) return <PlaceholderToken color={color} />;
-  return <primitive object={tinted} />;
-}
+  // Clicking a token reveals that player's own data (money/lots/name) even
+  // when it's not their turn — a real playtest request (2026-07-27):
+  // otherwise only the current player's panel is visible at all.
+  const handleClick = (event: { stopPropagation: () => void }) => {
+    event.stopPropagation();
+    onClick();
+  };
+  const handlePointerOver = (event: { stopPropagation: () => void }) => {
+    event.stopPropagation();
+    document.body.style.cursor = 'pointer';
+  };
+  const handlePointerOut = () => {
+    document.body.style.cursor = 'auto';
+  };
 
-function renderPlayerToken(data: HotelTokenData): ReactNode {
-  return <HotelCarToken color={data.color} />;
+  if (!tinted) {
+    return (
+      <group onClick={handleClick} onPointerOver={handlePointerOver} onPointerOut={handlePointerOut}>
+        <PlaceholderToken color={color} />
+      </group>
+    );
+  }
+  return (
+    <group onClick={handleClick} onPointerOver={handlePointerOver} onPointerOut={handlePointerOut}>
+      {/* dispose={null} — see HotelModelObject's comment on the same issue.
+          Matters here specifically because a token UNMOUNTS when its player
+          goes bankrupt (buildHotelTokens filters them out) — without this,
+          that would silently destroy the shared 'car-1' geometry every
+          remaining player's own token clone also depends on. */}
+      <primitive object={tinted} dispose={null} />
+    </group>
+  );
 }
 
 /** Which player-color a just-purchased lot should pulse in, keyed by `lotId` — see `PurchasePulse`. */
@@ -545,6 +656,35 @@ function buildRecentPurchaseColors(purchases: RecentLotPurchase[], players: Play
     if (playerIndex >= 0) colors[purchase.lotId] = PLAYER_COLORS[playerIndex % PLAYER_COLORS.length];
   }
   return colors;
+}
+
+/**
+ * Whether the wheel should currently accept input. Normally just "is it MY
+ * turn (online) and is the current player not AI-controlled (hot-seat)" —
+ * but `currentPlayerIndex` stays pointed at whoever STARTED an auction (the
+ * auctioneer) for its ENTIRE duration, while `PLACE_BID`/`PASS_BID` are
+ * scoped to individual bidders, not the current player (see rules.ts's
+ * canPlaceBid/canPassBid — any non-auctioneer may act, not just whoever's
+ * turn it nominally is). Gating on `currentPlayer` alone during an auction
+ * wrongly hides the wheel from a human bidder whenever the auctioneer
+ * happens to be AI-controlled (hot-seat) or isn't `myPlayer` (online) —
+ * confirmed as a real, game-softlocking bug (playtest 2026-07-29): an
+ * AI-started auction left a human bidder with no way to bid or pass at all.
+ */
+function isWheelInteractive(
+  state: HotelState,
+  myPlayer: PlayerId | undefined,
+  hotSeatAiSlots: HotSeatAiSlots,
+  currentPlayer: Player,
+): boolean {
+  if (state.turnPhase === 'AUCTION_IN_PROGRESS') {
+    const remainingBidderIds = getRemainingBidderIds(state);
+    const isMineOrHotSeat = !myPlayer || remainingBidderIds.includes(myPlayer);
+    const awaitingAHuman = remainingBidderIds.some((id) => hotSeatAiSlots[id] === undefined);
+    return isMineOrHotSeat && awaitingAHuman;
+  }
+  const isCurrentPlayerAi = hotSeatAiSlots[currentPlayer.id] !== undefined;
+  return (!myPlayer || myPlayer === currentPlayer.id) && !isCurrentPlayerAi;
 }
 
 /**
@@ -570,7 +710,7 @@ function buildHotelTokens(
         // animate this token's moves instead of unmounting/remounting it.
         id: player.id,
         spaceIndex: player.position,
-        token: { color: PLAYER_COLORS[colorIndex] },
+        token: { color: PLAYER_COLORS[colorIndex], playerId: player.id },
         offTrackPosition: parking?.position,
         offTrackRotation: parking?.rotation,
       };
@@ -578,14 +718,18 @@ function buildHotelTokens(
 }
 
 export interface HotelGamePageProps {
-  /** Hot-seat only — ignored (a throwaway LocalGameTransport is still built but never used) once `transport` is provided. */
+  /** Local mode only — ignored (a throwaway LocalGameTransport is still built but never used) once `transport` is provided. */
   playerNames?: string[];
-  /** If omitted, a local LocalGameTransport is created for hot-seat mode — see docs/dama-0b-multiplayer-specifikacio.md §6.2 and docs/hotel-0b-multiplayer-specifikacio.md. */
+  /** If omitted, a local LocalGameTransport is created for local (formerly "hot-seat") mode — see docs/dama-0b-multiplayer-specifikacio.md §6.2 and docs/hotel-0b-multiplayer-specifikacio.md. */
   transport?: GameTransport<HotelState, HotelAction>;
   /** Online mode only: which player slot the local client controls — gates PlayerActionWheel's interactivity. */
   myPlayer?: PlayerId;
-  /** Hot-seat only — which of THIS game's player slots (if any) are AI-controlled, and at what difficulty. Ignored (and has no effect) once `transport` is provided, since online AI is already driven server-side by GameRoom. */
+  /** Local mode only — which of THIS game's player slots (if any) are AI-controlled, and at what difficulty. Ignored (and has no effect) once `transport` is provided, since online AI is already driven server-side by GameRoom. */
   hotSeatAiSlots?: HotSeatAiSlots;
+  /** Local mode only — resumes from a previously persisted game (see hotelLocalGamePersistence.ts) instead of a fresh `createInitialState(playerNames)`. Ignored once `transport` is provided. */
+  initialGameState?: HotelState;
+  /** Local mode only — lets the player abandon the current local game and return to HotelSetupPage's form. Omitted (no "Új játék" affordance shown) in online mode. */
+  onRequestNewGame?: () => void;
 }
 
 /**
@@ -594,12 +738,91 @@ export interface HotelGamePageProps {
  * or networked) and renders it, here via LoopTrackBoard3D + PlayerActionWheel
  * instead of GridBoard2D. See docs/hotel-0a-specifikacio.md, docs/hotel-0b-multiplayer-specifikacio.md.
  */
-export function HotelGamePage({ playerNames, transport: providedTransport, myPlayer, hotSeatAiSlots }: HotelGamePageProps) {
+/**
+ * "Kilépés a játékból" (back to HotelSetupPage's mode picker, keeping the
+ * persisted game intact — see hotelLocalGamePersistence.ts) and "Új játék"
+ * (discards it) — grouped into their own component (own state/modals) purely
+ * to keep HotelGamePage itself under this codebase's eslint complexity limit,
+ * same established pattern as prior complexity fixes elsewhere (see project
+ * memory). Local mode only — never rendered in online mode.
+ */
+function LocalGameControls({ onRequestNewGame }: { onRequestNewGame?: () => void }) {
+  const navigate = useNavigate();
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const [newGameConfirmOpen, setNewGameConfirmOpen] = useState(false);
+
+  return (
+    <>
+      {/* Top-center — the one corner not already claimed by ownedLots, the
+          wheel, the game log, or the roster. Without a "new game" escape
+          hatch, a resumed game could never be abandoned for a fresh one
+          short of clearing storage by hand. */}
+      <div className={styles.topCenterControls}>
+        <button className={styles.topCenterButton} onClick={() => setExitConfirmOpen(true)}>
+          Kilépés a játékból
+        </button>
+        {onRequestNewGame && (
+          <button className={styles.topCenterButton} onClick={() => setNewGameConfirmOpen(true)}>
+            Új játék
+          </button>
+        )}
+      </div>
+      <Modal open={exitConfirmOpen} onClose={() => setExitConfirmOpen(false)} className={modalTheme.hotelModal}>
+        <h2>Kilépsz a játékból?</h2>
+        <p>A játék állása megmarad — legközelebb ugyanide léphetsz vissza a "Lokális játék" gombbal.</p>
+        <div className={styles.newGameConfirmActions}>
+          <Button variant="secondary" onClick={() => setExitConfirmOpen(false)}>
+            Mégse
+          </Button>
+          <Button onClick={() => navigate('/games/hotel')}>Igen, kilépek</Button>
+        </div>
+      </Modal>
+      {onRequestNewGame && (
+        <Modal open={newGameConfirmOpen} onClose={() => setNewGameConfirmOpen(false)} className={modalTheme.hotelModal}>
+          <h2>Új játékot kezdesz?</h2>
+          <p>A jelenlegi játék elvész, nem vonható vissza.</p>
+          <div className={styles.newGameConfirmActions}>
+            <Button variant="secondary" onClick={() => setNewGameConfirmOpen(false)}>
+              Mégse
+            </Button>
+            <Button
+              onClick={() => {
+                setNewGameConfirmOpen(false);
+                clearPersistedHotelLocalGame();
+                onRequestNewGame();
+              }}
+            >
+              Igen, új játék
+            </Button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+export function HotelGamePage({
+  playerNames,
+  transport: providedTransport,
+  myPlayer,
+  hotSeatAiSlots,
+  initialGameState,
+  onRequestNewGame,
+}: HotelGamePageProps) {
+  // Local mode only (providedTransport is always set in online mode) — see
+  // the persistence effect and LocalGameControls below.
+  const isLocalMode = providedTransport === undefined;
   const localTransport = useMemo(
-    () => new LocalGameTransport<HotelState, HotelAction>(reducer, createInitialState(playerNames ?? [])),
+    () => new LocalGameTransport<HotelState, HotelAction>(reducer, initialGameState ?? createInitialState(playerNames ?? [])),
+    // Deliberately NOT keyed on initialGameState — that's only ever meant to
+    // seed the transport once, at mount (a resumed game), same as playerNames
+    // for a fresh one; re-keying on it would just restart the reducer's own
+    // state to a stale JSON snapshot every time the persistence effect saves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [playerNames],
   );
-  const transport = providedTransport ?? localTransport;
+  const loggedLocalTransport = useLocalGameLogger(localTransport, 'hotel');
+  const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
   useHotSeatAi(transport, hotSeatAiSlots ?? {});
 
@@ -631,10 +854,21 @@ export function HotelGamePage({ playerNames, transport: providedTransport, myPla
 
   const winner = getWinner(state);
   const currentPlayer = state.players[state.currentPlayerIndex];
-  // Hot-seat only (hotSeatAiSlots is empty in online mode) — hides the wheel
-  // while an AI-controlled slot's turn is being decided/applied, so a human
-  // sharing the device doesn't try to act on its behalf mid-thought.
+  // Hot-seat only (hotSeatAiSlots is empty in online mode) — used by
+  // StatusChip's "AI gondolkodik…" label. NOT used for the wheel's own
+  // interactivity — see isWheelInteractive for why that needs to be a
+  // separate, auction-aware check.
   const isCurrentPlayerAi = (hotSeatAiSlots ?? {})[currentPlayer.id] !== undefined;
+  // While ANY token is still mid-slide, the wheel locks entirely — a real
+  // playtest request (2026-07-28): clicking ahead of the animation looked
+  // like nothing happened, but was really queuing an action against a board
+  // that hadn't caught up yet.
+  const [isTokenAnimating, setIsTokenAnimating] = useState(false);
+  const wheelInteractive = isWheelInteractive(state, myPlayer, hotSeatAiSlots ?? {}, currentPlayer) && !isTokenAnimating;
+
+  // Which player's full detail is currently open (via PlayerRoster or a
+  // board-token click) — see PlayerInfoModal's doc comment.
+  const [inspectedPlayerId, setInspectedPlayerId] = useState<PlayerId | null>(null);
 
   // Which staircase-space picker is armed, if any — the actual space choice
   // happens by clicking a translucent preview on the board (see
@@ -658,11 +892,26 @@ export function HotelGamePage({ playerNames, transport: providedTransport, myPla
     setStaircasePlacement(null);
   }
 
+  // Resuming across a reload (see hotelLocalGamePersistence.ts) — a real
+  // playtest request (2026-07-27): reloading used to always drop back to
+  // HotelSetupPage's blank form, losing the game in progress. Re-saves on
+  // every dispatch; once the game actually ends, clears it instead — a
+  // finished game has nothing left to resume into.
+  useEffect(() => {
+    if (!isLocalMode) return;
+    if (winner) {
+      clearPersistedHotelLocalGame();
+    } else {
+      saveHotelLocalGame({ state, hotSeatAiSlots: hotSeatAiSlots ?? {} });
+    }
+  }, [isLocalMode, state, hotSeatAiSlots, winner]);
+
   if (winner) {
     return (
       <div className={styles.page}>
         <h1>Vége a játéknak!</h1>
         <p>Győztes: {winner.name}</p>
+        {isLocalMode && onRequestNewGame && <Button onClick={onRequestNewGame}>Új játék</Button>}
       </div>
     );
   }
@@ -674,7 +923,9 @@ export function HotelGamePage({ playerNames, transport: providedTransport, myPla
           spaces={spaces}
           renderSpace={renderHotelSpace}
           tokens={tokens}
-          renderToken={renderPlayerToken}
+          renderToken={(data) => (
+            <HotelCarToken color={data.color} onClick={() => setInspectedPlayerId(data.playerId)} />
+          )}
           positions={boardPositions}
           rotations={boardRotations}
           sceneScale={HOTEL_SCENE_SCALE}
@@ -688,6 +939,7 @@ export function HotelGamePage({ playerNames, transport: providedTransport, myPla
           // just push each color visibly off its real car-N/car-0-<color>
           // position for no reason (see docs/hotel-0c-specifikacio.md §5.9).
           tokenSpreadRadius={0}
+          onAnyTokenAnimatingChange={setIsTokenAnimating}
           background={
             <>
               <HotelBoardModel />
@@ -705,12 +957,15 @@ export function HotelGamePage({ playerNames, transport: providedTransport, myPla
         <PlayerActionWheel
           state={state}
           dispatch={dispatch}
-          interactive={(!myPlayer || myPlayer === currentPlayer.id) && !isCurrentPlayerAi}
+          interactive={wheelInteractive}
           staircasePlacement={staircasePlacement}
           onStartStaircasePlacement={setStaircasePlacement}
           onCancelStaircasePlacement={() => setStaircasePlacement(null)}
         />
         <StatusChip state={state} myPlayer={myPlayer} isCurrentPlayerAi={isCurrentPlayerAi} />
+        <PlayerRoster state={state} onInspect={setInspectedPlayerId} />
+        <PlayerInfoModal state={state} playerId={inspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />
+        {isLocalMode && <LocalGameControls onRequestNewGame={onRequestNewGame} />}
       </div>
     </div>
   );

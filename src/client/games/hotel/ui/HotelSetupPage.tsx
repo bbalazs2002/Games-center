@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../../../ui-kit/Button';
 import type { HotelAiDifficulty } from '../../../../shared/games/hotel/ai';
 import { HotelGamePage } from './HotelGamePage';
+import { loadPersistedHotelLocalGame, type PersistedHotelLocalGame } from './hotelLocalGamePersistence';
 import type { HotSeatAiSlots } from './useHotSeatAi';
 import styles from './HotelSetupPage.module.css';
 
@@ -35,9 +36,35 @@ export function HotelSetupPage() {
   const [aiFlags, setAiFlags] = useState<boolean[]>(() => Array(MIN_PLAYERS).fill(false));
   const [difficulty, setDifficulty] = useState<HotelAiDifficulty>('MEDIUM');
   const [started, setStarted] = useState(false);
+  // Read once, at mount — a fresh HotelSetupPage mount is exactly what a page
+  // reload produces, so this is the resume-across-reload entry point (see
+  // hotelLocalGamePersistence.ts). null once the player deliberately starts a
+  // new game (HotelGamePage's own "Új játék" clears storage first).
+  const [resumedGame, setResumedGame] = useState<PersistedHotelLocalGame | null>(() => loadPersistedHotelLocalGame());
+
+  function startFresh(): void {
+    setResumedGame(null);
+    setStarted(false);
+  }
+
+  if (resumedGame) {
+    return (
+      <HotelGamePage
+        initialGameState={resumedGame.state}
+        hotSeatAiSlots={resumedGame.hotSeatAiSlots}
+        onRequestNewGame={startFresh}
+      />
+    );
+  }
 
   if (started) {
-    return <HotelGamePage playerNames={names} hotSeatAiSlots={buildAiSlots(names, aiFlags, difficulty)} />;
+    return (
+      <HotelGamePage
+        playerNames={names}
+        hotSeatAiSlots={buildAiSlots(names, aiFlags, difficulty)}
+        onRequestNewGame={startFresh}
+      />
+    );
   }
 
   function updateName(index: number, value: string): void {
