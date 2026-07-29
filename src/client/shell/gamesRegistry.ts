@@ -42,6 +42,7 @@ export const GAMES_REGISTRY: GameDescriptor[] = [
     online: { supportsAiOpponent: true },
     theme: () => import('../renderers/grid-2d/clusterBTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/dama/ui/DamaRules'),
+    coverImage: '/assets/dama/box.jpg',
   },
   {
     id: 'hotel',
@@ -50,6 +51,7 @@ export const GAMES_REGISTRY: GameDescriptor[] = [
     online: { playerCountRange: [2, 4], supportsAiOpponentCount: true },
     theme: () => import('../games/hotel/ui/hotelTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/hotel/ui/HotelRules'),
+    coverImage: '/assets/hotel/box.jpg',
   },
   {
     id: 'ramses',
@@ -58,5 +60,6 @@ export const GAMES_REGISTRY: GameDescriptor[] = [
     online: { playerCountRange: [2, 5], supportsAiOpponentCount: true },
     theme: () => import('../games/ramses/ui/ramsesTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/ramses/ui/RamsesRules'),
+    coverImage: '/assets/ramses/box.jpg',
   },
 ];

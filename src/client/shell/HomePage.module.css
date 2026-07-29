@@ -72,19 +72,28 @@
 
 .cover {
   width: 100%;
-  aspect-ratio: 3 / 4;
+  /* Real box-cover photos (landscape product shots, varying angles/aspect
+     ratios) fit here, not portrait poster art — 4/3 comfortably fits all of
+     them with only a mild letterbox, see resize-box-covers.mjs. */
+  aspect-ratio: 4 / 3;
   border-radius: 0.6rem;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--home-accent);
+  padding: 0.35rem;
 }
 
 .coverImage {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* contain, not cover — a hardcoded crop risks cutting off a game's own
+     logo/title, which varies in position per box photo (see box.jpg outputs
+     for Hotel/Ramses/Dáma); the accent-color mat behind it (from .cover)
+     reads as a deliberate frame rather than empty space. */
+  object-fit: contain;
+  border-radius: 0.35rem;
 }
 
 .monogram {

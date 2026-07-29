@@ -1,7 +1,13 @@
 .page {
   position: relative;
   min-height: 100%;
-  padding: 2.5rem 1.5rem 4rem;
+  /* Top bumped to 4rem (from 2.5rem) — matches the clearance convention
+     used everywhere else a fixed top overlay is present (MenuNav on the
+     setup pages, GameModeSelectPage) — LocalGameControls's own
+     "Kilépés a játékból"/"Új játék" row is `position: absolute; top: 1rem`
+     and previously overlapped the board panel's own top edge here, since
+     2.5rem wasn't enough clearance for the button row's own height. */
+  padding: 4rem 1.5rem 4rem;
 }
 
 .tableLayout {

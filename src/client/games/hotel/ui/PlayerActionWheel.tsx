@@ -12,7 +12,7 @@ import { Button } from '../../../ui-kit/Button';
 import { Modal } from '../../../ui-kit/Modal';
 import { WheelMenu, type WheelMenuSlice } from '../../../ui-kit/WheelMenu';
 import { DiceHUD } from './DiceHUD';
-import { propertyCardUrl } from './hotelModelAssets';
+import { HotelLotFacts } from './HotelLotFacts';
 import modalTheme from './hotelModalTheme.module.css';
 import {
   auctionBiddingSlices,
@@ -117,54 +117,7 @@ function PurchaseConfirmModal({
       {lot && (
         <div className={styles.purchaseConfirm}>
           <h2>{lot.name}</h2>
-          <div className={styles.purchaseCardImages}>
-            <img src={propertyCardUrl(lot.id, 'const')} alt="Építési árak" />
-            <img src={propertyCardUrl(lot.id, 'nights')} alt="Éjszaka-árak" />
-          </div>
-          <dl className={styles.purchaseFacts}>
-            <dt>Telek ára</dt>
-            <dd>{computeLotPurchasePrice(lot)}</dd>
-            <dt>Lépcső ára</dt>
-            <dd>{lot.staircasePrice}</dd>
-          </dl>
-          <h3>Építkezés költsége</h3>
-          <ul className={styles.purchaseBuildList}>
-            {lot.buildingPrices.map((price, index) => (
-              <li key={index}>
-                {index + 1}. épület: {price}
-              </li>
-            ))}
-            <li>Kert: {lot.gardenPrice}</li>
-          </ul>
-          <h3>Éjszakák ára</h3>
-          <div className={styles.purchaseNightsTableWrap}>
-            <table className={styles.purchaseNightsTable}>
-              <thead>
-                <tr>
-                  <th>Épület</th>
-                  {lot.nightlyRates[0].map((_, nightIndex) => (
-                    <th key={nightIndex}>{nightIndex + 1} éj</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {lot.nightlyRates.map((row, tierIndex) => (
-                  <tr key={tierIndex}>
-                    <th>{tierIndex + 1}.</th>
-                    {row.map((price, nightIndex) => (
-                      <td key={nightIndex}>{price}</td>
-                    ))}
-                  </tr>
-                ))}
-                <tr>
-                  <th>+kert</th>
-                  {lot.gardenNightlyRates.map((price, nightIndex) => (
-                    <td key={nightIndex}>{price}</td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <HotelLotFacts lot={lot} />
           <div className={styles.selectionActions}>
             <Button variant="secondary" onClick={onCancel}>
               Mégse

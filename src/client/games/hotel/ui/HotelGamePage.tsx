@@ -25,6 +25,7 @@ import {
   hotelStairsObjectName,
   propertyCardUrl,
 } from './hotelModelAssets';
+import { HotelLotFacts } from './HotelLotFacts';
 import { clearPersistedHotelLocalGame, saveHotelLocalGame } from './hotelLocalGamePersistence';
 import { type StaircasePlacementMode } from './hotelMenuLevels';
 import modalTheme from './hotelModalTheme.module.css';
@@ -230,7 +231,14 @@ function HotelBuildingClusters({
         const center = HOTEL_ZONE_CENTERS[lot.id];
         const purchaseColor = recentPurchaseColors[lot.id];
         const assetName = HOTEL_IMAGE_NAME[lot.id];
-        const staircaseSpaceIndex = board.findIndex((space) => space.staircaseForLotId === lot.id);
+        // A hotel can hold staircases on MULTIPLE spaces at once (only one
+        // staircase per SPACE is capped, not per lot — see
+        // docs/hotel-0a-specifikacio.md §3.1 "Lépcsők elhelyezése"), so every
+        // matching space must render its own model, not just the first one.
+        const staircaseSpaceIndices = board.reduce<number[]>((indices, space, index) => {
+          if (space.staircaseForLotId === lot.id) indices.push(index);
+          return indices;
+        }, []);
 
         return (
           <Suspense key={lot.id} fallback={null}>
@@ -252,13 +260,16 @@ function HotelBuildingClusters({
                 fallback={center ? <GardenDecal lotId={lot.id} center={center} /> : null}
               />
             )}
-            {staircaseSpaceIndex !== -1 && (
+            {staircaseSpaceIndices.map((spaceIndex) => (
               // No fallback — the real model is confirmed reliably present
               // for stairs (see docs/hotel-0c-specifikacio.md §5.8), and the
               // old space-local placeholder marker was removed once that was
               // confirmed.
-              <HotelModelObject objectName={hotelStairsObjectName(staircaseSpaceIndex + 1, lot.id)} />
-            )}
+              <HotelModelObject
+                key={`stairs-${spaceIndex}`}
+                objectName={hotelStairsObjectName(spaceIndex + 1, lot.id)}
+              />
+            ))}
             {center && purchaseColor && (
               <group position={center}>
                 <PurchasePulse color={purchaseColor} />
@@ -427,13 +438,7 @@ function OwnedLotsPanel({ state }: { state: HotelState }) {
         {previewLot && (
           <div className={styles.cardPreview}>
             <h3>{previewLot.name}</h3>
-            <div className={styles.cardPreviewImages}>
-              <img src={propertyCardUrl(previewLot.id, 'const')} alt="Építési árak" />
-              <img src={propertyCardUrl(previewLot.id, 'nights')} alt="Éjszaka-árak" />
-              {previewLot.hasGarden && (
-                <img src={`/assets/hotel/gardens/${HOTEL_IMAGE_NAME[previewLot.id]}-garden.png`} alt="Kert" />
-              )}
-            </div>
+            <HotelLotFacts lot={previewLot} />
           </div>
         )}
       </Modal>
