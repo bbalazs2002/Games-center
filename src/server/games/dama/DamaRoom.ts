@@ -1,10 +1,15 @@
 import { OpaqueGameStateSchema } from '../../../shared/core/OpaqueGameStateSchema';
+import {
+  chooseDamaAiAction,
+  DAMA_AI_MIN_THINK_DELAY_MS,
+  isDamaAiDifficulty,
+  type DamaAiDifficulty,
+} from '../../../shared/games/dama/ai';
 import type { DamaAction } from '../../../shared/games/dama/engine/actions';
 import { createInitialState } from '../../../shared/games/dama/engine/initialState';
 import { reducer } from '../../../shared/games/dama/engine/reducer';
 import type { DamaState, Player, Position } from '../../../shared/games/dama/engine/state';
-import { GameRoom } from '../../core/GameRoom';
-import { pickRandomMove } from './ai/randomMoveStrategy';
+import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 
 function isPosition(value: unknown): value is Position {
   if (typeof value !== 'object' || value === null) return false;
@@ -18,6 +23,21 @@ export class DamaRoom extends GameRoom<DamaState, DamaAction, Player> {
   protected readonly gameType = 'dama';
   protected reducer = reducer;
   protected createInitialState = createInitialState;
+  private aiDifficulty: DamaAiDifficulty = 'MEDIUM';
+  // Updated by computeAiMove whenever it actually runs a search — read by
+  // aiMoveDelayMs() for the NEXT move. GameRoom queries aiMoveDelayMs()
+  // BEFORE computing a move (see GameRoom.maybeTriggerAiMove), so the exact
+  // upcoming think-time can't be known in advance; using the PREVIOUS move's
+  // measured time is a close approximation within one game (the difficulty,
+  // and therefore the typical search cost, stays constant for the whole
+  // room) without needing any GameRoom core change. See
+  // docs/dama-0d-ai-specifikacio.md §9.3.
+  private lastAiThinkElapsedMs = 0;
+
+  async onCreate(options: GameRoomCreateOptions): Promise<void> {
+    if (isDamaAiDifficulty(options.aiDifficulty)) this.aiDifficulty = options.aiDifficulty;
+    await super.onCreate(options);
+  }
 
   protected createColyseusState(): OpaqueGameStateSchema {
     return new OpaqueGameStateSchema();
@@ -42,7 +62,14 @@ export class DamaRoom extends GameRoom<DamaState, DamaAction, Player> {
 
   protected computeAiMove(state: DamaState, slot: Player): DamaAction | null {
     if (state.currentPlayer !== slot) return null;
-    return pickRandomMove(state);
+    const start = Date.now();
+    const action = chooseDamaAiAction(state, this.aiDifficulty);
+    this.lastAiThinkElapsedMs = Date.now() - start;
+    return action;
+  }
+
+  protected aiMoveDelayMs(): number {
+    return Math.max(0, DAMA_AI_MIN_THINK_DELAY_MS - this.lastAiThinkElapsedMs);
   }
 
   protected syncState(): void {

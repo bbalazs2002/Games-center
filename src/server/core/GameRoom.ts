@@ -51,14 +51,14 @@ export interface GameRoomCreateOptions {
 export interface GameRoomJoinOptions {
   token?: string;
   password?: string;
-  /** True when the client doesn't know the password and wants to send a join request instead — see docs/fazis-0c-dama-ai-specifikacio.md §3.2. */
+  /** True when the client doesn't know the password and wants to send a join request instead — see docs/dama-0c-ai-specifikacio.md §3.2. */
   requestOnly?: boolean;
 }
 
 /**
  * Game-agnostic Colyseus Room. All it knows is that there's a reducer and an
  * initial state — nothing about the game itself. See
- * docs/fazis-0b-multiplayer-specifikacio.md §6.
+ * docs/dama-0b-multiplayer-specifikacio.md §6.
  *
  * State sync strategy is a per-game choice via `TColyseusState` (default
  * `OpaqueGameStateSchema`, a single opaque JSON field — simple, but resends
@@ -70,7 +70,7 @@ export interface GameRoomJoinOptions {
  *
  * Room-access control (password, lobby visibility, join requests) and the
  * AI-opponent "virtual client" both live here, not in a per-game subclass —
- * see docs/fazis-0c-dama-ai-specifikacio.md's opening note: every future
+ * see docs/dama-0c-ai-specifikacio.md's opening note: every future
  * game's room inherits this behavior unchanged.
  */
 export abstract class GameRoom<
@@ -104,7 +104,7 @@ export abstract class GameRoom<
 
   /**
    * Server-side "virtual client" AI move for `slot`, or null if `slot` has
-   * nothing to legally do right now — see docs/fazis-0c-dama-ai-specifikacio.md
+   * nothing to legally do right now — see docs/dama-0c-ai-specifikacio.md
    * §2. Takes the slot (not just the state) because Hotel's auction bidding
    * means more than one AI slot can be asked "what would you do right now"
    * in the same trigger (any non-auctioneer slot may bid/pass, not just

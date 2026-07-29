@@ -2,7 +2,7 @@
 
 **Státusz:** Implementálva és élesben (két-kliens smoke teszttel) ellenőrizve — a lenti terv a ténylegesen megvalósított viselkedést írja le
 **Utolsó frissítés:** 2026-07-24
-**Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md), [fazis-0a-dama-specifikacio.md](./fazis-0a-dama-specifikacio.md) (§6, `PlayerController`/`HumanController`/`AIController` koncepció), [fazis-0b-multiplayer-specifikacio.md](./fazis-0b-multiplayer-specifikacio.md)
+**Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md), [dama-0a-specifikacio.md](./dama-0a-specifikacio.md) (§6, `PlayerController`/`HumanController`/`AIController` koncepció), [dama-0b-multiplayer-specifikacio.md](./dama-0b-multiplayer-specifikacio.md)
 
 > **Fontos, általános megjegyzés:** a szoba-jelszó, láthatóság és csatlakozási kérelem logika a `GameRoom` (core) osztályban él, nem `DamaRoom`-ban — ez a rendszer változtatás nélkül öröklődik minden jövőbeli játék (Hotel, Catan, ...) szoba-osztályába is. Ezért éri meg most alaposan megtervezni: minden más játék lobby-ja pontosan ugyanígy fog működni.
 
@@ -296,7 +296,7 @@ navigate(`/games/${gameId}/online/${NEW_ROOM_PARAM}?${params}`);
 
 ### 5.2 Lobby-lista: lakat ikon jelszavas szobáknál
 
-A `LobbyRoom` beépített 'rooms'/'+'/'-' üzenetei tartalmazzák a szoba `metadata`-ját (lásd `docs/fazis-0b-multiplayer-specifikacio.md` §6.3) — ebben most megjelenik a `hasPassword: boolean` mező. A `LobbyPage` a szoba neve mellé 🔒 ikont rajzol, ha `room.metadata?.hasPassword`. **Fontos: a jelszó megléte többé nem rejti el a szobát** — csak a betelt kapacitás teszi ezt (lásd 3.1/a).
+A `LobbyRoom` beépített 'rooms'/'+'/'-' üzenetei tartalmazzák a szoba `metadata`-ját (lásd `docs/dama-0b-multiplayer-specifikacio.md` §6.3) — ebben most megjelenik a `hasPassword: boolean` mező. A `LobbyPage` a szoba neve mellé 🔒 ikont rajzol, ha `room.metadata?.hasPassword`. **Fontos: a jelszó megléte többé nem rejti el a szobát** — csak a betelt kapacitás teszi ezt (lásd 3.1/a).
 
 Egy lakattal jelölt szobára kattintva egy kis inline párbeszédablak jelenik meg, jelszó-mező **és** két gomb:
 ```

@@ -1,0 +1,92 @@
+.page {
+  min-height: 100%;
+  padding: 3rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.eyebrow {
+  font-family: var(--mono-font);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.page h1 {
+  font-family: var(--display-font);
+  font-size: 1.9rem;
+  font-weight: 600;
+  margin: 0.4rem 0 1.75rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 24rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.fieldset legend {
+  font-family: var(--mono-font);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 0 0 0.55rem;
+}
+
+.fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.95rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.radioRow {
+  display: flex;
+  gap: 1.4rem;
+}
+
+.fieldset input[type='radio'] {
+  accent-color: var(--accent);
+  width: 1rem;
+  height: 1rem;
+}
+
+.fieldset select {
+  font-family: var(--body-font);
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  padding: 0.4rem 0.6rem;
+  width: 100%;
+}
+
+/* Doubled selector to reliably out-specificity Button.module.css's .primary
+   regardless of CSS bundle order — see docs/b-klaszter-ui-specifikacio.md §6
+   ("Button's own default style stays untouched, only overridden here"). */
+.primaryButton.primaryButton {
+  background: var(--accent);
+  color: var(--surface-raised);
+}
+
+.primaryButton.primaryButton:hover {
+  background: var(--accent-strong);
+}

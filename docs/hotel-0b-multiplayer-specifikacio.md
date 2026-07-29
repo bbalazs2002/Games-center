@@ -11,7 +11,7 @@ A Hotel-0a (helyi hot-seat vertikum) lezárva, hibát a manuális tesztelés má
 - A mezőnkénti `@colyseus/schema`-refaktor kérdése (lásd 5. szakasz) — **eredetileg csak egy jövőbeli emlékeztető volt**, Hotel-0b-re időzítve; most, hogy a Hotel-0a-ban bekerült egy korlátlanul növekvő `log: LogEntry[]` mező, ez már nem elméleti probléma.
 - AI-ellenfél **nem** ebbe a fázisba tartozik — az Hotel-0d, itt (Hotel-0b) csak emberi játékosok közötti hálózati játék a cél, ugyanúgy, ahogy Fázis 0b (Dáma) is AI nélkül indult.
 
-Ez a dokumentum a Hotel-0a és a korábbi Dáma-multiplayer (`fazis-0b-multiplayer-specifikacio.md`, `fazis-0c-dama-ai-specifikacio.md`) dokumentumok mintáját követi: előbb a tényleges kódból (nem feltételezésekből) levezetett elemzés, utána a nyitott pontok, majd — azok lezárása után — az implementáció.
+Ez a dokumentum a Hotel-0a és a korábbi Dáma-multiplayer (`dama-0b-multiplayer-specifikacio.md`, `dama-0c-ai-specifikacio.md`) dokumentumok mintáját követi: előbb a tényleges kódból (nem feltételezésekből) levezetett elemzés, utána a nyitott pontok, majd — azok lezárása után — az implementáció.
 
 ## 2. Amit a Dáma multiplayer-rétege már megold, változtatás nélkül örökölhető
 
@@ -33,7 +33,7 @@ A `GameRoom<TState, TAction, TPlayerSlot extends string = string>` (`src/server/
 
 ### 3.2 Az árverés licit/passz kivétele nem fér bele a jelenlegi `isPlayersTurn(state, slot)` szerződésbe
 
-A `GameRoom`-ban a szabály-érvényesítés két rétegű (`fazis-0b-multiplayer-specifikacio.md` §6.3): `isValidAction` (alak-ellenőrzés) + `isPlayersTurn(state, slot)` (a küldő kliens slotja egyezik-e azzal, aki éppen léphet). Ez a második réteg **hallgatólagosan feltételezi**, hogy egy adott pillanatban legfeljebb EGY slot jogosult action-t küldeni (`state.currentPlayerIndex`-typusú koncepció) — ez Dámánál igaz, Hotelnél **nem**: `PLACE_BID`/`PASS_BID` bármelyik, még nem passzolt, nem-kiváltó játékostól jöhet (`docs/hotel-0a-specifikacio.md` §9.1, ezért kapott a `HotelAction` explicit `bidderId` mezőt). A motor ezt már a reducer szintjén helyesen kezeli (`canPlaceBid`/`canPassBid` a `bidderId`-t ellenőrzi, nem a soron lévő játékost) — de a `GameRoom`-nak is tudnia kell validálni, hogy **a küldő kliens tényleg a saját `bidderId`-jével** licitál-e/passzol-e, ne tudjon más nevében beavatkozni.
+A `GameRoom`-ban a szabály-érvényesítés két rétegű (`dama-0b-multiplayer-specifikacio.md` §6.3): `isValidAction` (alak-ellenőrzés) + `isPlayersTurn(state, slot)` (a küldő kliens slotja egyezik-e azzal, aki éppen léphet). Ez a második réteg **hallgatólagosan feltételezi**, hogy egy adott pillanatban legfeljebb EGY slot jogosult action-t küldeni (`state.currentPlayerIndex`-typusú koncepció) — ez Dámánál igaz, Hotelnél **nem**: `PLACE_BID`/`PASS_BID` bármelyik, még nem passzolt, nem-kiváltó játékostól jöhet (`docs/hotel-0a-specifikacio.md` §9.1, ezért kapott a `HotelAction` explicit `bidderId` mezőt). A motor ezt már a reducer szintjén helyesen kezeli (`canPlaceBid`/`canPassBid` a `bidderId`-t ellenőrzi, nem a soron lévő játékost) — de a `GameRoom`-nak is tudnia kell validálni, hogy **a küldő kliens tényleg a saját `bidderId`-jével** licitál-e/passzol-e, ne tudjon más nevében beavatkozni.
 
 Ez azt jelenti, hogy a `isPlayersTurn(state, slot): boolean` szerződés Hotelnél nem elég — a döntéshez ismerni kell magát az action-t is (legalább annyit, hogy kinek a nevében szól). **Eldőlt (5.1/4. és 6.4. szakasz):** a `GameRoom` közös abstract szerződése cserélődik `isActionAllowed(state, slot, action): boolean`-ra — nem `HotelRoom`-szintű különmegoldás.
 
@@ -53,7 +53,7 @@ A `DamaOnlineGamePage.tsx` kódja explicit megjegyzésben mondja ki: *"Dáma-spe
 
 ### 3.6 A mezőnkénti `@colyseus/schema`-refaktor — most már konkrét ok van rá
 
-`fazis-0b-multiplayer-specifikacio.md` §6.1 ezt eredetileg elméleti, jövőbeli problémaként írta le ("ha egy komplexebb/nagy state-ű játék... igényelne"). A Hotel-0a azóta bevezetett egy **korlátlanul növekvő** `log: LogEntry[]` mezőt (a napló-panelhez) — az opaque-JSON modell mellett ez azt jelenti, hogy **minden egyes action után a teljes eddigi naplót újraküldi** a szerver minden kliensnek, a játék előrehaladtával egyre nagyobb payloaddal (egy hosszú Hotel-parti könnyen 100+ log-bejegyzést termelhet, mindegyik lot-/player-id-kel és összegekkel). Ez nem feltétlenül blokkoló egy családi, alkalmi célú appnál, de már nem pusztán elméleti. **Eldőlt (5. szakasz, 2. döntés):** most, Hotel-0b részeként megcsináljuk a teljes mezőnkénti refaktort — nem "majd egyszer" félretéve.
+`dama-0b-multiplayer-specifikacio.md` §6.1 ezt eredetileg elméleti, jövőbeli problémaként írta le ("ha egy komplexebb/nagy state-ű játék... igényelne"). A Hotel-0a azóta bevezetett egy **korlátlanul növekvő** `log: LogEntry[]` mezőt (a napló-panelhez) — az opaque-JSON modell mellett ez azt jelenti, hogy **minden egyes action után a teljes eddigi naplót újraküldi** a szerver minden kliensnek, a játék előrehaladtával egyre nagyobb payloaddal (egy hosszú Hotel-parti könnyen 100+ log-bejegyzést termelhet, mindegyik lot-/player-id-kel és összegekkel). Ez nem feltétlenül blokkoló egy családi, alkalmi célú appnál, de már nem pusztán elméleti. **Eldőlt (5. szakasz, 2. döntés):** most, Hotel-0b részeként megcsináljuk a teljes mezőnkénti refaktort — nem "majd egyszer" félretéve.
 
 ## 4. Amit ez a dokumentum (egyelőre) NEM dönt el
 
@@ -99,7 +99,7 @@ Ez a legnagyobb, még ki nem dolgozott rész — az alábbi egy **javaslat**, ne
 
 ### 6.1 `GameRoom` negyedik generikus paramétere
 
-A `fazis-0b-multiplayer-specifikacio.md` §6.1 már 2026-07-22-től jelezte: a `GameRoom<TState, TAction, TPlayerSlot>` a Colyseus `Room`-ot `Room<OpaqueGameStateSchema, RoomMetadata, unknown, AuthPayload>`-ként hardcode-olja — egy leszármazott ma NEM tud másik Colyseus state-típust adni. Hotel-0b ezt most ténylegesen megoldja: `GameRoom<TState, TAction, TPlayerSlot, TColyseusState extends Schema = OpaqueGameStateSchema>`, ahol `DamaRoom` a default (`OpaqueGameStateSchema`) marad, `HotelRoom` pedig egy új, mezőnkénti `HotelStateSchema`-t ad. A `syncState()` metódus (jelenleg `this.state.stateJson = JSON.stringify(this.gameState)`) game-specifikussá válik — `DamaRoom` marad a jelenlegi JSON-szerializálásnál, `HotelRoom` a `TState → TColyseusState` mezőnkénti átmásolást végzi.
+A `dama-0b-multiplayer-specifikacio.md` §6.1 már 2026-07-22-től jelezte: a `GameRoom<TState, TAction, TPlayerSlot>` a Colyseus `Room`-ot `Room<OpaqueGameStateSchema, RoomMetadata, unknown, AuthPayload>`-ként hardcode-olja — egy leszármazott ma NEM tud másik Colyseus state-típust adni. Hotel-0b ezt most ténylegesen megoldja: `GameRoom<TState, TAction, TPlayerSlot, TColyseusState extends Schema = OpaqueGameStateSchema>`, ahol `DamaRoom` a default (`OpaqueGameStateSchema`) marad, `HotelRoom` pedig egy új, mezőnkénti `HotelStateSchema`-t ad. A `syncState()` metódus (jelenleg `this.state.stateJson = JSON.stringify(this.gameState)`) game-specifikussá válik — `DamaRoom` marad a jelenlegi JSON-szerializálásnál, `HotelRoom` a `TState → TColyseusState` mezőnkénti átmásolást végzi.
 
 ### 6.2 `HotelStateSchema` — mezőnkénti leképezés
 

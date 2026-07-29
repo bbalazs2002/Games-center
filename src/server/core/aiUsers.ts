@@ -4,7 +4,7 @@ const FAMILY_INVITE_CODE = 'FAMILY2026';
 
 /**
  * Lazy upsert — no pre-seeding needed, an AI user row is created on first
- * use. Numbered from 1, per docs/fazis-0c-dama-ai-specifikacio.md §4.
+ * use. Numbered from 1, per docs/dama-0c-ai-specifikacio.md §4.
  */
 export async function ensureAiUser(aiNumber: number): Promise<string> {
   const id = `ai-opponent-${aiNumber}`;

@@ -1,34 +1,152 @@
 .page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
+  min-height: 100%;
+  padding: 2.5rem 1.5rem 4rem;
 }
 
-.notice {
-  color: #4a5568;
-  font-style: italic;
+.tableLayout {
+  max-width: 62rem;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  gap: 2rem;
+  align-items: start;
+}
+
+.boardPanel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1.75rem;
+}
+
+.boardPanelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.boardPanelHead h1 {
+  font-family: var(--display-font);
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.turnReadout {
+  font-family: var(--mono-font);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.turnDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  flex: none;
 }
 
 .piece {
   width: 100%;
   height: 100%;
   border-radius: 50%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.75rem;
-  box-sizing: border-box;
-  border: 2px solid rgba(0, 0, 0, 0.25);
+  padding: 8%;
 }
 
 .lightPiece {
-  background: #f0e6d2;
-  color: #7a6a4f;
+  background: radial-gradient(circle at 32% 28%, var(--piece-light-fill), var(--piece-light-fill-inner) 78%);
+  border: 1px solid var(--piece-light-edge);
+  box-shadow: 0 1.5px 0 rgba(32, 28, 21, 0.25), 0 2px 4px rgba(32, 28, 21, 0.22);
 }
 
 .darkPiece {
-  background: #4a3f35;
-  color: #d9cdb8;
+  background: radial-gradient(circle at 32% 28%, var(--piece-dark-fill-inner), var(--piece-dark-fill) 78%);
+  border: 1px solid var(--piece-dark-edge);
+  box-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* Stacked-disc king marker — a ring inset into the piece, evoking a physical
+   Dáma set's "two checkers stacked" king convention, instead of a literal
+   chess-queen glyph on a checkers piece. See docs/b-klaszter-ui-specifikacio.md §5. */
+.kingRing {
+  width: 55%;
+  height: 55%;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0.85;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1.35rem 1.5rem;
+}
+
+.card h3 {
+  font-family: var(--display-font);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.9rem;
+}
+
+.scoreline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.scoreline:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+}
+
+.swatch {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+.tally {
+  font-family: var(--mono-font);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.current .who {
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .tableLayout {
+    grid-template-columns: 1fr;
+  }
 }

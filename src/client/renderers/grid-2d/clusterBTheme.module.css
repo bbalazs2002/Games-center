@@ -1,0 +1,76 @@
+/**
+ * "Rács" — shared design tokens for the B-cluster (grid-based abstract
+ * strategy games: Sakk, Dáma, Malom, Connect 4). See
+ * docs/b-klaszter-ui-specifikacio.md §2-3.
+ *
+ * Deliberately a CLASS (applied to each B-cluster page's outermost wrapper),
+ * not global :root tokens — custom properties inherit through the DOM tree
+ * regardless of CSS Modules scoping, so this is enough for every descendant
+ * (GridBoard2D, page-specific CSS modules) to read var(--token) without
+ * leaking the theme into Hotel/Ramses/Lobby.
+ *
+ * Only prefers-color-scheme is wired up (not a manual data-theme toggle) —
+ * this app has no theme switcher today, so a toggle-driven override would be
+ * unreachable dead code.
+ */
+.theme {
+  --ground: #eae3d5;
+  --surface: #f6f1e7;
+  --surface-raised: #fffdf8;
+  --ink: #201c15;
+  --ink-soft: #5c5646;
+  --ink-faint: #8c8368;
+  --line: #d3c8af;
+  --line-strong: #c0b391;
+  --accent: #8a6324;
+  --accent-strong: #5e4318;
+  --accent-soft: #c9a66b;
+  --accent-wash: rgba(138, 99, 36, 0.1);
+  --board-light: #efe7d6;
+  --board-dark: #3a3227;
+  --board-highlight: rgba(138, 99, 36, 0.4);
+  --piece-light-fill: #fbf6ec;
+  --piece-light-fill-inner: #e7dcc0;
+  --piece-light-edge: #b9a983;
+  /* Lightened from the original #2a251d/#4a4130/#6b5a3a — those blended into
+     --board-dark (#3a3227), since every dark piece sits on a dark square.
+     See docs/b-klaszter-ui-specifikacio.md §2. */
+  --piece-dark-fill: #453c2c;
+  --piece-dark-fill-inner: #6e5f42;
+  --piece-dark-edge: #9c855a;
+  --shadow-inset: inset 0 1px 3px rgba(32, 28, 21, 0.18), inset 0 -1px 0 rgba(255, 253, 248, 0.4);
+  --display-font: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'URW Palladio L', Georgia, serif;
+  --body-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --mono-font: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', 'Liberation Mono', monospace;
+
+  background-color: var(--ground);
+  color: var(--ink);
+  font-family: var(--body-font);
+}
+
+@media (prefers-color-scheme: dark) {
+  .theme {
+    --ground: #16140f;
+    --surface: #1e1b14;
+    --surface-raised: #262119;
+    --ink: #ede6d6;
+    --ink-soft: #a79a7d;
+    --ink-faint: #726853;
+    --line: #3a3527;
+    --line-strong: #4a4433;
+    --accent: #c9a15a;
+    --accent-strong: #e4be7e;
+    --accent-soft: #7a5e2e;
+    --accent-wash: rgba(201, 161, 90, 0.14);
+    --board-light: #2b2620;
+    --board-dark: #100e0a;
+    --board-highlight: rgba(201, 161, 90, 0.38);
+    --piece-light-fill: #efe6d2;
+    --piece-light-fill-inner: #d9cba9;
+    --piece-light-edge: #8c7d5a;
+    --piece-dark-fill: #241f16;
+    --piece-dark-fill-inner: #362e1f;
+    --piece-dark-edge: #4a3f2a;
+    --shadow-inset: inset 0 1px 4px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.03);
+  }
+}

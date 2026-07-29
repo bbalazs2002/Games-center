@@ -20,8 +20,10 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "assets:convert-heic": "node scripts/convert-hotel-heic.mjs",
     "assets:resize-images": "node scripts/resize-hotel-images.mjs",
+    "assets:compress-hotel-glb": "node scripts/compress-hotel-glb.mjs",
     "ai:simulate-hotel": "tsx scripts/simulate-hotel-ai-games.ts",
-    "ai:simulate-ramses": "tsx scripts/simulate-ramses-ai-games.ts"
+    "ai:simulate-ramses": "tsx scripts/simulate-ramses-ai-games.ts",
+    "ai:simulate-dama": "tsx scripts/simulate-dama-ai-games.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -47,6 +49,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
+    "@gltf-transform/cli": "^4.4.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",

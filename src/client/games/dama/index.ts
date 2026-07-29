@@ -1,1 +1,1 @@
-export { DamaGamePage as default } from './ui/DamaGamePage';
+export { DamaSetupPage as default } from './ui/DamaSetupPage';

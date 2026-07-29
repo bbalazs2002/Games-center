@@ -29,7 +29,7 @@
 ### 2.1 Komponensek (a fizikai játékból, csak az alapjátékhoz szükségesek)
 
 - **47 piramis** (16 arany, 16 piros, 15 kék) — az alapjátékban a szín NEM számít szabályilag, csak vizuális változatosság (a haladó verzióban lenne jelentősége, azt nem visszük át).
-- **30 célkártya** — mindegyiken egy kincs-azonosító + pontérték (1–4).
+- **30 célkártya** — mindegyiken egy kincs-azonosító + pontérték (1–4). Ezek 3 külön pakliba vannak rendezve aszerint, hogy mi van a hátoldalukon: 1-es, 2-es vagy 3-as. Először az 1-es, majd a 2-es és végül a 3-as pakliból húzunk.
 - **1 játéktábla, 48 lyukkal** — alatta egy fix "kincs-réteg" (12 kivágás, mindegyiken 1 kincs-kép + 3 üres kép, azaz a 48 pozícióból pontosan 12 mutat kincset, 36 üres).
 
 ### 2.2 Kezdő-felállás
@@ -62,6 +62,18 @@
 - Legtöbb pont nyer.
 - Pontegyenlőség esetén: legtöbb megnyert LAP (darabszám) dönt.
 - Ha ez is egyenlő: az érintettek MIND nyernek (holtverseny, nem véletlen döntés).
+
+### 2.5 Speciális kártyák
+
+**A 2-es pakliban**
+- Homokvihar (sandstorm): A kincsek rétegét 180 fokkal el kell fordítani.
+- Ajándék (gift): Lépj az egyik kincshez! Mindenki, akinek van ilyen kártyája, adjon egyet.
+- Kockázat (risk): Nevezz meg 2 kincset, amik épp nem látszanak a pályán! Lépj először az egyikhez, majd a másikhoz. Ha sikerül, húzhatsz a bal oldali szomszédodtól egy lapot. (Ha neki nincs lapja, akkor a játék húzás nélkül folytatódik.) Ha nem sikerül, akkor te ajándékozod meg a tőled balra ülőt egy kártyával. (Ha nincs lapod, akkor a játék folytatódik ajándékozás nélkül.)
+- Fata Morgana (fataMorgana): Húzol egyet a jobb oldali szomszédod kártyái közül. (Ha nincs lapja, akkor a speciális kártya helyett újat kell húzni, és folytatni a játékot.) Ha sikerül hiba nélkül megtalálnod, akkor megtarthatod. Ha nem, akkor te adsz a jobb oldali szomszédodnak egy lapot.
+- Sivatagi póker (poker): Egy általad meghatározott kincset kell egy általad meghatározott játékosnak (rajtad kívül) megkeresnie. Ha sikerül, akkor akkor húzhat egyet a lapjaid közül. Ha nem, akkor te húzol tőle. (Ha nincs kártyája annak, akitől húzni kéne, a játék húzás nélkül folytatódik.)
+
+**A 3-as pakliban**
+- Záró kártya (finish): A játék azonnal véget ér.
 
 ## 3. Adatmodell: state és action-ok (terv)
 

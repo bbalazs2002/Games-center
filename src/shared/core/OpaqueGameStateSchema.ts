@@ -6,7 +6,7 @@ import { PendingJoinRequest } from './PendingJoinRequestSchema';
  * (server: state definition; client: explicit rootSchema for decoding) need
  * LITERALLY the same class, otherwise the client-side automatic
  * Reflection-based decoding is unreliable (produced empty/undefined fields
- * during testing — see docs/fazis-0b-multiplayer-specifikacio.md §6.1).
+ * during testing — see docs/dama-0b-multiplayer-specifikacio.md §6.1).
  *
  * This is a deliberate, documented exception to the "shared/ has zero
  * Colyseus dependency" principle: this isn't game logic, it's Colyseus
@@ -18,13 +18,13 @@ export class OpaqueGameStateSchema extends Schema {
   // `Object.defineProperty` to create an OWN instance property, which SHADOWS
   // the tracked accessor `defineTypes` sets up on the prototype — server-side
   // writes would then never register as a "changed" field, and the client
-  // would never receive anything. See docs/fazis-0b-multiplayer-specifikacio.md
+  // would never receive anything. See docs/dama-0b-multiplayer-specifikacio.md
   // §6.1 — this was the real cause behind "client always sees an empty
   // stateJson", not the defineTypes API itself.
   declare stateJson: string;
   /** True once every player slot has joined — the client shows a "waiting for opponent" screen until then. */
   declare ready: boolean;
-  /** Join requests awaiting the room host's Accept/Reject — see docs/fazis-0c-dama-ai-specifikacio.md §3.2. */
+  /** Join requests awaiting the room host's Accept/Reject — see docs/dama-0c-ai-specifikacio.md §3.2. */
   declare pendingRequests: ArraySchema<PendingJoinRequest>;
 }
 defineTypes(OpaqueGameStateSchema, {

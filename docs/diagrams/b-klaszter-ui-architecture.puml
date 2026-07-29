@@ -1,0 +1,68 @@
+@startuml b-klaszter-ui-architecture
+title B-klaszter — "Rács" vizuális nyelv (2026-07-28, mockuppal jóváhagyva)
+
+package "shared renderer (src/client/renderers/grid-2d/)" {
+  class "clusterBTheme.module.css" as Theme {
+    .theme osztály
+    --ground / --surface / --ink / --accent / ...
+    --board-light / --board-dark / --piece-*
+    display / body / mono betűkészlet-tokenek
+  }
+  note right of Theme
+    NEM a globális :root-ban — csak
+    a B-klaszter oldalak veszik fel
+    (legfelső wrapper div className-je).
+    A custom property-k a DOM-fán át
+    öröklődnek minden leszármazottba,
+    CSS Modules-szkopolás nélkül.
+  end note
+
+  class GridBoard2D {
+    +showCoordinates?: boolean
+    keret/panel wrapper (--shadow-inset)
+    mezők: --board-light/--board-dark
+    kiemelés: --board-highlight
+  }
+  Theme <.. GridBoard2D : var(--token) hivatkozások
+}
+
+package "Dáma (jelenleg az egyetlen implementált tag)" {
+  class DamaGamePage {
+    táblapanel + "Állás" pontszám-sáv
+    bábu-anyag: gyűrű-motívum királynak
+  }
+  class DamaSetupPage {
+    "Új parti" kártya
+    Button className felülírással
+  }
+  DamaGamePage --> GridBoard2D : showCoordinates=true
+  DamaGamePage ..> Theme : className={styles.page, theme.theme}
+  DamaSetupPage ..> Theme : className={styles.page, theme.theme}
+}
+
+package "jövőbeli klaszter-tagok (Fázis 3, még nem épültek)" {
+  class SakkGamePage <<jövőbeli>>
+  class MalomGamePage <<jövőbeli>>
+  class Connect4GamePage <<jövőbeli>>
+  SakkGamePage ..> GridBoard2D : ugyanaz a renderer
+  MalomGamePage ..> GridBoard2D
+  Connect4GamePage ..> GridBoard2D
+}
+note bottom of SakkGamePage
+  A GridBoard2D-t importáló bármely
+  jövőbeli játék automatikusan örökli
+  a "Rács" vizuális nyelvet — nincs
+  szükség a téma újra-bekötésére.
+end note
+
+package "SZÁNDÉKOSAN ÉRINTETLEN (megosztott platform-infra)" {
+  class LobbyPage <<Hotel/Ramses is használja>>
+  class "Button/Modal/Menu\n(ui-kit, saját alap-stílus)" as UiKit
+}
+note bottom of LobbyPage
+  Game-agnosztikus — a klaszter-specifikus
+  nyelv ide bevezetése minden más játékot
+  (Hotel, Ramses) is érintene, ami nem cél.
+end note
+
+@enduml

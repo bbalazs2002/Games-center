@@ -1,0 +1,99 @@
+@startuml dama-0d-ai-architecture
+title Dáma-0d — megosztott AI-modul, hot-seat ÉS online egyszerre (2026-07-28, tervezet)
+
+package "shared/games/dama/ai" {
+  class "heuristic.ts" as Heuristic {
+    {static} evaluateDamaState(state, forPlayer): number
+    ..anyagi egyensúly (MAN=1, KING=1.5)..
+    ..mobilitás-különbség..
+    ..MAN előrehaladás a promóció felé..
+  }
+
+  class "search.ts" as Search {
+    {static} findBestMove(state, maxDepth, timeBudgetMs?): DamaAction?
+    ..minimax + alfa-béta metszés..
+    ..iteratív mélyítés, ha timeBudgetMs adott..
+  }
+  note right of Search
+    Csak a motor saját reducer()/
+    getValidMoves()-ára épül —
+    nincs saját mutáció, nem tud
+    illegális lépést fontolgatni.
+    Egy fa-szint = egy MOVE akció,
+    nem egy teljes kör (a láncütés
+    alatt currentPlayer nem vált) —
+    lásd a specifikáció 3. szakaszát.
+  end note
+
+  class "randomMoveStrategy.ts" as Random <<Fázis-0c, változatlan>> {
+    {static} pickRandomMove(state): DamaAction?
+  }
+  note bottom of Random
+    ÁTKÖLTÖZTETVE server/games/dama/ai/-ból
+    — semmi szerver-specifikus API-t nem
+    használ, csak eddig csak a szerver
+    használta. Logika változatlan.
+  end note
+
+  class "strategy.ts" as Strategy {
+    {static} chooseDamaAiAction(state, difficulty): DamaAction?
+    ..EASY -> pickRandomMove..
+    ..MEDIUM -> search (mélység 4)..
+    ..HARD -> search (iteratív mélyítés, 200ms/12 mélység)..
+  }
+  Strategy ..> Random : EASY
+  Strategy ..> Search : MEDIUM/HARD
+  Search ..> Heuristic : levél-csomópontok kiértékelése
+
+  class "index.ts" as Barrel {
+    DAMA_AI_MIN_THINK_DELAY_MS = 300
+  }
+  note bottom of Barrel
+    Nem fix késleltetés (mint Hotel/Ramses)
+    — ALACSONY MINIMUM gondolkodási idő,
+    a felhasználó kérésére (2026-07-28):
+    a hívó méri chooseDamaAiAction()
+    tényleges futási idejét, és csak a
+    hiányzó részt várja ki. Ha a keresés
+    (Nehéz szinten) magától eléri/túllépi
+    a minimumot, nincs extra várakozás.
+    Lásd specifikáció 9.3 szakasz.
+  end note
+}
+
+package "server" {
+  class DamaRoom {
+    -aiDifficulty: DamaAiDifficulty = 'MEDIUM'
+    +onCreate(options)
+    +computeAiMove(state, slot): DamaAction?
+  }
+  DamaRoom ..> Strategy : computeAiMove()-ban\nchooseDamaAiAction(state, aiDifficulty)
+}
+note left of DamaRoom
+  aiDifficulty már ma is game-agnosztikus
+  mező a GameRoomCreateOptions-on
+  (Hotel/Ramses már olvassa) — Dáma csak
+  a harmadik fogyasztója lesz, nincs
+  GameRoom core-változtatás.
+end note
+
+package "client" {
+  class DamaSetupPage <<ÚJ>> {
+    Ellenfél: Ember/AI + nehézség
+    started -> DamaGamePage(hotSeatAiSlots)
+  }
+  class "useDamaHotSeatAi()" as HotSeatHook <<ÚJ>> {
+    LocalGameTransport-ot figyeli
+    AI körén: chooseDamaAiAction + dispatch
+  }
+  class DamaGamePage
+  DamaSetupPage --> DamaGamePage : hotSeatAiSlots:\nPartial<Record<Player,DamaAiDifficulty>>
+  DamaGamePage ..> HotSeatHook : felhasználja
+}
+HotSeatHook ..> Strategy : chooseDamaAiAction(state, difficulty)
+
+note "Ugyanaz a chooseDamaAiAction hívás\nmindkét oldalon — a döntéshozó logika\nSOHA nincs duplikálva (Ramses-0c elve,\nnem a Hotel-féle utólagos összevonás)." as N1
+N1 .. DamaRoom
+N1 .. HotSeatHook
+
+@enduml

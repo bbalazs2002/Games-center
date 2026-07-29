@@ -122,7 +122,7 @@ function findKingCaptureMoves(state: DamaState, from: Position, piece: Piece): C
 /**
  * Single-hop capture options for the piece standing on the given square —
  * chain captures happen at the reducer level, through consecutive MOVE
- * actions (see docs/fazis-0a-dama-specifikacio.md §3.4-3.5), not here as a
+ * actions (see docs/dama-0a-specifikacio.md §3.4-3.5), not here as a
  * pre-computed full sequence.
  */
 export function findCaptureMoves(state: DamaState, from: Position): CaptureMove[] {

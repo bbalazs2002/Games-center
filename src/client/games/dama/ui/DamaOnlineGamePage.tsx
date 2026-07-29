@@ -88,7 +88,7 @@ function opponentStatusOf(myPlayer: Player | null, playerStatuses: Partial<Recor
 /**
  * Connects to a Colyseus Dáma room (or creates a new one), and renders the
  * same DamaGamePage as hot-seat mode with the resulting transport — see
- * docs/fazis-0b-multiplayer-specifikacio.md §6.2. The room-connection
+ * docs/dama-0b-multiplayer-specifikacio.md §6.2. The room-connection
  * lifecycle itself (password/join-request UI, reconnection, per-slot
  * connection status) now lives in the game-agnostic `useOnlineGameRoom` hook
  * (extracted in Hotel-0b, once a second multiplayer game needed the exact
@@ -127,13 +127,17 @@ export function DamaOnlineGamePage() {
     rootSchema: OpaqueGameStateSchema,
     createInitialState,
     decode: decodeDamaState,
-    buildCreateOptions: () => ({
+    buildCreateOptions: () => {
       // Dáma's own UI is still the binary Ember/AI choice — translated here
       // into the generalized 0/1 aiOpponentCount the room now expects (see
       // docs/hotel-0d-ai-specifikacio.md §3.1).
-      aiOpponentCount: searchParams.get('opponent') === 'ai' ? 1 : 0,
-      password: searchParams.get('password') ?? undefined,
-    }),
+      const opponentIsAi = searchParams.get('opponent') === 'ai';
+      return {
+        aiOpponentCount: opponentIsAi ? 1 : 0,
+        aiDifficulty: opponentIsAi ? (searchParams.get('aiDifficulty') ?? undefined) : undefined,
+        password: searchParams.get('password') ?? undefined,
+      };
+    },
     buildJoinOptions: () => ({
       password: searchParams.get('password') ?? undefined,
       requestOnly: searchParams.get('requestOnly') === '1',

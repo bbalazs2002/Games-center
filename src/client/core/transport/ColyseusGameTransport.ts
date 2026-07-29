@@ -11,7 +11,7 @@ const FULL_SYNC_INTERVAL_MS = 60000;
  * via the caller-supplied `decode`. Implements the same
  * GameTransport<TState, TAction> interface as LocalGameTransport, so
  * *GamePage components can't tell the difference. See
- * docs/fazis-0b-multiplayer-specifikacio.md §6.2 and
+ * docs/dama-0b-multiplayer-specifikacio.md §6.2 and
  * docs/hotel-0b-multiplayer-specifikacio.md §6.3.
  *
  * Also runs a periodic `requestFullSync`/`fullSync` round-trip as a safety

@@ -31,3 +31,36 @@ export function cloneWithTint(source: THREE.Object3D, colorTint?: string): THREE
   });
   return clone;
 }
+
+function fadeMaterial(material: THREE.Material, opacity: number): THREE.Material {
+  const cloned = material.clone();
+  cloned.transparent = true;
+  cloned.opacity = opacity;
+  // A translucent "ghost" preview shouldn't occlude/get occluded oddly against
+  // itself or other transparent objects (depth-buffer sorting artifacts are
+  // far more visible at partial opacity than full) — fine to skip depth
+  // writes here since this is only ever used for non-interactive-with-depth
+  // preview markers, never real solid geometry.
+  cloned.depthWrite = false;
+  return cloned;
+}
+
+/**
+ * Deep-clones an object with every material forced translucent at a fixed
+ * opacity — used for "ghost" placement previews (e.g. Hotel's clickable
+ * staircase-location markers, see `StaircaseCandidateOverlay` in
+ * `HotelGamePage.tsx`) where the real, eventual object's own geometry/texture
+ * should be recognizable, just faded. `opacity` alone (no color change)
+ * works for any material type, unlike `cloneWithTint`'s `color` property,
+ * which only exists on some — no `instanceof` narrowing needed here.
+ */
+export function cloneWithOpacity(source: THREE.Object3D, opacity: number): THREE.Object3D {
+  const clone = source.clone(true);
+  clone.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    child.material = Array.isArray(child.material)
+      ? child.material.map((material) => fadeMaterial(material, opacity))
+      : fadeMaterial(child.material, opacity);
+  });
+  return clone;
+}

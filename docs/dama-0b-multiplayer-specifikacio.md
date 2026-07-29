@@ -2,7 +2,7 @@
 
 **Státusz:** Implementálva, manuálisan tesztelve, és a manuális teszt által feltárt hibák javítva (2026-07-22) — auth (invite-code → JWT), Colyseus `GameRoom`/`DamaRoom`, `ColyseusGameTransport`, valós idejű Lobby (`LobbyRoom`), `src/shared`/`client`/`server` migráció, Prisma+PostgreSQL (Docker), `tsc`/`eslint`/`vitest`/`vite build` mind zöld mindkét oldalon. **Két-kliens state-szinkronizáció Node-szkripttel verifikálva** (lásd 11. szakasz) — a state-sync egy komoly, a korábbi típus-szintű tesztelésen átcsúszó hibája is kiderült és javítva lett eközben. Élő böngészős (két külön ablak/felhasználó) manuális teszt a javítások után **még nem történt újra** — érdemes még egyszer végigmenni rajta.
 **Utolsó frissítés:** 2026-07-24 — 16. szakasz: újracsatlakozás implementálva és élesben ellenőrizve (lásd lent)
-**Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md), [fazis-0a-dama-specifikacio.md](./fazis-0a-dama-specifikacio.md)
+**Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md), [dama-0a-specifikacio.md](./dama-0a-specifikacio.md)
 
 ## 1. Cél és hatókör
 

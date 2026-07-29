@@ -2,7 +2,7 @@
 
 **Státusz:** Implementálva (motor + 3D renderer + hot-seat UI), `tsc`/`eslint`/`vitest`/`vite build` mind zöld — élő böngészős teszt még nem történt, lásd 9. szakasz
 **Utolsó frissítés:** 2026-07-24
-**Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md) (fejlesztési sorrend 4. pontja), [fazis-0a-dama-specifikacio.md](./fazis-0a-dama-specifikacio.md) (az itt is követett minta: framework-agnosztikus reducer, core/games szeparáció, `PlayerController`)
+**Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md) (fejlesztési sorrend 4. pontja), [dama-0a-specifikacio.md](./dama-0a-specifikacio.md) (az itt is követett minta: framework-agnosztikus reducer, core/games szeparáció, `PlayerController`)
 
 > **Miért a Hotel jön a Dáma után, nem a tervezett sorrend szerinti következő (kisebb) lépés?** A te döntésed: a Hotel egyszerre igényel 3+ fős szoba-/kör-logikát, 3D tábla-renderert és (a nagyobb state-méret miatt) a `GameRoom` mezőnkénti `@colyseus/schema`-ra váltását — ez a platform eddigi legnagyobb architekturális ugrása. Ha ezt most, egy alaposan letesztelt vertikumban oldjuk meg, a később következő játékok (Gazdálkodj okosan, Monopoly, majd Catan) nagyrészt kész infrastruktúrára építhetnek.
 
@@ -383,7 +383,7 @@ function nextActivePlayerIndex(state: HotelState): number {
 
 **Győzelem-ellenőrzés (2. szakasz szerint javítva):** minden csőd/feladás után a reducer megszámolja a nem-csődbe-ment játékosokat — ha pontosan 1 marad, `status: 'FINISHED'` és `winnerId` az ő azonosítója. Ez a Dámától eltérő, **kieséses** győzelmi minta (nem kör-limit/pontszám-alapú, ahogy korábban tévesen feltételeztem).
 
-Ez a `currentPlayerIndex`-es minta az oka, hogy a **Hotel-0b**-ben a `GameRoom.assignPlayerSlot`/`isPlayersTurn` absztrakcióit N-fősre kell generalizálni (jelenleg egy 2-elemű `TPlayerSlot` enumra van írva, lásd `docs/fazis-0b-multiplayer-specifikacio.md` §6) — de ez már a **következő** fázis feladata, itt (Hotel-0a) még csak helyi hot-seat módban, `PlayerController`-en (Fázis 0a §6) keresztül fut, hálózat nélkül. A 2–4 fős tartomány (megerősítve, 8. szakasz) nem lesz hardcode-olva `players.length`-be — bármilyen N-re működik, hogy később bővíthető legyen.
+Ez a `currentPlayerIndex`-es minta az oka, hogy a **Hotel-0b**-ben a `GameRoom.assignPlayerSlot`/`isPlayersTurn` absztrakcióit N-fősre kell generalizálni (jelenleg egy 2-elemű `TPlayerSlot` enumra van írva, lásd `docs/dama-0b-multiplayer-specifikacio.md` §6) — de ez már a **következő** fázis feladata, itt (Hotel-0a) még csak helyi hot-seat módban, `PlayerController`-en (Fázis 0a §6) keresztül fut, hálózat nélkül. A 2–4 fős tartomány (megerősítve, 8. szakasz) nem lesz hardcode-olva `players.length`-be — bármilyen N-re működik, hogy később bővíthető legyen.
 
 ## 5. 3D pálya-renderer: `LoopTrackBoard3D`
 

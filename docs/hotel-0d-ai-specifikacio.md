@@ -2,7 +2,7 @@
 
 **Státusz:** IMPLEMENTÁLVA — a teljes terv (3, 4.1-4.8, 9. szakaszok) elkészült és le van tesztelve (lásd a 8. szakaszt az implementáció során felmerült részletekért, köztük egy, a keresés által felfedezett, a keresésen kívül is élő reducer-hibáról; a 9. szakaszt a hot-seat AI-ért, ami ugyanazt a döntéshozó logikát használja, mint az online mód). A Hotel-0d.2 (7. szakasz, csak-AI játékok elemzése) külön, jövőbeli fázis.
 **Utolsó frissítés:** 2026-07-26
-**Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md), [fazis-0c-dama-ai-specifikacio.md](./fazis-0c-dama-ai-specifikacio.md) (a minta, amit itt kiterjesztünk), [hotel-0b-multiplayer-specifikacio.md](./hotel-0b-multiplayer-specifikacio.md)
+**Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md), [dama-0c-ai-specifikacio.md](./dama-0c-ai-specifikacio.md) (a minta, amit itt kiterjesztünk), [hotel-0b-multiplayer-specifikacio.md](./hotel-0b-multiplayer-specifikacio.md)
 
 ## 1. Cél és hatókör
 

@@ -19,12 +19,28 @@ function playerCountOptions([min, max]: [number, number]): number[] {
   return Array.from({ length: max - min + 1 }, (_, i) => min + i);
 }
 
+/** Shared by the binary Ember/AI picker (Dáma) and the N-AI-count picker (Hotel/Ramses) below — avoids duplicating the same 3-option markup twice. */
+function AiDifficultySelect({ value, onChange }: { value: AiDifficulty; onChange: (difficulty: AiDifficulty) => void }) {
+  return (
+    <select value={value} onChange={(event) => onChange(event.target.value as AiDifficulty)}>
+      <option value="EASY">Könnyű</option>
+      <option value="MEDIUM">Közepes</option>
+      <option value="HARD">Nehéz</option>
+    </select>
+  );
+}
+
+/** Dáma's binary Ember/AI choice — the difficulty picker below only ever mattered for Hotel/Ramses's AiOpponentCountFieldset until now (see docs/dama-0d-ai-specifikacio.md §10). */
 function OpponentTypeFieldset({
   opponentType,
   onChange,
+  aiDifficulty,
+  onAiDifficultyChange,
 }: {
   opponentType: OpponentType;
   onChange: (type: OpponentType) => void;
+  aiDifficulty: AiDifficulty;
+  onAiDifficultyChange: (difficulty: AiDifficulty) => void;
 }) {
   return (
     <fieldset className={styles.fieldset}>
@@ -37,6 +53,13 @@ function OpponentTypeFieldset({
         <input type="radio" checked={opponentType === 'AI'} onChange={() => onChange('AI')} />
         AI
       </label>
+      {opponentType === 'AI' && (
+        <label>
+          {' '}
+          Nehézség:{' '}
+          <AiDifficultySelect value={aiDifficulty} onChange={onAiDifficultyChange} />
+        </label>
+      )}
     </fieldset>
   );
 }
@@ -96,11 +119,7 @@ function AiOpponentCountFieldset({
         <label>
           {' '}
           Nehézség:{' '}
-          <select value={aiDifficulty} onChange={(event) => onAiDifficultyChange(event.target.value as AiDifficulty)}>
-            <option value="EASY">Könnyű</option>
-            <option value="MEDIUM">Közepes</option>
-            <option value="HARD">Nehéz</option>
-          </select>
+          <AiDifficultySelect value={aiDifficulty} onChange={onAiDifficultyChange} />
         </label>
       )}
     </fieldset>
@@ -161,8 +180,13 @@ function applyAiOpponentCountParams(params: URLSearchParams, values: CreateRoomV
   if (aiCount > 0) params.set('aiDifficulty', aiDifficulty);
 }
 
+function applyBinaryAiOpponentParams(params: URLSearchParams, values: CreateRoomValues): void {
+  params.set('opponent', values.opponentType.toLowerCase());
+  if (values.opponentType === 'AI') params.set('aiDifficulty', values.aiDifficulty);
+}
+
 function applyOpponentParams(params: URLSearchParams, game: GameDescriptor | undefined, values: CreateRoomValues): void {
-  if (game?.online?.supportsAiOpponent) params.set('opponent', values.opponentType.toLowerCase());
+  if (game?.online?.supportsAiOpponent) applyBinaryAiOpponentParams(params, values);
   if (game?.online?.playerCountRange) params.set('playerCount', String(values.playerCount));
   if (game?.online?.supportsAiOpponentCount) applyAiOpponentCountParams(params, values);
 }
@@ -227,7 +251,12 @@ function CreateRoomModal({
       <h2>Új szoba</h2>
 
       {game.online?.supportsAiOpponent && (
-        <OpponentTypeFieldset opponentType={opponentType} onChange={onOpponentTypeChange} />
+        <OpponentTypeFieldset
+          opponentType={opponentType}
+          onChange={onOpponentTypeChange}
+          aiDifficulty={aiDifficulty}
+          onAiDifficultyChange={onAiDifficultyChange}
+        />
       )}
 
       {game.online?.playerCountRange && (

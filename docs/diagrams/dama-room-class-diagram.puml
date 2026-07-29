@@ -49,7 +49,7 @@ note bottom of GameRoom
   Ugyanaz a "működne-e Hotel-lel is,
   ha csak a típusparaméterek cserélődnek?"
   teszt, mint a kliens core/-nál
-  (lásd fazis-0a-dama-specifikacio.md §2.5).
+  (lásd dama-0a-specifikacio.md §2.5).
 end note
 
 note right of ColyseusGameTransport

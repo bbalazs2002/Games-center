@@ -4,7 +4,7 @@ const STORAGE_PREFIX = 'games-center:reconnect:';
  * Persists a Colyseus `room.reconnectionToken` (already in the SDK's
  * `roomId:token` combined format) across page reloads, so an unexpected
  * disconnect (WiFi drop, phone lock, accidental tab close) doesn't kick a
- * player out of their game — see docs/fazis-0b-multiplayer-specifikacio.md §16.
+ * player out of their game — see docs/dama-0b-multiplayer-specifikacio.md §16.
  * Keyed by game type since a browser could have games for different games
  * saved at once.
  */

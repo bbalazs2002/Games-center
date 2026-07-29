@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialState } from '../../../../shared/games/dama/engine/initialState';
-import { getMovablePositions, getValidMoves } from '../../../../shared/games/dama/engine/selectors';
-import type { DamaState } from '../../../../shared/games/dama/engine/state';
+import { createInitialState } from '../engine/initialState';
+import { getMovablePositions, getValidMoves } from '../engine/selectors';
+import type { DamaState } from '../engine/state';
 import { pickRandomMove } from './randomMoveStrategy';
 
 describe('pickRandomMove', () => {

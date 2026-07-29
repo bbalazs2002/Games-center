@@ -1,6 +1,6 @@
 .board {
+  display: block;
   width: 100%;
-  max-width: 32rem;
   aspect-ratio: 1 / 1;
 }
 
@@ -9,15 +9,73 @@
 }
 
 .lightSquare {
-  fill: #eeeed2;
+  fill: var(--board-light);
 }
 
 .darkSquare {
-  fill: #769656;
+  fill: var(--board-dark);
 }
 
 .highlight {
-  fill: #f6f669;
-  opacity: 0.6;
+  fill: var(--board-highlight);
   pointer-events: none;
+}
+
+/* "berakott panel" hatás — lásd docs/b-klaszter-ui-specifikacio.md §4 */
+.frame {
+  width: 100%;
+  max-width: 32rem;
+  border-radius: 2px;
+  background: var(--board-dark);
+  box-shadow: var(--shadow-inset);
+  padding: 3px;
+}
+
+.frameWithCoordinates {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  grid-template-rows: 1fr 1.5rem;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 33.5rem;
+}
+
+.frameWithCoordinates .frame {
+  grid-column: 2;
+  grid-row: 1;
+  max-width: none;
+}
+
+.rankLabels,
+.fileLabels {
+  font-family: var(--mono-font);
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  display: flex;
+}
+
+.rankLabels {
+  grid-column: 1;
+  grid-row: 1;
+  flex-direction: column;
+}
+
+.rankLabels span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.35rem;
+}
+
+.fileLabels {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.fileLabels span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

@@ -13,6 +13,7 @@ export interface ScannedModelProps {
   colorTint?: string;
   /** Rendered while loading and if the model fails to load (e.g. not dropped in yet) — each caller supplies its own placeholder geometry. */
   fallback?: ReactNode;
+  /** Overrides the model's own baked scale — omit to keep whatever scale the model was authored/exported with (the safe default: a model with a non-1 baked scale would otherwise silently get reset to 1x). */
   scale?: number;
 }
 
@@ -53,7 +54,7 @@ function cachedLoadObjModel(objUrl: string, mtlUrl?: string): Promise<THREE.Obje
  * Game/renderer-agnostic on purpose: reusable by any future R3F-based
  * renderer, not just Hotel's loop-track board.
  */
-export function ScannedModel({ objUrl, mtlUrl, colorTint, fallback = null, scale = 1 }: ScannedModelProps) {
+export function ScannedModel({ objUrl, mtlUrl, colorTint, fallback = null, scale }: ScannedModelProps) {
   const [loaded, setLoaded] = useState<THREE.Object3D | null>(null);
 
   useEffect(() => {

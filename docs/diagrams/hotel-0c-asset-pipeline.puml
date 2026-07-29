@@ -5,6 +5,7 @@ package "assets/Hotel/ (gitignored, local-only)" {
   folder "raw-heic/**" as RawHeic
   folder "raw-png/**" as RawPng
   folder "png/** (hand-curated)" as CuratedPng
+  file "full-board.glb\n(combined Blender scene,\nuser-authored, ~109MB)" as RawGlb
 }
 
 package "public/assets/hotel/ (versioned, served)" {
@@ -13,8 +14,7 @@ package "public/assets/hotel/ (versioned, served)" {
   folder "property-cards/" as PubCards
   folder "gardens/" as PubGardens
   folder "banknotes/" as PubBanknotes
-  folder "buildings/<hotelId>/" as PubBuildings
-  folder "car/" as PubCar
+  file "full-board.glb\n(compressed, ~11MB)" as PubGlb
 }
 
 RawHeic --> RawPng : scripts/convert-hotel-heic.mjs\n(mechanical mirror, no curation)
@@ -26,35 +26,92 @@ CuratedPng --> PubCards : manual copy
 CuratedPng --> PubGardens : manual copy
 CuratedPng --> PubBanknotes : manual copy
 
-note right of PubBuildings
-  .obj + .mtl, produced by the user via
-  phone 3D scanning (Polycam/Scaniverse/
-  Luma AI) — Hotel-0c.2, not photogrammetry
-  from raw-heic (no tooling available here)
-end note
-note right of PubCar
-  Same as buildings — one scanned car
-  model, tinted per player via ScannedModel
+RawGlb --> PubGlb : scripts/compress-hotel-glb.mjs\n(@gltf-transform/cli: resize→jpeg→dedup,\nNOT optimize — that flattens/joins nodes,\nbreaking name-based lookup)
+
+note right of RawGlb
+  Hotel-0c.2 — one combined, hand-positioned
+  Blender scene: 8 hotels × building tiers
+  (<Hotel>-<tier>, or bare <Hotel> for the
+  single-tier Boomerang), <Hotel>-garden,
+  stairs-<space>-<lotId> per possible
+  staircase space, car-<space> per track
+  space + car-0-<color> per parking slot,
+  board/Bank/cityHall. Every object carries
+  its own baked position/rotation/scale —
+  read directly, no more eyeballed anchors.
 end note
 
 package "src/client" {
-  component "ScannedModel\n(renderer-agnostic)" as ScannedModel
-  component "LoopTrackBoard3D /\ncomputeLoopPositions" as LoopTrack
-  component "HotelGamePage\n(renderSpace / renderToken)" as HotelGamePage
+  component "useGLTFScene\n(cached GLTFLoader,\nrenderer-agnostic)" as UseGLTFScene
+  component "GLTFSceneObject\n(single named object,\nscale is optional/additive)" as GLTFSceneObject
+  component "ScannedModel\n(.obj+.mtl, renderer-agnostic,\nunused by Hotel now — kept for\nfuture phone-scanned models)" as ScannedModel
+  component "HotelModelObject\n(Hotel-specific: position+scale\nused AS-IS, wrapped in a single\nHOTEL_UP_ROTATION group)" as HotelModelObject
+  component "useHotelSpacePositions\n(reads car-N baked positions,\nX/Z as-is, Y/Z sign-flipped to\nmatch HOTEL_UP_ROTATION)" as UseHotelSpacePositions
+  component "LoopTrackBoard3D /\ncomputeLoopPositions\n(sceneScale prop, default 1)" as LoopTrack
+  component "HotelGamePage\n(HotelBoardModel, HotelBuildingClusters,\nHotelCarToken)" as HotelGamePage
+  component "HotelModelViewerPage\n(/games/hotel/model-viewer —\nraw, uncorrected .glb inspector,\nclick-to-see name/transform)" as HotelModelViewerPage
   component "OwnedLotsPanel + Modal\n(cards, decorative)" as OwnedLotsPanel
   component "AnimatedDie" as AnimatedDie
 }
 
-PubBuildings ..> ScannedModel : objUrl/mtlUrl\n(falls back to placeholder\nbox geometry until present)
-PubCar ..> ScannedModel
+PubGlb ..> UseGLTFScene : url (cached once,\nshared by every\nnamed-object lookup)
+UseGLTFScene <.. GLTFSceneObject
+UseGLTFScene <.. HotelModelObject
+UseGLTFScene <.. UseHotelSpacePositions
+UseGLTFScene <.. HotelModelViewerPage : same cached scene,\nrendered with ZERO correction
+
 PubDice ..> AnimatedDie : face textures
 PubPermDice ..> AnimatedDie
 PubCards ..> OwnedLotsPanel
 PubGardens ..> OwnedLotsPanel
 PubBanknotes ..> OwnedLotsPanel
 
-ScannedModel <.. HotelGamePage : renderSpace (buildings)\nrenderToken (car)
-LoopTrack <.. HotelGamePage : custom S-shaped\ncontrol points
+HotelModelObject <.. HotelGamePage : HotelBoardModel (board/Bank/cityHall)\nHotelBuildingClusters (tiers/garden/stairs)\nHotelCarToken (car-1 shape, tinted per player)
+UseHotelSpacePositions <.. HotelGamePage : positions prop\n(falls back to computeSplineLoopPositions\nuntil the model loads)
+LoopTrack <.. HotelGamePage : custom S-shaped\ncontrol points (fallback only)
 AnimatedDie <.. HotelGamePage : move / permit roll display
+
+note bottom of HotelModelObject
+  The whole raw scene loads with "up"
+  pointing at world -Y — confirmed
+  directly by the USER, via
+  HotelModelViewerPage, after THREE
+  earlier rounds of per-object rotation
+  math each looked right in isolated
+  testing and were each wrong once
+  checked against a harder live case
+  (decompose-and-recover-Ry(θ); reset to
+  identity; a Ry(θ)+180° "fix" that still
+  didn't hold up under renewed testing).
+
+  Round 4: the user asked to step back
+  and see the RAW, uncorrected file
+  directly (HotelModelViewerPage was
+  built for exactly this), then reported
+  precisely: "up is -Y, mirror it to
+  +Y". A literal single-axis mirror
+  (scale -1 on Y) was tried first and
+  immediately broke every piece of board
+  text (rendered backwards) — a true
+  reflection always reverses
+  handedness/readability, which "just
+  upside down" didn't actually call for.
+
+  The real, final fix: a single GLOBAL
+  180° ROTATION around X
+  (HOTEL_UP_ROTATION, hotelModelAssets.ts)
+  wrapping only real model content (never
+  the fallback placeholders, which are
+  already correct). A rotation flips Y
+  the same way a mirror would, but
+  preserves handedness, so text stays
+  readable. Verified against all three
+  ground truths at once: readable board
+  text, buildings (Boomerang, Royal-1)
+  standing upright, and the drawn "Start"
+  arrow lined up with the real car/token
+  positions. See
+  hotel-0c-specifikacio.md §5.8.
+end note
 
 @enduml

@@ -1,7 +1,8 @@
 import { Vector3 } from 'three';
+import { HOTEL_SCENE_SCALE } from './hotelModelAssets';
 
-/** Matches the board.jpg texture's aspect ratio (square) and the scale the placeholder rectangle used before it. */
-export const BOARD_SIZE = 12;
+/** Matches the board.jpg texture's aspect ratio (square) and the scale the placeholder rectangle used before it — scaled up by `HOTEL_SCENE_SCALE` to match the real model's native (unscaled) coordinate space, see hotelModelAssets.ts. */
+export const BOARD_SIZE = 12 * HOTEL_SCENE_SCALE;
 
 /**
  * Control points tracing the real board's track centerline (see

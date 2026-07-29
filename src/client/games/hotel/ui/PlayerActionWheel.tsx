@@ -15,14 +15,13 @@ import {
   auctionBiddingSlices,
   constructionLotSlices,
   debtAuctionLotSlices,
-  freeStaircaseSpaceSlices,
   purchaseLotSlices,
   rollPermitDie,
   rootSlices,
   staircaseRightLotSlices,
-  staircaseRightSpaceSlices,
   type MenuLevel,
   type NavigationHelpers,
+  type StaircasePlacementMode,
 } from './hotelMenuLevels';
 import styles from './PlayerActionWheel.module.css';
 
@@ -40,6 +39,16 @@ export interface PlayerActionWheelProps {
    * whoever's turn it is holds the device.
    */
   interactive?: boolean;
+  /**
+   * Which staircase-space picker is currently armed (see `StaircasePlacementMode`)
+   * — `null` when no staircase placement is in progress. Owned by
+   * `HotelGamePage` (not this component), since the actual space choice
+   * happens by clicking a translucent preview on the 3D board, which this
+   * component has no access to.
+   */
+  staircasePlacement: StaircasePlacementMode | null;
+  onStartStaircasePlacement: (mode: StaircasePlacementMode) => void;
+  onCancelStaircasePlacement: () => void;
 }
 
 function computeSlices(
@@ -50,20 +59,17 @@ function computeSlices(
   pending: ConstructionPlanItem[],
   addToPending: (item: ConstructionPlanItem) => void,
   onRequestForfeit: () => void,
+  onStartStaircasePlacement: (mode: StaircasePlacementMode) => void,
 ): WheelMenuSlice[] {
   switch (level.kind) {
     case 'root':
-      return rootSlices(state, dispatch, nav, onRequestForfeit);
+      return rootSlices(state, dispatch, nav, onRequestForfeit, onStartStaircasePlacement);
     case 'purchase-lots':
       return purchaseLotSlices(state, dispatch);
     case 'construction-lots':
       return constructionLotSlices(state, pending, addToPending);
     case 'staircase-right-lots':
-      return staircaseRightLotSlices(state, nav);
-    case 'staircase-right-spaces':
-      return staircaseRightSpaceSlices(state, level.lotId, dispatch);
-    case 'free-staircase-spaces':
-      return freeStaircaseSpaceSlices(state, dispatch);
+      return staircaseRightLotSlices(state, onStartStaircasePlacement);
     case 'debt-auction-lots':
       return debtAuctionLotSlices(state, dispatch);
     case 'auction-bidding':
@@ -80,6 +86,43 @@ function describeSelection(item: ConstructionPlanItem): string {
   return parts.join(', ');
 }
 
+/** Not our turn online, OR a staircase placement is armed (the real choice now happens by clicking a preview on the board, not here) — still show every slice (open information), just force them all disabled rather than re-deriving each one's own condition. */
+function resolveSlices(
+  rawSlices: WheelMenuSlice[],
+  interactive: boolean,
+  staircasePlacement: StaircasePlacementMode | null,
+): WheelMenuSlice[] {
+  if (interactive && !staircasePlacement) return rawSlices;
+  return rawSlices.map((slice) => ({ ...slice, disabled: true }));
+}
+
+/** Replaces the wheel itself while a staircase placement is armed — the actual space choice happens by clicking a translucent preview on the 3D board (`HotelGamePage.tsx`'s `StaircaseCandidateOverlay`), not through a menu. */
+function WheelOrStaircaseHint({
+  staircasePlacement,
+  onCancelStaircasePlacement,
+  slices,
+  onBack,
+  onClose,
+}: {
+  staircasePlacement: StaircasePlacementMode | null;
+  onCancelStaircasePlacement: () => void;
+  slices: WheelMenuSlice[];
+  onBack?: () => void;
+  onClose: () => void;
+}) {
+  if (!staircasePlacement) {
+    return <WheelMenu slices={slices} onBack={onBack} onClose={onClose} />;
+  }
+  return (
+    <div className={styles.staircaseHint}>
+      <p>Válassz egy mezőt a táblán a lépcsőnek</p>
+      <Button variant="secondary" onClick={onCancelStaircasePlacement}>
+        Mégse
+      </Button>
+    </div>
+  );
+}
+
 /**
  * Floating, collapsible radial action menu for the active player — see
  * docs/hotel-0a-specifikacio.md §5/§9 and assets/Hotel/UI-menu.png for the
@@ -88,7 +131,14 @@ function describeSelection(item: ConstructionPlanItem): string {
  * selection — both are transient UI state, not game state, so they live
  * here rather than in HotelState.
  */
-export function PlayerActionWheel({ state, dispatch, interactive = true }: PlayerActionWheelProps) {
+export function PlayerActionWheel({
+  state,
+  dispatch,
+  interactive = true,
+  staircasePlacement,
+  onStartStaircasePlacement,
+  onCancelStaircasePlacement,
+}: PlayerActionWheelProps) {
   const [open, setOpen] = useState(true);
   const [stack, setStack] = useState<MenuLevel[]>([{ kind: 'root' }]);
   const [pending, setPending] = useState<ConstructionPlanItem[]>([]);
@@ -105,6 +155,15 @@ export function PlayerActionWheel({ state, dispatch, interactive = true }: Playe
 
   function push(level: MenuLevel): void {
     setStack((prev) => [...prev, level]);
+  }
+
+  // Choosing a lot for a paid staircase right leaves the (now pointless)
+  // lot-list submenu and arms the board-click picker — mirrors
+  // dispatchAndReturnToRoot's "every slice that resolves something returns to
+  // root" convention, just without a dispatch yet (the space still isn't chosen).
+  function startStaircasePlacement(mode: StaircasePlacementMode): void {
+    onStartStaircasePlacement(mode);
+    setStack([{ kind: 'root' }]);
   }
 
   function back(): void {
@@ -167,12 +226,17 @@ export function PlayerActionWheel({ state, dispatch, interactive = true }: Playe
   }
 
   const level = stack[stack.length - 1];
-  const rawSlices = computeSlices(level, state, dispatchAndReturnToRoot, { push }, pending, addToPending, () =>
-    setForfeitConfirmOpen(true),
+  const rawSlices = computeSlices(
+    level,
+    state,
+    dispatchAndReturnToRoot,
+    { push },
+    pending,
+    addToPending,
+    () => setForfeitConfirmOpen(true),
+    startStaircasePlacement,
   );
-  // Not our turn online — still show every slice (open information), just
-  // force them all disabled rather than re-deriving each one's own condition.
-  const slices = interactive ? rawSlices : rawSlices.map((slice) => ({ ...slice, disabled: true }));
+  const slices = resolveSlices(rawSlices, interactive, staircasePlacement);
   // Shown so the player can weigh the risk before requesting the permit — a
   // DOUBLE permit-die roll charges this amount twice (a RED roll charges nothing).
   const totalCost = pending.reduce((sum, item) => sum + computeConstructionCost(getLot(state, item.lotId), item), 0);
@@ -182,7 +246,13 @@ export function PlayerActionWheel({ state, dispatch, interactive = true }: Playe
       <div className={[styles.container, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
         <div className={styles.playerLabel}>{currentPlayer.name}</div>
         <DiceHUD state={state} />
-        <WheelMenu slices={slices} onBack={stack.length > 1 ? back : undefined} onClose={() => setOpen(false)} />
+        <WheelOrStaircaseHint
+          staircasePlacement={staircasePlacement}
+          onCancelStaircasePlacement={onCancelStaircasePlacement}
+          slices={slices}
+          onBack={stack.length > 1 ? back : undefined}
+          onClose={() => setOpen(false)}
+        />
       </div>
       {/* On the LEFT side, not stacked under the wheel — more room there, and
           the wheel's own column stays a predictable, fixed height. Capped to
