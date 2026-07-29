@@ -43,6 +43,20 @@
   --body-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
   --mono-font: ui-monospace, 'SF Mono', 'Cascadia Code', 'Consolas', 'Liberation Mono', monospace;
 
+  /* Aliases onto the game-agnostic `--shell-*` contract (see
+     docs/shell-ux-specifikacio.md §2.3) — added so shell-level pages that
+     don't know a B-cluster-specific token name (LobbyPage, GameModeSelectPage,
+     RulesModal, LoadingScreen) can read a game's theme uniformly, without
+     touching a single existing --ground/--surface/... usage below. Purely
+     additive — GridBoard2D/DamaGamePage/DamaSetupPage keep reading the
+     original names exactly as before. */
+  --shell-ground: var(--ground);
+  --shell-surface: var(--surface);
+  --shell-ink: var(--ink);
+  --shell-ink-soft: var(--ink-soft);
+  --shell-accent: var(--accent);
+  --shell-line: var(--line);
+
   background-color: var(--ground);
   color: var(--ink);
   font-family: var(--body-font);

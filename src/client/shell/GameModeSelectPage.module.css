@@ -1,8 +1,21 @@
 .page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 4rem 1rem;
+  background: var(--shell-ground, transparent);
+  color: var(--shell-ink, inherit);
+}
+
+.content {
   max-width: 24rem;
-  margin: 4rem auto;
-  padding: 1rem;
+  width: 100%;
   text-align: center;
+}
+
+.content h1 {
+  color: var(--shell-accent, inherit);
 }
 
 .modes {

@@ -33,6 +33,25 @@ describe('reducer — simple move', () => {
     expect(next.status).toBe('IN_PROGRESS');
   });
 
+  it('appends a log entry for the move', () => {
+    const state = stateWith({
+      board: withPieces([
+        [pos(5, 0), man('LIGHT')],
+        [pos(0, 7), man('DARK')],
+      ]),
+    });
+    const next = reducer(state, { type: 'MOVE', from: pos(5, 0), to: pos(4, 1) });
+
+    expect(next.log).toHaveLength(1);
+    expect(next.log[0]).toEqual({
+      player: 'LIGHT',
+      from: pos(5, 0),
+      to: pos(4, 1),
+      captured: null,
+      becameKing: false,
+    });
+  });
+
   it('moving to an invalid target square is a no-op (same state reference)', () => {
     const state = stateWith({ board: withPieces([[pos(5, 0), man('LIGHT')]]) });
     const next = reducer(state, { type: 'MOVE', from: pos(5, 0), to: pos(3, 0) });
@@ -68,6 +87,25 @@ describe('reducer — capture', () => {
     expect(next.chainCaptureFrom).toBeNull();
   });
 
+  it('appends a log entry recording the captured square', () => {
+    const state = stateWith({
+      board: withPieces([
+        [pos(5, 0), man('LIGHT')],
+        [pos(4, 1), man('DARK')],
+      ]),
+    });
+    const next = reducer(state, { type: 'MOVE', from: pos(5, 0), to: pos(3, 2) });
+
+    expect(next.log).toHaveLength(1);
+    expect(next.log[0]).toEqual({
+      player: 'LIGHT',
+      from: pos(5, 0),
+      to: pos(3, 2),
+      captured: pos(4, 1),
+      becameKing: false,
+    });
+  });
+
   it('chain capture: the turn does not pass while the same piece can keep capturing', () => {
     const state = stateWith({
       board: withPieces([
@@ -94,6 +132,11 @@ describe('reducer — capture', () => {
     expect(afterSecondHop.currentPlayer).toBe('DARK');
     expect(afterSecondHop.chainCaptureFrom).toBeNull();
     expect(afterSecondHop.status).toBe('IN_PROGRESS');
+
+    // One log entry per hop, not one per turn.
+    expect(afterSecondHop.log).toHaveLength(2);
+    expect(afterSecondHop.log[0].to).toEqual(pos(3, 2));
+    expect(afterSecondHop.log[1].to).toEqual(pos(1, 4));
   });
 });
 

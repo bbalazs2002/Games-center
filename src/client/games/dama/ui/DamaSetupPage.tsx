@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../../ui-kit/Button';
+import { MenuNav } from '../../../ui-kit/MenuNav';
 import theme from '../../../renderers/grid-2d/clusterBTheme.module.css';
 import type { DamaAiDifficulty } from '../../../../shared/games/dama/ai';
 import { DamaGamePage } from './DamaGamePage';
@@ -33,12 +34,19 @@ export function DamaSetupPage() {
   const [difficulty, setDifficulty] = useState<DamaAiDifficulty>('MEDIUM');
   const [started, setStarted] = useState(false);
 
+  // No localStorage persistence for Dáma (unlike Hotel) — "Kilépés" simply
+  // abandons the in-memory game, same as "Új játék" would.
+  function startFresh(): void {
+    setStarted(false);
+  }
+
   if (started) {
-    return <DamaGamePage hotSeatAiSlots={buildAiSlots(opponentType, difficulty)} />;
+    return <DamaGamePage hotSeatAiSlots={buildAiSlots(opponentType, difficulty)} onRequestNewGame={startFresh} />;
   }
 
   return (
     <div className={[styles.page, theme.theme].join(' ')}>
+      <MenuNav backTo="/games/dama" />
       <span className={styles.eyebrow}>Rács · B klaszter</span>
       <h1>Dáma — új játék</h1>
       <div className={styles.card}>

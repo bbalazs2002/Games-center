@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Button } from '../../../ui-kit/Button';
+import { MenuNav } from '../../../ui-kit/MenuNav';
+import { useGameTheme } from '../../../shell/useGameTheme';
 import type { HotelAiDifficulty } from '../../../../shared/games/hotel/ai';
 import { HotelGamePage } from './HotelGamePage';
-import { loadPersistedHotelLocalGame, type PersistedHotelLocalGame } from './hotelLocalGamePersistence';
+import { clearPersistedHotelLocalGame, loadPersistedHotelLocalGame, type PersistedHotelLocalGame } from './hotelLocalGamePersistence';
 import type { HotSeatAiSlots } from './useHotSeatAi';
 import styles from './HotelSetupPage.module.css';
 
@@ -32,6 +34,7 @@ function buildAiSlots(names: string[], aiFlags: boolean[], difficulty: HotelAiDi
  * useHotSeatAi — see docs/hotel-0d-ai-specifikacio.md §8.
  */
 export function HotelSetupPage() {
+  const themeClass = useGameTheme('hotel');
   const [names, setNames] = useState<string[]>(defaultNames(MIN_PLAYERS));
   const [aiFlags, setAiFlags] = useState<boolean[]>(() => Array(MIN_PLAYERS).fill(false));
   const [difficulty, setDifficulty] = useState<HotelAiDifficulty>('MEDIUM');
@@ -42,7 +45,12 @@ export function HotelSetupPage() {
   // new game (HotelGamePage's own "Új játék" clears storage first).
   const [resumedGame, setResumedGame] = useState<PersistedHotelLocalGame | null>(() => loadPersistedHotelLocalGame());
 
+  // Clears storage HERE (not inside HotelGamePage's own "Új játék" confirm)
+  // so the shared, game-agnostic LocalGameControls component never needs to
+  // know Hotel specifically has a persisted-game concept at all — see
+  // docs/shell-ux-specifikacio.md's LocalGameControls extraction.
   function startFresh(): void {
+    clearPersistedHotelLocalGame();
     setResumedGame(null);
     setStarted(false);
   }
@@ -89,45 +97,48 @@ export function HotelSetupPage() {
   const anyAi = aiFlags.some(Boolean);
 
   return (
-    <div className={styles.page}>
-      <h1>Hotel — új játék</h1>
-      <p>
-        Játékosok ({MIN_PLAYERS}–{MAX_PLAYERS} fő):
-      </p>
-      {names.map((name, index) => (
-        <div key={index} className={styles.playerRow}>
-          <input
-            className={styles.nameInput}
-            value={name}
-            onChange={(event) => updateName(index, event.target.value)}
-          />
-          <label className={styles.aiToggle}>
-            <input type="checkbox" checked={aiFlags[index]} onChange={() => toggleAi(index)} />
-            AI
-          </label>
+    <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
+      <MenuNav backTo="/games/hotel" />
+      <div className={styles.content}>
+        <h1>Hotel — új játék</h1>
+        <p>
+          Játékosok ({MIN_PLAYERS}–{MAX_PLAYERS} fő):
+        </p>
+        {names.map((name, index) => (
+          <div key={index} className={styles.playerRow}>
+            <input
+              className={styles.nameInput}
+              value={name}
+              onChange={(event) => updateName(index, event.target.value)}
+            />
+            <label className={styles.aiToggle}>
+              <input type="checkbox" checked={aiFlags[index]} onChange={() => toggleAi(index)} />
+              AI
+            </label>
+          </div>
+        ))}
+        <div className={styles.playerCountControls}>
+          <Button variant="secondary" onClick={removePlayer} disabled={names.length <= MIN_PLAYERS}>
+            Játékos eltávolítása
+          </Button>
+          <Button variant="secondary" onClick={addPlayer} disabled={names.length >= MAX_PLAYERS}>
+            Játékos hozzáadása
+          </Button>
         </div>
-      ))}
-      <div className={styles.playerCountControls}>
-        <Button variant="secondary" onClick={removePlayer} disabled={names.length <= MIN_PLAYERS}>
-          Játékos eltávolítása
-        </Button>
-        <Button variant="secondary" onClick={addPlayer} disabled={names.length >= MAX_PLAYERS}>
-          Játékos hozzáadása
+        {anyAi && (
+          <label className={styles.difficultyRow}>
+            AI nehézsége:{' '}
+            <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as HotelAiDifficulty)}>
+              <option value="EASY">Könnyű</option>
+              <option value="MEDIUM">Közepes</option>
+              <option value="HARD">Nehéz</option>
+            </select>
+          </label>
+        )}
+        <Button onClick={() => setStarted(true)} disabled={!canStart}>
+          Játék indítása
         </Button>
       </div>
-      {anyAi && (
-        <label className={styles.difficultyRow}>
-          AI nehézsége:{' '}
-          <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as HotelAiDifficulty)}>
-            <option value="EASY">Könnyű</option>
-            <option value="MEDIUM">Közepes</option>
-            <option value="HARD">Nehéz</option>
-          </select>
-        </label>
-      )}
-      <Button onClick={() => setStarted(true)} disabled={!canStart}>
-        Játék indítása
-      </Button>
     </div>
   );
 }

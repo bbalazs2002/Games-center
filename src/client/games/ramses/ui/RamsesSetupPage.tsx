@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../../../ui-kit/Button';
+import { MenuNav } from '../../../ui-kit/MenuNav';
+import { useGameTheme } from '../../../shell/useGameTheme';
 import type { RamsesAiDifficulty } from '../../../../shared/games/ramses/ai';
 import { RamsesGamePage } from './RamsesGamePage';
 import type { HotSeatAiSlots } from './useRamsesHotSeatAi';
@@ -33,13 +35,26 @@ function buildAiSlots(names: string[], aiFlags: boolean[], difficulty: RamsesAiD
  * docs/ramses-0c-ai-specifikacio.md §5.
  */
 export function RamsesSetupPage() {
+  const themeClass = useGameTheme('ramses');
   const [names, setNames] = useState<string[]>(defaultNames(MIN_PLAYERS));
   const [aiFlags, setAiFlags] = useState<boolean[]>(() => Array(MIN_PLAYERS).fill(false));
   const [difficulty, setDifficulty] = useState<RamsesAiDifficulty>('MEDIUM');
   const [started, setStarted] = useState(false);
 
+  // No localStorage persistence for Ramses (unlike Hotel) — "Kilépés" simply
+  // abandons the in-memory game, same as "Új játék" would.
+  function startFresh(): void {
+    setStarted(false);
+  }
+
   if (started) {
-    return <RamsesGamePage playerNames={names} hotSeatAiSlots={buildAiSlots(names, aiFlags, difficulty)} />;
+    return (
+      <RamsesGamePage
+        playerNames={names}
+        hotSeatAiSlots={buildAiSlots(names, aiFlags, difficulty)}
+        onRequestNewGame={startFresh}
+      />
+    );
   }
 
   function updateName(index: number, value: string): void {
@@ -64,45 +79,48 @@ export function RamsesSetupPage() {
   const anyAi = aiFlags.some(Boolean);
 
   return (
-    <div className={styles.page}>
-      <h1>Ramses — új játék</h1>
-      <p>
-        Játékosok ({MIN_PLAYERS}–{MAX_PLAYERS} fő):
-      </p>
-      {names.map((name, index) => (
-        <div key={index} className={styles.playerRow}>
-          <input
-            className={styles.nameInput}
-            value={name}
-            onChange={(event) => updateName(index, event.target.value)}
-          />
-          <label className={styles.aiToggle}>
-            <input type="checkbox" checked={aiFlags[index]} onChange={() => toggleAi(index)} />
-            AI
-          </label>
+    <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
+      <MenuNav backTo="/games/ramses" />
+      <div className={styles.content}>
+        <h1>Ramses — új játék</h1>
+        <p>
+          Játékosok ({MIN_PLAYERS}–{MAX_PLAYERS} fő):
+        </p>
+        {names.map((name, index) => (
+          <div key={index} className={styles.playerRow}>
+            <input
+              className={styles.nameInput}
+              value={name}
+              onChange={(event) => updateName(index, event.target.value)}
+            />
+            <label className={styles.aiToggle}>
+              <input type="checkbox" checked={aiFlags[index]} onChange={() => toggleAi(index)} />
+              AI
+            </label>
+          </div>
+        ))}
+        <div className={styles.playerCountControls}>
+          <Button variant="secondary" onClick={removePlayer} disabled={names.length <= MIN_PLAYERS}>
+            Játékos eltávolítása
+          </Button>
+          <Button variant="secondary" onClick={addPlayer} disabled={names.length >= MAX_PLAYERS}>
+            Játékos hozzáadása
+          </Button>
         </div>
-      ))}
-      <div className={styles.playerCountControls}>
-        <Button variant="secondary" onClick={removePlayer} disabled={names.length <= MIN_PLAYERS}>
-          Játékos eltávolítása
-        </Button>
-        <Button variant="secondary" onClick={addPlayer} disabled={names.length >= MAX_PLAYERS}>
-          Játékos hozzáadása
+        {anyAi && (
+          <label className={styles.difficultyRow}>
+            AI nehézsége:{' '}
+            <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as RamsesAiDifficulty)}>
+              <option value="EASY">Könnyű</option>
+              <option value="MEDIUM">Közepes</option>
+              <option value="HARD">Nehéz</option>
+            </select>
+          </label>
+        )}
+        <Button onClick={() => setStarted(true)} disabled={!canStart}>
+          Játék indítása
         </Button>
       </div>
-      {anyAi && (
-        <label className={styles.difficultyRow}>
-          AI nehézsége:{' '}
-          <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as RamsesAiDifficulty)}>
-            <option value="EASY">Könnyű</option>
-            <option value="MEDIUM">Közepes</option>
-            <option value="HARD">Nehéz</option>
-          </select>
-        </label>
-      )}
-      <Button onClick={() => setStarted(true)} disabled={!canStart}>
-        Játék indítása
-      </Button>
     </div>
   );
 }

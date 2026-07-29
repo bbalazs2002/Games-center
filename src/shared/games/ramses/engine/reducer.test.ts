@@ -24,6 +24,9 @@ describe('reducer — SLIDE_PYRAMID', () => {
     expect(next.board.find((c) => c.id === 'r0c1')?.hasPyramid).toBe(false);
     expect(next.currentPlayerIndex).toBe(0);
     expect(next.activeCard).toEqual({ id: 'c1', treasureId: 'scarab', points: 3 });
+    expect(next.log).toEqual([
+      { playerId: 'player-1', fromCellId: 'r0c1', toCellId: 'r0c0', treasureRevealed: null, matched: false, pointsAwarded: 0 },
+    ]);
   });
 
   it('revealing the wrong treasure passes the turn — activeCard stays the same target', () => {
@@ -34,6 +37,9 @@ describe('reducer — SLIDE_PYRAMID', () => {
     expect(next.currentPlayerIndex).toBe(1);
     expect(next.activeCard).toEqual({ id: 'c1', treasureId: 'scarab', points: 3 });
     expect(next.players[0].wonCards).toEqual([]);
+    expect(next.log).toEqual([
+      { playerId: 'player-1', fromCellId: 'r0c1', toCellId: 'r0c0', treasureRevealed: 'ankh', matched: false, pointsAwarded: 0 },
+    ]);
   });
 
   it('revealing the right treasure awards the card, the SAME player continues, and draws the next card', () => {
@@ -49,6 +55,11 @@ describe('reducer — SLIDE_PYRAMID', () => {
     expect(next.activeCard).toEqual({ id: 'c2', treasureId: 'ankh', points: 1 });
     expect(next.drawPile).toEqual([]);
     expect(next.status).toBe('IN_PROGRESS');
+    // Exactly one log entry for the real SLIDE_PYRAMID action — the automatic
+    // follow-up draw (drawCardForCurrentPlayer) is bookkeeping, not a second action.
+    expect(next.log).toEqual([
+      { playerId: 'player-1', fromCellId: 'r0c1', toCellId: 'r0c0', treasureRevealed: 'scarab', matched: true, pointsAwarded: 3 },
+    ]);
   });
 
   it('winning the last card in the pile finishes the game and computes a winner', () => {

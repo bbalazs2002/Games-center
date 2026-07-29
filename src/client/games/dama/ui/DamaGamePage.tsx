@@ -3,6 +3,8 @@ import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { useReportFeedbackContext } from '../../../ui-kit/FeedbackContext';
+import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { GridBoard2D, type GridPosition } from '../../../renderers/grid-2d/GridBoard2D';
 import theme from '../../../renderers/grid-2d/clusterBTheme.module.css';
 import type { DamaAction } from '../../../../shared/games/dama/engine/actions';
@@ -120,9 +122,17 @@ export interface DamaGamePageProps {
   myPlayer?: Player;
   /** Hot-seat only — which of the two LIGHT/DARK slots (if any) is AI-controlled, and at what difficulty. Ignored once `transport` is provided, since online AI is already driven server-side by GameRoom. */
   hotSeatAiSlots?: HotSeatAiSlots;
+  /** Local mode only — lets the player abandon the current local game and return to DamaSetupPage's form. Omitted (no "Új játék" affordance shown) in online mode. */
+  onRequestNewGame?: () => void;
 }
 
-export function DamaGamePage({ transport: providedTransport, myPlayer, hotSeatAiSlots }: DamaGamePageProps = {}) {
+export function DamaGamePage({
+  transport: providedTransport,
+  myPlayer,
+  hotSeatAiSlots,
+  onRequestNewGame,
+}: DamaGamePageProps = {}) {
+  const isLocalMode = providedTransport === undefined;
   const localTransport = useMemo(
     () => new LocalGameTransport<DamaState, DamaAction>(reducer, createInitialState()),
     [],
@@ -131,6 +141,7 @@ export function DamaGamePage({ transport: providedTransport, myPlayer, hotSeatAi
   const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
   useDamaHotSeatAi(transport, hotSeatAiSlots ?? {});
+  useReportFeedbackContext('dama', state);
   const [selected, setSelected] = useState<GridPosition | null>(null);
 
   const winner = getWinner(state);
@@ -194,6 +205,7 @@ export function DamaGamePage({ transport: providedTransport, myPlayer, hotSeatAi
           <ScoreCard state={state} winner={winner} myPlayer={myPlayer} hotSeatAiSlots={hotSeatAiSlots ?? {}} />
         </div>
       </div>
+      {isLocalMode && <LocalGameControls gameId="dama" onRequestNewGame={onRequestNewGame} resumable={false} />}
     </div>
   );
 }

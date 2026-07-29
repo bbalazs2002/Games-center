@@ -1,0 +1,22 @@
+/**
+ * Ramses's own visual language, exposed as a reusable, gameId-driven theme —
+ * mirrors hotelTheme.module.css's role. The background/panel/text colors are
+ * lifted as-is from RamsesGamePage.module.css (warm brown/sand "Egyptian"
+ * gradient); the accent is NEW — Ramses never had a distinct one before (its
+ * own CSS uses translucent panel darkening only, confirmed via grep, unlike
+ * Hotel's gold). Chosen with the user (2026-07-29, docs/shell-ux-specifikacio.md
+ * §9): a muted teal/lapis-lazuli, the classic complementary blue-green to
+ * Egyptian jewellery/painting against the sand-brown base — used the same
+ * way Hotel uses its gold (titles, buttons, focus rings).
+ */
+.theme {
+  --shell-ground: radial-gradient(ellipse at 50% 0%, #2a2010 0%, #17120a 55%, #0d0a06 100%);
+  --shell-surface: rgba(23, 18, 10, 0.55);
+  --shell-ink: #f3ecd9;
+  --shell-ink-soft: rgba(243, 236, 217, 0.65);
+  --shell-accent: #5a9b8e;
+  --shell-line: rgba(90, 155, 142, 0.4);
+
+  background: var(--shell-ground);
+  color: var(--shell-ink);
+}

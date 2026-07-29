@@ -3,6 +3,23 @@ import type { GameTransport } from './GameTransport';
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:2567';
 
 /**
+ * `crypto.randomUUID()` is spec-gated to secure contexts (HTTPS or
+ * `localhost`) — opening the dev server via `npm run dev -- --host` from
+ * another device on the LAN hits it over plain HTTP, an insecure context,
+ * where `crypto.randomUUID` is simply undefined. `crypto.getRandomValues()`
+ * has no such restriction, so it's used here to assemble an equivalent v4
+ * UUID by hand as a fallback.
+ */
+function generateSessionId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/**
  * Wraps any GameTransport and best-effort mirrors every dispatched action +
  * the resulting state to the server as one JSONL line — the local/hot-seat
  * equivalent of GameRoom's own (online-only, opt-in) game logger, both
@@ -25,7 +42,7 @@ const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:2567';
  */
 export class LoggingGameTransport<TState, TAction> implements GameTransport<TState, TAction> {
   private seq = 0;
-  private readonly sessionId = crypto.randomUUID();
+  private readonly sessionId = generateSessionId();
 
   constructor(
     private readonly inner: GameTransport<TState, TAction>,

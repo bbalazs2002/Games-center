@@ -95,6 +95,7 @@ export function createInitialState(playerNames: string[]): RamsesState {
     currentPlayerIndex: 0,
     status: 'IN_PROGRESS',
     winnerIds: [],
+    log: [],
   };
 
   // Draws the first card for player-1 — reuses the exact same "draw + resolve

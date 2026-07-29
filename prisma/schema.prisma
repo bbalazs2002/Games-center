@@ -52,3 +52,17 @@ model GameSessionPlayer {
   @@id([gameSessionId, userId])
   @@map("game_session_players")
 }
+
+/** See docs/shell-ux-specifikacio.md §4.3 — bug/suggestion reports, optionally attached to a live game's own state snapshot. */
+model FeedbackReport {
+  id         String   @id @default(uuid())
+  type       String // "BUG" | "SUGGESTION"
+  message    String
+  gameType   String? // null when sent from the menu, not from inside a game
+  contextJson Json? // the reporting game's own state snapshot, if any (shape varies per game)
+  userId     String? // null when sent without a login (e.g. hot-seat play, which has no guaranteed JWT)
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@map("feedback_reports")
+}

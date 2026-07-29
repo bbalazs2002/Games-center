@@ -1,0 +1,45 @@
+.feedbackModal {
+  min-width: 20rem;
+  max-width: 26rem;
+}
+
+.feedbackModal h2 {
+  margin: 0 0 0.75rem;
+}
+
+.typeFieldset {
+  display: flex;
+  gap: 1rem;
+  border: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--shell-line, #3a3a45);
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+}
+
+.contextNotice {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.errorNotice {
+  margin: 0.5rem 0 0;
+  color: #e08585;
+}
+
+.actions {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

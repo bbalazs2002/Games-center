@@ -3,6 +3,9 @@ import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { Button } from '../../../ui-kit/Button';
+import { useReportFeedbackContext } from '../../../ui-kit/FeedbackContext';
+import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { GridBoard3D, type GridBoard3DCell } from '../../../renderers/grid-3d/GridBoard3D';
 import { MaskedRamsesTransport } from './MaskedRamsesTransport';
 import { useRamsesHotSeatAi, type HotSeatAiSlots } from './useRamsesHotSeatAi';
@@ -18,7 +21,7 @@ import {
   getWinners,
   type PlayerScore,
 } from '../../../../shared/games/ramses/engine/selectors';
-import type { PlayerId, RamsesCell, RamsesState } from '../../../../shared/games/ramses/engine/state';
+import type { Player, PlayerId, RamsesCell, RamsesState } from '../../../../shared/games/ramses/engine/state';
 import { getTreasureConfig } from '../../../../shared/games/ramses/engine/treasureConfigs';
 import styles from './RamsesGamePage.module.css';
 
@@ -111,6 +114,32 @@ function ScoreboardList({ scoreboard }: { scoreboard: PlayerScore[] }) {
   );
 }
 
+/** Split out of RamsesGamePage purely to stay under this codebase's eslint complexity limit — same established pattern as prior complexity fixes elsewhere (see project memory). */
+function RamsesWinnerScreen({
+  winners,
+  scoreboard,
+  showNewGameButton,
+  onRequestNewGame,
+}: {
+  winners: Player[];
+  scoreboard: PlayerScore[];
+  showNewGameButton: boolean;
+  onRequestNewGame?: () => void;
+}) {
+  return (
+    <div className={styles.page}>
+      <h1>Vége a játéknak!</h1>
+      <p>
+        {winners.length > 1
+          ? `Holtverseny: ${winners.map((w) => w.name).join(', ')}`
+          : `Győztes: ${winners[0]?.name}`}
+      </p>
+      <ScoreboardList scoreboard={scoreboard} />
+      {showNewGameButton && onRequestNewGame && <Button onClick={onRequestNewGame}>Új játék</Button>}
+    </div>
+  );
+}
+
 export interface RamsesGamePageProps {
   /** Hot-seat only — ignored (a throwaway LocalGameTransport is still built but never used) once `transport` is provided. */
   playerNames?: string[];
@@ -120,6 +149,8 @@ export interface RamsesGamePageProps {
   myPlayer?: PlayerId;
   /** Hot-seat only — which of THIS game's player slots (if any) are AI-controlled, and at what difficulty. Ignored once `transport` is provided, since online AI is already driven server-side by GameRoom. */
   hotSeatAiSlots?: HotSeatAiSlots;
+  /** Local mode only — lets the player abandon the current local game and return to RamsesSetupPage's form. Omitted (no "Új játék" affordance shown) in online mode. */
+  onRequestNewGame?: () => void;
 }
 
 /**
@@ -131,7 +162,14 @@ export interface RamsesGamePageProps {
  * separate action menu, since the engine only has one action type
  * (SLIDE_PYRAMID).
  */
-export function RamsesGamePage({ playerNames, transport: providedTransport, myPlayer, hotSeatAiSlots }: RamsesGamePageProps) {
+export function RamsesGamePage({
+  playerNames,
+  transport: providedTransport,
+  myPlayer,
+  hotSeatAiSlots,
+  onRequestNewGame,
+}: RamsesGamePageProps) {
+  const isLocalMode = providedTransport === undefined;
   const localTransport = useMemo(
     () => new LocalGameTransport<RamsesState, RamsesAction>(reducer, createInitialState(playerNames ?? [])),
     [playerNames],
@@ -150,6 +188,9 @@ export function RamsesGamePage({ playerNames, transport: providedTransport, myPl
   );
   const [state, dispatch] = useGameTransport(transport);
   useRamsesHotSeatAi(transport, hotSeatAiSlots ?? {});
+  // `state` here is already MaskedRamsesTransport's output (masked) — safe to
+  // publish as-is, same guarantee the rest of this page already relies on.
+  useReportFeedbackContext('ramses', state);
   const pyramidColors = usePersistentPyramidColors(state);
 
   const winners = getWinners(state);
@@ -157,15 +198,12 @@ export function RamsesGamePage({ playerNames, transport: providedTransport, myPl
 
   if (state.status === 'FINISHED') {
     return (
-      <div className={styles.page}>
-        <h1>Vége a játéknak!</h1>
-        <p>
-          {winners.length > 1
-            ? `Holtverseny: ${winners.map((w) => w.name).join(', ')}`
-            : `Győztes: ${winners[0]?.name}`}
-        </p>
-        <ScoreboardList scoreboard={scoreboard} />
-      </div>
+      <RamsesWinnerScreen
+        winners={winners}
+        scoreboard={scoreboard}
+        showNewGameButton={isLocalMode}
+        onRequestNewGame={onRequestNewGame}
+      />
     );
   }
 
@@ -216,6 +254,7 @@ export function RamsesGamePage({ playerNames, transport: providedTransport, myPl
           <p className={styles.drawPileCount}>{drawPileCount} lap maradt a pakliban</p>
           <ScoreboardList scoreboard={scoreboard} />
         </div>
+        {isLocalMode && <LocalGameControls gameId="ramses" onRequestNewGame={onRequestNewGame} resumable={false} />}
       </div>
     </div>
   );

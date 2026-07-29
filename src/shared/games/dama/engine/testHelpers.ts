@@ -19,6 +19,7 @@ export function stateWith(overrides: Partial<DamaState> & { board: Board }): Dam
     currentPlayer: 'LIGHT',
     status: 'IN_PROGRESS',
     chainCaptureFrom: null,
+    log: [],
     ...overrides,
   };
 }

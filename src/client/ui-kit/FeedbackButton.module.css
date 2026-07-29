@@ -1,0 +1,36 @@
+/**
+ * Middle-left edge, not a corner — every corner is already claimed by SOME
+ * game's own floating HUD (Hotel alone uses all four, plus top-center — see
+ * docs/shell-ux-specifikacio.md §4.1), and a corner placement visibly
+ * collided with Hotel's player roster (bottom-right), a real playtest
+ * complaint (2026-07-29). The vertical middle of the left edge is clear
+ * across all three games' current layouts (Hotel's own left-edge panels —
+ * OwnedLotsPanel top, the game-log toggle bottom — stay near their own
+ * corners; Ramses's HUD is top-left; Dáma has no floating panels at all).
+ */
+.button {
+  position: fixed;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  z-index: 900;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(30, 30, 38, 0.75);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  color: #f3ecd9;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.4);
+}
+
+.button:hover {
+  background: rgba(45, 45, 55, 0.85);
+}

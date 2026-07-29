@@ -23,6 +23,7 @@ export function buildTestState(overrides: Partial<RamsesState> = {}): RamsesStat
     currentPlayerIndex: 0,
     status: 'IN_PROGRESS',
     winnerIds: [],
+    log: [],
     ...overrides,
   };
 }

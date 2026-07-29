@@ -1,0 +1,36 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Neutral fallback for a game-independent load, or the brief window before
+     a lazy theme resolves — never plain black/white. */
+  background: var(--shell-ground, #14141a);
+  color: var(--shell-ink, #f3ecd9);
+}
+
+.label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--shell-accent, #d4af37);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label {
+    animation: none;
+    opacity: 1;
+  }
+}

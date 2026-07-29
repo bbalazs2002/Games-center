@@ -29,5 +29,6 @@ export function createInitialState(): DamaState {
     currentPlayer: 'LIGHT',
     status: 'IN_PROGRESS',
     chainCaptureFrom: null,
+    log: [],
   };
 }

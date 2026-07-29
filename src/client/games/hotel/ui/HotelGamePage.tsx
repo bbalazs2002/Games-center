@@ -1,5 +1,4 @@
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTexture } from '@react-three/drei';
 import { a, useSpring } from '@react-spring/three';
 import { Vector3 } from 'three';
@@ -8,6 +7,8 @@ import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
 import { Button } from '../../../ui-kit/Button';
+import { useReportFeedbackContext } from '../../../ui-kit/FeedbackContext';
+import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { Modal } from '../../../ui-kit/Modal';
 import { cloneWithOpacity, cloneWithTint } from '../../../renderers/models/materialTint';
 import { useGLTFScene } from '../../../renderers/models/useGLTFScene';
@@ -738,69 +739,6 @@ export interface HotelGamePageProps {
  * or networked) and renders it, here via LoopTrackBoard3D + PlayerActionWheel
  * instead of GridBoard2D. See docs/hotel-0a-specifikacio.md, docs/hotel-0b-multiplayer-specifikacio.md.
  */
-/**
- * "Kilépés a játékból" (back to HotelSetupPage's mode picker, keeping the
- * persisted game intact — see hotelLocalGamePersistence.ts) and "Új játék"
- * (discards it) — grouped into their own component (own state/modals) purely
- * to keep HotelGamePage itself under this codebase's eslint complexity limit,
- * same established pattern as prior complexity fixes elsewhere (see project
- * memory). Local mode only — never rendered in online mode.
- */
-function LocalGameControls({ onRequestNewGame }: { onRequestNewGame?: () => void }) {
-  const navigate = useNavigate();
-  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
-  const [newGameConfirmOpen, setNewGameConfirmOpen] = useState(false);
-
-  return (
-    <>
-      {/* Top-center — the one corner not already claimed by ownedLots, the
-          wheel, the game log, or the roster. Without a "new game" escape
-          hatch, a resumed game could never be abandoned for a fresh one
-          short of clearing storage by hand. */}
-      <div className={styles.topCenterControls}>
-        <button className={styles.topCenterButton} onClick={() => setExitConfirmOpen(true)}>
-          Kilépés a játékból
-        </button>
-        {onRequestNewGame && (
-          <button className={styles.topCenterButton} onClick={() => setNewGameConfirmOpen(true)}>
-            Új játék
-          </button>
-        )}
-      </div>
-      <Modal open={exitConfirmOpen} onClose={() => setExitConfirmOpen(false)} className={modalTheme.hotelModal}>
-        <h2>Kilépsz a játékból?</h2>
-        <p>A játék állása megmarad — legközelebb ugyanide léphetsz vissza a "Lokális játék" gombbal.</p>
-        <div className={styles.newGameConfirmActions}>
-          <Button variant="secondary" onClick={() => setExitConfirmOpen(false)}>
-            Mégse
-          </Button>
-          <Button onClick={() => navigate('/games/hotel')}>Igen, kilépek</Button>
-        </div>
-      </Modal>
-      {onRequestNewGame && (
-        <Modal open={newGameConfirmOpen} onClose={() => setNewGameConfirmOpen(false)} className={modalTheme.hotelModal}>
-          <h2>Új játékot kezdesz?</h2>
-          <p>A jelenlegi játék elvész, nem vonható vissza.</p>
-          <div className={styles.newGameConfirmActions}>
-            <Button variant="secondary" onClick={() => setNewGameConfirmOpen(false)}>
-              Mégse
-            </Button>
-            <Button
-              onClick={() => {
-                setNewGameConfirmOpen(false);
-                clearPersistedHotelLocalGame();
-                onRequestNewGame();
-              }}
-            >
-              Igen, új játék
-            </Button>
-          </div>
-        </Modal>
-      )}
-    </>
-  );
-}
-
 export function HotelGamePage({
   playerNames,
   transport: providedTransport,
@@ -825,6 +763,7 @@ export function HotelGamePage({
   const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
   useHotSeatAi(transport, hotSeatAiSlots ?? {});
+  useReportFeedbackContext('hotel', state);
 
   const spaces: LoopTrackSpace<null>[] = useMemo(
     () => state.board.map((space) => ({ id: space.id, data: null })),
@@ -965,7 +904,7 @@ export function HotelGamePage({
         <StatusChip state={state} myPlayer={myPlayer} isCurrentPlayerAi={isCurrentPlayerAi} />
         <PlayerRoster state={state} onInspect={setInspectedPlayerId} />
         <PlayerInfoModal state={state} playerId={inspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />
-        {isLocalMode && <LocalGameControls onRequestNewGame={onRequestNewGame} />}
+        {isLocalMode && <LocalGameControls gameId="hotel" onRequestNewGame={onRequestNewGame} resumable />}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { ArraySchema } from '@colyseus/schema';
 import { replaceStringArray } from '../../../core/colyseusSyncHelpers';
 import { toPublicRamsesState } from '../engine/rules';
-import type { Player, RamsesCell, RamsesState, RamsesStatus, SearchCard } from '../engine/state';
+import type { Player, RamsesCell, RamsesLogEntry, RamsesState, RamsesStatus, SearchCard } from '../engine/state';
 import { RamsesCellSchema, RamsesPlayerSchema, RamsesStateSchema, SearchCardSchema } from './RamsesStateSchema';
 
 function syncSearchCardFields(schema: SearchCardSchema, card: SearchCard): void {
@@ -70,6 +70,14 @@ function syncPlayers(schema: RamsesStateSchema, players: Player[]): void {
   });
 }
 
+/** Push-only — never cleared, so only newly-added entries are ever sent over the wire. Same encoding as Hotel's own syncLog (hotelStateCodec.ts). */
+function syncLog(schema: RamsesStateSchema, log: RamsesLogEntry[]): void {
+  if (!schema.log) schema.log = new ArraySchema<string>();
+  while (schema.log.length < log.length) {
+    schema.log.push(JSON.stringify(log[schema.log.length]));
+  }
+}
+
 /**
  * Writes `state` into `schema`, in place — server-side only (called from
  * RamsesRoom.syncState()). Takes the TRUE, unmasked engine state and masks
@@ -89,6 +97,10 @@ export function applyRamsesStateToSchema(schema: RamsesStateSchema, state: Ramse
   schema.status = publicState.status;
   if (!schema.winnerIds) schema.winnerIds = new ArraySchema<string>();
   replaceStringArray(schema.winnerIds, publicState.winnerIds);
+  // The log is diagnostic-only (see docs/shell-ux-specifikacio.md §4.2.1) and
+  // never itself hidden information — synced from the TRUE state directly,
+  // not `publicState`, same reasoning as drawPileCount above.
+  syncLog(schema, state.log);
 }
 
 function decodeSearchCard(schema: SearchCardSchema): SearchCard {
@@ -127,5 +139,6 @@ export function decodeRamsesStateSchema(schema: RamsesStateSchema): RamsesState 
     currentPlayerIndex: schema.currentPlayerIndex,
     status: schema.status as RamsesStatus,
     winnerIds: [...schema.winnerIds],
+    log: schema.log.map((entry) => JSON.parse(entry) as RamsesLogEntry),
   };
 }

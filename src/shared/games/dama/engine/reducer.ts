@@ -1,5 +1,5 @@
 import type { DamaAction } from './actions';
-import type { Board, DamaState, Piece, Position } from './state';
+import type { Board, DamaState, MoveLogEntry, Piece, Position } from './state';
 import {
   findCaptureMoves,
   findSimpleMoves,
@@ -14,6 +14,10 @@ import {
 
 function cloneBoard(board: Board): Board {
   return board.map((row) => [...row]);
+}
+
+function appendLog(log: MoveLogEntry[], entry: MoveLogEntry): MoveLogEntry[] {
+  return [...log, entry];
 }
 
 function withWinCheck(state: DamaState): DamaState {
@@ -35,6 +39,7 @@ function applySimpleMove(state: DamaState, from: Position, to: Position): DamaSt
     currentPlayer: opponentOf(state.currentPlayer),
     status: 'IN_PROGRESS',
     chainCaptureFrom: null,
+    log: appendLog(state.log, { player: piece.player, from, to, captured: null, becameKing: promotes }),
   });
 }
 
@@ -53,6 +58,13 @@ function applyCapture(state: DamaState, from: Position, move: CaptureMove): Dama
 
   const promotes = piece.type === 'MAN' && isPromotionRow(piece.player, move.to.row);
   board[move.to.row][move.to.col] = promotes ? { ...piece, type: 'KING' } : piece;
+  const log = appendLog(state.log, {
+    player: piece.player,
+    from,
+    to: move.to,
+    captured: move.captured,
+    becameKing: promotes,
+  });
 
   if (promotes) {
     return withWinCheck({
@@ -60,6 +72,7 @@ function applyCapture(state: DamaState, from: Position, move: CaptureMove): Dama
       currentPlayer: opponentOf(state.currentPlayer),
       status: 'IN_PROGRESS',
       chainCaptureFrom: null,
+      log,
     });
   }
 
@@ -68,6 +81,7 @@ function applyCapture(state: DamaState, from: Position, move: CaptureMove): Dama
     currentPlayer: state.currentPlayer,
     status: 'IN_PROGRESS',
     chainCaptureFrom: move.to,
+    log,
   };
 
   if (findCaptureMoves(chainState, move.to).length > 0) {

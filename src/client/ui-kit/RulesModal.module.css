@@ -1,0 +1,38 @@
+/**
+ * Prose LAYOUT only (spacing, width) — background/text/accent colors come
+ * from the shared themedModalContent.module.css's `.themed` class, applied
+ * alongside this one (see RulesModal.tsx).
+ */
+.rulesModal {
+  min-width: 20rem;
+  max-width: 34rem;
+}
+
+.rulesModal h2 {
+  margin: 0 0 0.75rem;
+}
+
+.rulesModal h3 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 1rem;
+}
+
+.rulesModal p {
+  margin: 0 0 0.6rem;
+  line-height: 1.5;
+}
+
+.rulesModal ul,
+.rulesModal ol {
+  margin: 0 0 0.6rem;
+  padding-left: 1.25rem;
+  line-height: 1.5;
+}
+
+.rulesModal li {
+  margin-bottom: 0.3rem;
+}
+
+.rulesModal strong {
+  color: var(--shell-accent, inherit);
+}

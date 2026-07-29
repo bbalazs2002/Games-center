@@ -1,0 +1,24 @@
+/**
+ * Generic "apply whatever --shell-* theme is in scope" modal content class —
+ * shared by RulesModal, LobbyPage's own modals (Új szoba / jelszavas
+ * csatlakozás), and FeedbackModal, so a themed page's modals aren't left as
+ * a plain white box while everything around them darkens. Falls back to a
+ * real neutral dark look (not literal `white`/`inherit`) whenever no
+ * `--shell-*` theme is in scope — either briefly, before a lazy theme
+ * resolves, or genuinely, e.g. FeedbackModal opened from the menu (no game
+ * running, so no gameId to theme from at all).
+ */
+.themed {
+  background: var(--shell-surface, #22222c);
+  color: var(--shell-ink, #ececed);
+}
+
+.themed h2,
+.themed h3,
+.themed legend {
+  color: var(--shell-accent, #8b8ff0);
+}
+
+.themed fieldset {
+  border-color: var(--shell-line, #3a3a45);
+}

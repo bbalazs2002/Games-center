@@ -48,6 +48,8 @@ export class RamsesStateSchema extends Schema {
   declare currentPlayerIndex: number;
   declare status: string;
   declare winnerIds: ArraySchema<string>;
+  /** JSON-stringified RamsesLogEntry, one per element — same string-array encoding as Hotel's own `log` field (HotelStateSchema.ts), sidestepping the need for a dedicated schema class for a purely diagnostic (see docs/shell-ux-specifikacio.md §4.2.1), never-rendered-in-UI field. */
+  declare log: ArraySchema<string>;
   // GameRoomState fields — every game's Colyseus state carries these, see src/shared/core/GameRoomState.ts.
   declare ready: boolean;
   declare pendingRequests: ArraySchema<PendingJoinRequest>;
@@ -61,6 +63,7 @@ defineTypes(RamsesStateSchema, {
   currentPlayerIndex: 'number',
   status: 'string',
   winnerIds: ['string'],
+  log: ['string'],
   ready: 'boolean',
   pendingRequests: [PendingJoinRequest],
 });

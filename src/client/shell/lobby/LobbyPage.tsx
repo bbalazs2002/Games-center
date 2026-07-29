@@ -6,9 +6,12 @@ import type { RoomMetadata } from '../../../shared/core/RoomMetadata';
 import { colyseusClient } from '../../core/transport/colyseusClient';
 import { NEW_ROOM_PARAM } from '../../core/transport/onlineRoomConstants';
 import { Button } from '../../ui-kit/Button';
+import { MenuNav } from '../../ui-kit/MenuNav';
 import { Modal } from '../../ui-kit/Modal';
+import themedModal from '../../ui-kit/themedModalContent.module.css';
 import { useAuth } from '../auth/AuthContext';
 import { GAMES_REGISTRY, type GameDescriptor } from '../gamesRegistry';
+import { useGameTheme } from '../useGameTheme';
 import styles from './LobbyPage.module.css';
 
 type OpponentType = 'HUMAN' | 'AI';
@@ -212,6 +215,7 @@ function buildCreateRoomParams(game: GameDescriptor | undefined, values: CreateR
 function CreateRoomModal({
   open,
   onClose,
+  themeClass,
   game,
   opponentType,
   onOpponentTypeChange,
@@ -230,6 +234,7 @@ function CreateRoomModal({
 }: {
   open: boolean;
   onClose: () => void;
+  themeClass: string | undefined;
   game: GameDescriptor;
   opponentType: OpponentType;
   onOpponentTypeChange: (type: OpponentType) => void;
@@ -247,7 +252,7 @@ function CreateRoomModal({
   onConfirm: () => void;
 }) {
   return (
-    <Modal open={open} onClose={onClose}>
+    <Modal open={open} onClose={onClose} className={[themedModal.themed, themeClass].filter(Boolean).join(' ')}>
       <h2>Új szoba</h2>
 
       {game.online?.supportsAiOpponent && (
@@ -295,6 +300,7 @@ export function LobbyPage() {
   const { gameId } = useParams<{ gameId: string }>();
   const { auth, logout } = useAuth();
   const navigate = useNavigate();
+  const themeClass = useGameTheme(gameId);
   const [rooms, setRooms] = useState<Record<string, RoomAvailable<RoomMetadata>>>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -423,45 +429,49 @@ export function LobbyPage() {
   const roomList = Object.values(rooms);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <h1>{game.label} — Lobby</h1>
-        <Button variant="secondary" onClick={handleLogout}>
-          Kijelentkezés
-        </Button>
+    <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
+      <MenuNav backTo={`/games/${gameId}`} />
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <h1>{game.label} — Lobby</h1>
+          <Button variant="secondary" onClick={handleLogout}>
+            Kijelentkezés
+          </Button>
+        </div>
+        <p>Bejelentkezve mint: {auth?.user.displayName}</p>
+
+        <Button onClick={openCreateModal}>Új szoba</Button>
+
+        {error && <p className={styles.error}>{error}</p>}
+
+        <h2>Nyitott szobák</h2>
+        {roomList.length === 0 ? (
+          <p>Nincs nyitott szoba — hozz létre egyet!</p>
+        ) : (
+          <ul className={styles.roomList}>
+            {roomList.map((room) => (
+              <li key={room.roomId} className={styles.roomItem}>
+                <span>
+                  {room.metadata?.hasPassword && <span title="Jelszóval védett">🔒 </span>}
+                  Szoba {room.roomId} ({room.clients}/{room.maxClients})
+                </span>
+                <Button
+                  variant="secondary"
+                  onClick={() => handleRoomClick(room)}
+                  disabled={room.clients >= room.maxClients}
+                >
+                  Csatlakozás
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      <p>Bejelentkezve mint: {auth?.user.displayName}</p>
-
-      <Button onClick={openCreateModal}>Új szoba</Button>
-
-      {error && <p className={styles.error}>{error}</p>}
-
-      <h2>Nyitott szobák</h2>
-      {roomList.length === 0 ? (
-        <p>Nincs nyitott szoba — hozz létre egyet!</p>
-      ) : (
-        <ul className={styles.roomList}>
-          {roomList.map((room) => (
-            <li key={room.roomId} className={styles.roomItem}>
-              <span>
-                {room.metadata?.hasPassword && <span title="Jelszóval védett">🔒 </span>}
-                Szoba {room.roomId} ({room.clients}/{room.maxClients})
-              </span>
-              <Button
-                variant="secondary"
-                onClick={() => handleRoomClick(room)}
-                disabled={room.clients >= room.maxClients}
-              >
-                Csatlakozás
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
 
       <CreateRoomModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
+        themeClass={themeClass}
         game={game}
         opponentType={opponentType}
         onOpponentTypeChange={setOpponentType}
@@ -479,7 +489,11 @@ export function LobbyPage() {
         onConfirm={handleConfirmCreate}
       />
 
-      <Modal open={joinTarget !== null} onClose={() => setJoinTarget(null)}>
+      <Modal
+        open={joinTarget !== null}
+        onClose={() => setJoinTarget(null)}
+        className={[themedModal.themed, themeClass].filter(Boolean).join(' ')}
+      >
         <h2>🔒 Szoba {joinTarget?.roomId}</h2>
         <p>Ez a szoba jelszóval védett. Add meg a jelszót, vagy küldj csatlakozási kérelmet.</p>
         <label>

@@ -1,0 +1,21 @@
+/**
+ * Hotel's own visual language, exposed as a reusable, gameId-driven theme —
+ * exactly the colors already used throughout HotelGamePage.module.css/
+ * PlayerActionWheel.module.css/GameLogPanel.module.css (dark "glass" navy
+ * panels, gold accent, cream text), just extracted into one importable class
+ * so shell-level pages that don't know Hotel's internals (LobbyPage,
+ * GameModeSelectPage, RulesModal, LoadingScreen) can adopt it too. See
+ * docs/shell-ux-specifikacio.md §2 — mirrors clusterBTheme.module.css's role
+ * for the B-cluster, just for Hotel. No new colors invented here.
+ */
+.theme {
+  --shell-ground: radial-gradient(ellipse at 50% 0%, #1c2c40 0%, #0e1620 55%, #090d13 100%);
+  --shell-surface: rgba(15, 23, 32, 0.5);
+  --shell-ink: #f3ecd9;
+  --shell-ink-soft: rgba(243, 236, 217, 0.65);
+  --shell-accent: #d4af37;
+  --shell-line: rgba(212, 175, 55, 0.4);
+
+  background: var(--shell-ground);
+  color: var(--shell-ink);
+}

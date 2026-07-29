@@ -29,6 +29,22 @@ export interface Player {
 
 export type RamsesStatus = 'IN_PROGRESS' | 'FINISHED';
 
+/**
+ * One applied SLIDE_PYRAMID action's outcome — added purely as context for
+ * the shell-level feedback reporter (see docs/shell-ux-specifikacio.md
+ * §4.2.1), not for any in-game UI. Covers all three of applySlidePyramid's
+ * existing outcomes 1:1: blank (treasureRevealed null), wrong treasure
+ * (matched false), correct treasure (matched true).
+ */
+export interface RamsesLogEntry {
+  playerId: PlayerId;
+  fromCellId: string;
+  toCellId: string;
+  treasureRevealed: string | null;
+  matched: boolean;
+  pointsAwarded: number;
+}
+
 export interface RamsesState {
   /** 48 cells, fixed grid positions — see rules.ts's BOARD_ROWS/BOARD_COLS. */
   board: RamsesCell[];
@@ -49,4 +65,6 @@ export interface RamsesState {
   status: RamsesStatus;
   /** Only meaningful once FINISHED — more than one id means a genuine tie (see rules.ts's computeWinnerIds). */
   winnerIds: PlayerId[];
+  /** Append-only event history — see RamsesLogEntry. */
+  log: RamsesLogEntry[];
 }

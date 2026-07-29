@@ -20,6 +20,7 @@ describe('pickRandomMove', () => {
       currentPlayer: 'LIGHT',
       status: 'IN_PROGRESS',
       chainCaptureFrom: null,
+      log: [],
     };
 
     expect(getMovablePositions(emptyBoardState)).toHaveLength(0);

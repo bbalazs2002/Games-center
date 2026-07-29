@@ -1,0 +1,31 @@
+.topCenterControls {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10;
+}
+
+.topCenterButton {
+  border: none;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  background: var(--shell-surface, rgba(30, 30, 38, 0.6));
+  color: var(--shell-ink, #ececed);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.topCenterButton:hover {
+  color: var(--shell-accent, #8b8ff0);
+}
+
+.actions {
+  margin-top: 0.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

@@ -6,12 +6,25 @@
   cursor: pointer;
 }
 
+/**
+ * Theme-aware via the `--shell-*` custom properties a per-game theme module
+ * defines (see docs/shell-ux-specifikacio.md §2.3) — falls back to the
+ * original plain blue/gray look wherever no theme is in scope. Without
+ * this, every Button rendered inside a themed page/modal (GameModeSelectPage,
+ * RulesModal, FeedbackModal, Lobby, the SetupPages, LocalGameControls) kept
+ * the generic default color, visibly clashing with its surroundings — a
+ * real playtest complaint (2026-07-29). Dáma's own `.primaryButton`
+ * override (DamaSetupPage.module.css) still works unchanged on top of this —
+ * it was already reading the same accent, just via its own `--accent` token
+ * instead of the `--shell-accent` alias this round added.
+ */
 .primary {
-  background: #3b6ea5;
+  background: var(--shell-accent, #3b6ea5);
   color: white;
 }
 
 .secondary {
-  background: #e2e8f0;
-  color: #1a202c;
+  background: var(--shell-surface, #e2e8f0);
+  color: var(--shell-ink, #1a202c);
+  border: 1px solid var(--shell-line, transparent);
 }

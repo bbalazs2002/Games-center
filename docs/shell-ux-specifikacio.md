@@ -1,6 +1,6 @@
 # Játékfüggetlen UX-fejlesztések — Specifikáció
 
-**Státusz:** TERVEZÉS ALATT — a felhasználóval egyeztetett 2. tervváltozat, a fő döntések lezárva (lásd 8. szakasz), implementáció még nem kezdődött el.
+**Státusz:** IMPLEMENTÁLVA és élesben (Playwright) ellenőrizve — lásd 10. szakasz.
 **Utolsó frissítés:** 2026-07-29
 **Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md) (roadmap-tétel 4d), [b-klaszter-ui-specifikacio.md](./b-klaszter-ui-specifikacio.md) (a per-játék "téma" fogalom előzménye), [hotel-0c-specifikacio.md](./hotel-0c-specifikacio.md) / [ramses-0a-specifikacio.md](./ramses-0a-specifikacio.md) (a jelenlegi Hotel/Ramses paletta forrása)
 
@@ -194,6 +194,7 @@ Teljesen új, saját, EGYETLEN, semleges dizájn (nem 4 különböző játék va
 
 - Semleges, sötét vagy világos alap (a `prefers-color-scheme`-et követve, ahogy eddig minden más réteg) — NEM Hotel/Ramses/Dáma egyik saját palettája.
 - Rács-elrendezés (`display: grid`, reszponzív oszlopszám), egy csempe/játék: dobozkép (felül, `object-fit: cover`, lekerekített sarok) + játék neve (alul, középre igazítva).
+- **Üveg hatás a csempéken** (a felhasználó kérésére, jóváhagyáskor hozzáadva — lásd 9. szakasz): minden csempe egy félig áttetsző, `backdrop-filter: blur(...) saturate(...)` panel-hátteret kap, ugyanazt az anyagnyelvet idézve, amit a Hotel/Ramses/Lobby panelek (StatusChip, OwnedLotsPanel, ...) már ma is használnak — csak semleges, game-független színen, nem valamelyik játék saját paletáján.
 - Amíg a valós dobozfotók nincsenek a repóban (lásd 8. szakasz), egy egyszerű, monogram-alapú helyettesítő csempe (játék kezdőbetűje egy tompított háttérszínen) — így a rács-elrendezés/komponens már most, kép nélkül is tesztelhető és később egy fájl-csere az egész.
 - Kattintás → `navigate('/games/:id')`, változatlan útvonal-logika, csak a megjelenés cserélődik.
 
@@ -238,7 +239,10 @@ src/client/games/ramses/ui/
   RamsesRules.tsx                       # ÚJ
 
 src/client/renderers/grid-2d/
-  clusterBTheme.module.css              # VÁLTOZATLAN — csak referálva a gamesRegistry Dáma-bejegyzéséből
+  clusterBTheme.module.css              # KIS KIEGÉSZÍTÉS (implementáció közben derült ki) — --shell-* aliasok
+                                         # a meglévő --ground/--surface/stb. tokenekre, hogy a generikus shell-
+                                         # fogyasztók (Lobby/GameModeSelectPage/RulesModal/LoadingScreen)
+                                         # egységesen --shell-*-ot olvashassanak. Semmi meglévő nem változik.
 src/client/games/dama/ui/
   DamaRules.tsx                         # ÚJ
 
@@ -264,10 +268,35 @@ A felhasználóval egyeztetve (2026-07-29), mind a négy fő nyitott pont lezár
 - [x] **Hibabejelentő tárolása** — ELFOGADVA: Prisma tábla (4.3), nem fájl-alapú napló.
 - [x] **Esemény napló Dáma/Ramses-nél** — ELFOGADVA (a nagyobb hatókörű opció): mindhárom motor kap minimális eseménynaplót — lásd a bővített 4.2.1 szakaszt a konkrét `MoveLogEntry`/`RamsesLogEntry` tervvel.
 - [x] **Szabály-szövegek forrása** — ELFOGADVA: a meglévő, verbátim spec-szövegekből (pl. hotel-0a-specifikacio.md §2) szerkesztem át játékos-barát formára, a felhasználó a végén nézi át.
+- [x] **Ramses kiemelő szín** — ELFOGADVA: tompított türkiz/lápisz-lazuli árnyalat (`#5a9b8e`) — egyetlen érték, nem világos/sötét pár, mert Hotel/Ramses (a B-klaszterrel ellentétben) mindig sötét témájú, nincs saját light móduk, amit követni kellene. A Hotel arany-kiemeléséhez hasonló szerepkörben (cím-szín, gomb, fókusz-keret).
+- [x] **`GameModeSelectPage` is felvegye a játék témáját** — ELFOGADVA: igen, a Lobby-val megegyezően.
 
-## 9. Nyitott kérdések
+## 9. Kiegészítés a jóváhagyáskor (2026-07-29)
 
-Két kisebb, alacsony kockázatú pont maradt — nem blokkolja az implementáció megkezdését, de érdemes tisztázni, mielőtt az adott résznél odaérünk:
+A felhasználó a terv elolvasása után egy apró, korábban nem szereplő megjelenítési kérést tett a játékválasztóhoz (5.2): **a csempe-rács kapjon egy finom "üveg" hatást** (backdrop-blur + félig áttetsző panel-háttér, ugyanaz a vizuális nyelv, mint a Hotel/Ramses/Lobby-panelek `backdrop-filter: blur(...) saturate(...)` mintája, csak a game-független, semleges palettán) — nem játék-specifikus szín, csak az anyagszerűség (üveg-panel érzés) öröklődik át a csempékre. Beépítve az 5.2 szakaszba.
 
-- [ ] **Ramses kiemelő szín** — a jelenlegi Ramses-paletta (2.1 táblázat) nem használ önálló "arany"-szerű kiemelő színt, mint Hotel — a téma-modulhoz kell egy `--shell-accent` érték. Javaslat (ha nincs preferenciád): egy tompított türkiz/lápisz-lazuli árnyalat (pl. `#5a9b8e` világos / `#3f7d70` sötét módban) — egyiptomi ékszerek/festészet klasszikus kék-zöld kiegészítő színe a jelenlegi barna/homok alaphoz, amit a Hotel arany-kiemeléséhez hasonló szerepkörben használnánk (cím-szín, gomb, fókusz-keret).
-- [ ] **`GameModeSelectPage` is felvegye a játék témáját?** — a kérés kifejezetten csak a Lobby-t említette, de mivel ott már el van döntve, melyik játékról van szó (és itt jelenik meg az új "Játékszabály" gomb is), logikusnak tűnik ugyanazt a témát felvenni, mint a Lobby-nál, ahelyett hogy semleges maradna. Javaslat: igen, vegye fel — implementáció közben egy triviális extra sor (`useGameTheme` hívás + wrapper class), könnyen visszavonható, ha mégsem tetszik élesben.
+## 10. Implementáció
+
+**Mind a négy pont, plusz a 2. szakasz közös alapja, IMPLEMENTÁLVA és élő böngészős (Playwright) teszttel ellenőrizve, ugyanazon a napon, mint a terv jóváhagyása (2026-07-29).**
+
+**Közös alap (2. szakasz):** `gamesRegistry.ts` bővítve `theme`/`rules`/`coverImage` mezőkkel, `useGameTheme(gameId)` hook (lusta betöltés, ugyanaz a minta, mint a meglévő `load`). Hotel/Ramses saját `hotelTheme.module.css`/`ramsesTheme.module.css` — a MEGLÉVŐ, kódban már használt színekből kiemelve, egy szín kivételével (lásd alább). Dáma `clusterBTheme.module.css`-e egy kis, tisztán additív kiegészítést kapott: `--shell-*` aliasok a meglévő `--ground`/`--surface`/`--ink`/`--accent`/`--line` tokenekre, hogy a generikus shell-fogyasztók (Lobby, GameModeSelectPage, RulesModal, LoadingScreen, FeedbackModal) egységesen `--shell-*`-ot olvashassák, anélkül hogy a B-klaszter saját oldalai (`GridBoard2D`, `DamaGamePage`, `DamaSetupPage`) bármit észrevennének — ez az egyetlen implementáció közben felmerült, tervben még nem szereplő apró architekturális részlet.
+
+**1. Játékszabály:** `RulesModal` (ui-kit) + `HotelRules.tsx`/`DamaRules.tsx`/`RamsesRules.tsx`, mindhárom a megfelelő spec-dokumentum verbátim szövegéből átszerkesztve, játékos-barát, listás formára (Hotel esetén a per-hotel ártáblázatok tudatosan kimaradtak — azok már a vásárlás-megerősítő modálban megjelennek). `GameModeSelectPage` harmadik gombot kapott, és felveszi a téma-osztályt.
+
+**2. Hibabejelentő:** `RootLayout` (új layout-route, `<Outlet/>`+`FeedbackButton`) minden route fölé kerül. `FeedbackContext` (React Context + `useSyncExternalStore`) — `useReportFeedbackContext(gameId, state)` bekötve mindhárom `GamePage`-be (Ramses esetén a MÁR maszkolt state-et publikálja, ugyanazt, amit a `MaskedRamsesTransport` amúgy is ad). `FeedbackReport` Prisma tábla + `/api/feedback` route, auth OPCIONÁLIS (tudatos eltérés `localGameLogRoutes.ts` szigorúbb, kötelező-auth mintájától — indoklás a route saját doc-kommentjében). **Élesben ellenőrizve mindkét irányban**: menüből küldött jelentés (`gameType`/`contextJson` helyesen `null`) és játékon belülről küldött jelentés (Hotel, `gameType: 'hotel'`, `contextJson` valódi `players`+`log` tartalommal, közvetlenül lekérdezve a Postgres táblából `docker exec ... psql`-lel) — mindkét teszt-sor törölve a táblából ellenőrzés után.
+
+**3. Lobby + játékválasztó:** `LobbyPage` felveszi a `useGameTheme`-et (a wrapper ÉS mindkét saját modálja — `CreateRoomModal`, jelszavas csatlakozás — egy új megosztott `themedModalContent.module.css`-en keresztül). `HomePage` teljesen újraírva: semleges, indigó kiemelésű (`#5b5fc7` világos / `#8b8ff0` sötét) csempe-rács, monogram-helyettesítő csempékkel (valós dobozfotó még nincs a repóban), backdrop-blur "üveg" hatással (9. szakasz szerinti kiegészítés).
+
+**4. Betöltő képernyő:** `LoadingScreen` (ui-kit), `gameId` prop → `useGameTheme`, közepén pulzáló "BETÖLTÉS…" felirat (`prefers-reduced-motion` mellett statikus) — az összes 5 korábbi `<p>Betöltés…</p>` helyén (`routes.tsx` × 4, `GameLoader.tsx` × 1).
+
+**Dáma/Ramses motor-bővítés (4.2.1):** mindkét motor pontosan a tervezett `MoveLogEntry`/`RamsesLogEntry` alakot kapta, egy-egy `log: [...]` mezővel bővítve a state-et. Ramses esetén ez egy ELŐRE NEM LÁTOTT, a tervben nem szereplő extra munkát is jelentett: mivel Ramses-nek már van per-mező `@colyseus/schema` hálózati szinkronja (Ramses-0b), az ÚJ `log` mezőt is be kellett kötni a séma-kódba (`RamsesStateSchema.ts` + `ramsesStateCodec.ts`) — Hotel saját, már bevált mintáját követve (`ArraySchema<string>`, minden bejegyzés JSON-stringify-olva, push-only szinkron). Dáma-nak nincs ilyen sémája (opaque JSON state), ott ez a lépés nem kellett. Mindkét motor `testHelpers.ts`-e és a schema-kódoló smoke teszt (`temp/ramses-schema-codec-smoke-test.ts`) is frissítve/újrafuttatva.
+
+**Implementáció közben talált, tervben nem szereplő apróságok, mind javítva:**
+- `GameModeSelectPage`/`LobbyPage` eredeti `.page` div-je `max-width`-öt ÉS a hátteret is ugyanarra az elemre tette — emiatt a téma-háttér csak egy keskeny, középre igazított sávban jelent volna meg, fehér margókkal körülötte. Javítva: a háttér egy teljes szélességű `.page`-re került, a `max-width` egy belső `.content` wrapperre.
+- A `FeedbackModal` alapértelmezett (nem-játékon-belüli) állapota kezdetben egyszerű fehér dobozként jelent meg, mert a `--shell-*` CSS változók csak akkor léteznek, ha van aktív játék-kontextus — a `themedModalContent.module.css` fallback-értékei `white`/`inherit` helyett valódi, a HomePage-hez illő semleges sötét/indigó alapértelmezésre cserélve.
+- `Modal`-lel kapcsolatos CSS Modules default-export csapda: a `gamesRegistry.ts`-ben `import(...).then((m) => ({ default: m.theme }))` helyesen `m.default.theme`-re javítva — a CSS Modules `.module.css` fájlok kizárólag `default` exportot adnak, nincs névvel ellátott export, amit `m.theme` feltételezett volna (tsc azonnal elkapta).
+- `feedbackRoutes.ts`: a Prisma `Json` mező `null`/`undefined` megkülönböztetése (`Prisma.JsonNull` vs. mezőkihagyás) miatt a `contextJson` értékadás finomítva, hogy tsc ne jelezzen típushibát.
+
+**Ellenőrzés:** `tsc --noEmit` mindkét tsconfigra tiszta, `eslint .` 0 hiba (4 figyelmeztetés, mind a kör előtt is létező osztályokból: `HotelGamePage` komplexitás-13, `AuthContext`/`FeedbackContext` react-refresh — utóbbi kettő ugyanaz a Context+hook-fájl minta, ami már `AuthContext.tsx`-nél is elfogadott volt). `vitest run` 218/218 (Dáma +2 új napló-teszt, Ramses 3 meglévő teszt bővítve napló-ellenőrzéssel, mindkét motor `reducer.test.ts`-e). `vite build` sikeres, a téma/szabály-modulok mind saját, apró, külön chunkban jelennek meg (pl. `hotelTheme-*.css`, `DamaRules-*.js`) — megerősítve, hogy egyik játék témája/szabálya sem duzzasztja a másik (vagy a fő) bundle-t. Élő Playwright-ellenőrzés minden ponton: HomePage csempe-rács (üveg hatással), mindhárom játék `GameModeSelectPage`+`RulesModal` kombinációja (helyes téma, görgethető tartalom, X gomb), Hotel Lobby + "Új szoba" modál (téma öröklődik a beágyazott modálba is), hibabejelentés mindkét kontextusban (menü és játékon belül, valós adatbázis-sorral igazolva), és egy gyors regressziós kör Dáma/Ramses helyi módban (lépés utáni konzol-ellenőrzés, nincs végtelen újrarenderelési hurok a `FeedbackContext` bekötése miatt).
+
+**Nem ellenőrizve élesben:** a `LoadingScreen` tényleges vizuális megjelenése (a helyi dev-szerver mellett a lusta betöltés túl gyors ahhoz, hogy a Playwright screenshot időben elkapja, ugyanaz a jelenség, mint a régi `<p>Betöltés…</p>` esetén is fennállt) — a kódja/témázása közvetlenül, más, már ellenőrzött komponensekkel (téma-betöltés, pulzáló animáció CSS-e) azonos mintát követ, alacsony kockázatú, nem blokkoló.
