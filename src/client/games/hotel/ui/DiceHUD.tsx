@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { AnimatedDie } from '../../../renderers/models/AnimatedDie';
+import { assetUrl } from '../../../core/assetUrl';
 import type { BuildingPermitResult, HotelState } from '../../../../shared/games/hotel/engine/state';
 import styles from './DiceHUD.module.css';
 
@@ -12,17 +13,17 @@ const PERMIT_ROLL_LABELS: Record<BuildingPermitResult, string> = {
 };
 
 /** [+X,-X,+Y,-Y,+Z,-Z] face order — see AnimatedDie. Any consistent assignment works; only the value->index lookup below has to agree with it. */
-const MOVE_DIE_FACE_TEXTURES: [string, string, string, string, string, string] = [1, 2, 3, 4, 5, 6].map(
-  (n) => `/assets/hotel/dice/dice-${n}.jpg`,
+const MOVE_DIE_FACE_TEXTURES: [string, string, string, string, string, string] = [1, 2, 3, 4, 5, 6].map((n) =>
+  assetUrl(`/assets/hotel/dice/dice-${n}.jpg`),
 ) as [string, string, string, string, string, string];
 
 const PERMIT_DIE_FACE_TEXTURES: [string, string, string, string, string, string] = [
-  '/assets/hotel/perm-dice/perm-dice-green.jpg',
-  '/assets/hotel/perm-dice/perm-dice-green.jpg',
-  '/assets/hotel/perm-dice/perm-dice-green.jpg',
-  '/assets/hotel/perm-dice/perm-dice-H.jpg',
-  '/assets/hotel/perm-dice/perm-dice-2.jpg',
-  '/assets/hotel/perm-dice/perm-dice-red.jpg',
+  assetUrl('/assets/hotel/perm-dice/perm-dice-green.jpg'),
+  assetUrl('/assets/hotel/perm-dice/perm-dice-green.jpg'),
+  assetUrl('/assets/hotel/perm-dice/perm-dice-green.jpg'),
+  assetUrl('/assets/hotel/perm-dice/perm-dice-H.jpg'),
+  assetUrl('/assets/hotel/perm-dice/perm-dice-2.jpg'),
+  assetUrl('/assets/hotel/perm-dice/perm-dice-red.jpg'),
 ];
 const PERMIT_RESULT_FACE_INDEX: Record<BuildingPermitResult, number> = { GREEN: 0, FREE: 3, DOUBLE: 4, RED: 5 };
 

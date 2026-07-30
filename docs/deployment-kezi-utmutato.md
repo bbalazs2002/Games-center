@@ -114,8 +114,10 @@ DATABASE_URL="postgresql://games_center:<ERŐS_JELSZÓ_2>@postgres:5432/games_ce
 JWT_SECRET="<az openssl rand kimenete>"
 PORT=2567
 EOF
-chmod 600 /var/www/games-center/.env.production
+chmod 640 /var/www/games-center/.env.production
 ```
+
+(`640`, NEM `600`: a fájlt `claude-ops` hozza létre, de a `docker compose build/up`-ot a CI-ben `deploy` user futtatja — ő csak a közös `webapps` csoporton keresztül tudja olvasni a `.env.production`-t. `600`-zal a `deploy` konténerindítása `permission denied`-del elhasal. Ez élesben elő is fordult 2026-07-30-án, javítva.)
 
 (A `VITE_SERVER_URL`/`VITE_BASE_PATH`/`ENABLED_GAMES` NEM ide kerül, azok build-time argumentumok, a `.github/workflows/deploy.yml` adja át őket minden deploy-nál.)
 

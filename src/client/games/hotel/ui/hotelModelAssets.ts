@@ -1,4 +1,5 @@
 import { Euler, Quaternion } from 'three';
+import { assetUrl } from '../../../core/assetUrl';
 
 /**
  * Naming/scale constants for the combined Blender-authored board scene
@@ -7,7 +8,7 @@ import { Euler, Quaternion } from 'three';
  * in Blender (Outliner), verified 1:1 against the actual export before this
  * code was written (not guessed).
  */
-export const HOTEL_MODEL_URL = '/assets/hotel/full-board.glb';
+export const HOTEL_MODEL_URL = assetUrl('/assets/hotel/full-board.glb');
 
 /**
  * The real model's own baked position/scale is used AS-IS, unmodified —
@@ -121,5 +122,5 @@ export const HOTEL_IMAGE_NAME: Record<string, string> = {
 };
 
 export function propertyCardUrl(lotId: string, kind: 'const' | 'nights'): string {
-  return `/assets/hotel/property-cards/${HOTEL_IMAGE_NAME[lotId]}-${kind}.jpg`;
+  return assetUrl(`/assets/hotel/property-cards/${HOTEL_IMAGE_NAME[lotId]}-${kind}.jpg`);
 }

@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import { assetUrl } from '../core/assetUrl';
 
 export interface GameOnlineOptions {
   /** Whether "Új szoba" should offer a binary Ember/AI opponent choice — Dáma only (always exactly 2 players, so "AI or not" is the whole question). */
@@ -42,7 +43,7 @@ const ALL_GAMES: GameDescriptor[] = [
     online: { supportsAiOpponent: true },
     theme: () => import('../renderers/grid-2d/clusterBTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/dama/ui/DamaRules'),
-    coverImage: '/assets/dama/box.jpg',
+    coverImage: assetUrl('/assets/dama/box.jpg'),
   },
   {
     id: 'hotel',
@@ -51,7 +52,7 @@ const ALL_GAMES: GameDescriptor[] = [
     online: { playerCountRange: [2, 4], supportsAiOpponentCount: true },
     theme: () => import('../games/hotel/ui/hotelTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/hotel/ui/HotelRules'),
-    coverImage: '/assets/hotel/box.jpg',
+    coverImage: assetUrl('/assets/hotel/box.jpg'),
   },
   {
     id: 'ramses',
@@ -60,7 +61,7 @@ const ALL_GAMES: GameDescriptor[] = [
     online: { playerCountRange: [2, 5], supportsAiOpponentCount: true },
     theme: () => import('../games/ramses/ui/ramsesTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/ramses/ui/RamsesRules'),
-    coverImage: '/assets/ramses/box.jpg',
+    coverImage: assetUrl('/assets/ramses/box.jpg'),
   },
 ];
 

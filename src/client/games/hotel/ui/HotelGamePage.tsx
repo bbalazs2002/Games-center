@@ -3,6 +3,7 @@ import { useTexture } from '@react-three/drei';
 import { a, useSpring } from '@react-spring/three';
 import { Vector3 } from 'three';
 import type { GameTransport } from '../../../core/transport/GameTransport';
+import { assetUrl } from '../../../core/assetUrl';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
@@ -76,7 +77,7 @@ function renderHotelSpace(): ReactNode {
 const BOARD_THICKNESS = 0.4 * HOTEL_SCENE_SCALE;
 
 function BoardBackground() {
-  const texture = useTexture('/assets/hotel/board.jpg');
+  const texture = useTexture(assetUrl('/assets/hotel/board.jpg'));
   return (
     <mesh position={[0, -BOARD_THICKNESS / 2, 0]}>
       <boxGeometry args={[BOARD_SIZE, BOARD_THICKNESS, BOARD_SIZE]} />
@@ -172,7 +173,7 @@ function HotelBoardModel() {
 function GardenDecal({ lotId, center }: { lotId: string; center: Vector3 }) {
   // .png, not .jpg — chroma-keyed transparent background, see
   // scripts/resize-hotel-images.mjs and docs/hotel-0c-specifikacio.md §5.2.
-  const texture = useTexture(`/assets/hotel/gardens/${HOTEL_IMAGE_NAME[lotId]}-garden.png`);
+  const texture = useTexture(assetUrl(`/assets/hotel/gardens/${HOTEL_IMAGE_NAME[lotId]}-garden.png`));
   // Only the SCALE is spring-driven (not opacity too) — combining an
   // animated material's `opacity` with a `map` texture prop triggers an
   // excessive-type-instantiation error in the currently installed
@@ -489,7 +490,7 @@ const CASH_NOTE_BREAKPOINTS: [number, string][] = [
 
 function cashNoteFor(amount: number): string {
   const match = CASH_NOTE_BREAKPOINTS.find(([threshold]) => amount >= threshold);
-  return `/assets/hotel/banknotes/${match?.[1] ?? 'banknote-50.jpg'}`;
+  return assetUrl(`/assets/hotel/banknotes/${match?.[1] ?? 'banknote-50.jpg'}`);
 }
 
 /**
