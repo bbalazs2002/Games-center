@@ -8,6 +8,8 @@ export interface GameOnlineOptions {
   supportsAiOpponentCount?: boolean;
   /** [min, max] — when set, "Új szoba" offers a player-count picker instead of assuming a fixed 2. */
   playerCountRange?: [min: number, max: number];
+  /** Ramses-only — whether "Új szoba" offers the speciális kártyák ki/bekapcsolása checkbox. See docs/ramses-0a-specifikacio.md §8.3. */
+  supportsSpecialCardsToggle?: boolean;
 }
 
 export interface GameDescriptor {
@@ -58,7 +60,7 @@ const ALL_GAMES: GameDescriptor[] = [
     id: 'ramses',
     label: 'Ramses',
     load: () => import('../games/ramses'),
-    online: { playerCountRange: [2, 5], supportsAiOpponentCount: true },
+    online: { playerCountRange: [2, 5], supportsAiOpponentCount: true, supportsSpecialCardsToggle: true },
     theme: () => import('../games/ramses/ui/ramsesTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/ramses/ui/RamsesRules'),
     coverImage: assetUrl('/assets/ramses/box.jpg'),

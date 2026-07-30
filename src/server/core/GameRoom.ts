@@ -48,6 +48,8 @@ export interface GameRoomCreateOptions {
   playerCount?: number;
   /** Simple on/off switch for full JSONL event logging (every applied action + resulting state) — see docs/hotel-0d-ai-specifikacio.md §4.8. */
   enableGameLog?: boolean;
+  /** Ramses-only — whether the 2-3-as pakli speciális kártyáit (Homokvihar/Ajándék/Kockázat/Fata Morgana/Sivatagi póker/Záró) tartalmazza a húzópakli. Defaults to true — see docs/ramses-0a-specifikacio.md §8.3. Ignored by games without this concept. */
+  includeSpecialCards?: boolean;
 }
 
 export interface GameRoomJoinOptions {

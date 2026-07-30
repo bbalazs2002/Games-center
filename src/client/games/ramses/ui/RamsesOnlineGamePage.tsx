@@ -13,6 +13,7 @@ import {
 } from '../../../core/transport/useOnlineGameRoom';
 import { Button } from '../../../ui-kit/Button';
 import { OnlineStatusScreen } from '../../../ui-kit/OnlineStatusScreen';
+import onlineStatusStyles from '../../../ui-kit/OnlineStatusScreen.module.css';
 import { useAuth } from '../../../shell/auth/AuthContext';
 import { RamsesGamePage } from './RamsesGamePage';
 
@@ -36,15 +37,19 @@ function PendingRequestsList({
   return (
     <div>
       <h3>Csatlakozási kérelmek</h3>
-      {requests.map((request) => (
-        <p key={request.sessionId}>
-          {request.displayName} szeretne csatlakozni{' '}
-          <Button onClick={() => onRespond(request.sessionId, true)}>Elfogad</Button>{' '}
-          <Button variant="secondary" onClick={() => onRespond(request.sessionId, false)}>
-            Elutasít
-          </Button>
-        </p>
-      ))}
+      <div className={onlineStatusStyles.pendingRequestsList}>
+        {requests.map((request) => (
+          <div key={request.sessionId} className={onlineStatusStyles.pendingRequestRow}>
+            <span>{request.displayName} szeretne csatlakozni</span>
+            <div className={onlineStatusStyles.pendingRequestActions}>
+              <Button onClick={() => onRespond(request.sessionId, true)}>Elfogad</Button>
+              <Button variant="secondary" onClick={() => onRespond(request.sessionId, false)}>
+                Elutasít
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -126,6 +131,9 @@ export function RamsesOnlineGamePage() {
       playerCount: Number(searchParams.get('playerCount')) || 2,
       aiOpponentCount: Number(searchParams.get('aiCount')) || 0,
       aiDifficulty: searchParams.get('aiDifficulty') ?? undefined,
+      // Absent means "on" (the default) — see docs/ramses-0a-specifikacio.md §8.3;
+      // LobbyPage only ever sends this param at all when explicitly turning it off.
+      includeSpecialCards: searchParams.get('specialCards') !== '0',
       password: searchParams.get('password') ?? undefined,
     }),
     buildJoinOptions: () => ({

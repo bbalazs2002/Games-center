@@ -35,3 +35,28 @@
 .card strong {
   color: var(--shell-accent, inherit);
 }
+
+/* Shared by every *OnlineGamePage.tsx's PendingRequestsList (Dáma/Hotel/
+   Ramses — identical markup) — real playtest report (2026-07-30): the name
+   and the two response buttons used to sit inline in one <p>, wrapping
+   unpredictably ("szétcsúsznak") at narrower widths. */
+.pendingRequestsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pendingRequestRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.pendingRequestActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}

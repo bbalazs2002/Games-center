@@ -27,6 +27,11 @@ function resolvePlayerCount(requested: unknown): number {
   return Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, parsed));
 }
 
+/** Defaults to true (see docs/ramses-0a-specifikacio.md §8.3) — only `false` explicitly (not merely falsy/missing) opts out, so an old client that never sends this option still gets the full game. */
+function resolveIncludeSpecialCards(requested: unknown): boolean {
+  return requested !== false;
+}
+
 function placeholderPlayerNames(count: number): string[] {
   // Overwritten with the real auth.displayName as each client actually joins
   // — see GameRoom.onPlayerAdmitted; createInitialState() runs once at
@@ -47,8 +52,9 @@ export class RamsesRoom extends GameRoom<RamsesState, RamsesAction, PlayerId, Ra
 
   async onCreate(options: GameRoomCreateOptions): Promise<void> {
     const playerCount = resolvePlayerCount(options.playerCount);
+    const includeSpecialCards = resolveIncludeSpecialCards(options.includeSpecialCards);
     this.maxClients = playerCount;
-    this.createInitialState = () => createInitialState(placeholderPlayerNames(playerCount));
+    this.createInitialState = () => createInitialState(placeholderPlayerNames(playerCount), { includeSpecialCards });
     if (isRamsesAiDifficulty(options.aiDifficulty)) this.aiDifficulty = options.aiDifficulty;
     await super.onCreate(options);
   }
@@ -78,7 +84,22 @@ export class RamsesRoom extends GameRoom<RamsesState, RamsesAction, PlayerId, Ra
   protected isValidAction(action: unknown): action is RamsesAction {
     if (typeof action !== 'object' || action === null) return false;
     const candidate = action as Record<string, unknown>;
-    return candidate.type === 'SLIDE_PYRAMID' && typeof candidate.fromCellId === 'string';
+    switch (candidate.type) {
+      case 'SLIDE_PYRAMID':
+        return typeof candidate.fromCellId === 'string';
+      case 'NAME_GIFT_TARGET':
+        return typeof candidate.treasureId === 'string';
+      case 'NAME_RISK_TREASURES':
+        return (
+          Array.isArray(candidate.treasureIds) &&
+          candidate.treasureIds.length === 2 &&
+          candidate.treasureIds.every((id) => typeof id === 'string')
+        );
+      case 'NAME_POKER_CHALLENGE':
+        return typeof candidate.treasureId === 'string' && typeof candidate.targetPlayerId === 'string';
+      default:
+        return false;
+    }
   }
 
   /**

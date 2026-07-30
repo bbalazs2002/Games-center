@@ -1,13 +1,14 @@
 @startuml ramses-0a-special-cards-draft
-title Ramses-0a §8.2 — speciális kártyák adatmodell-kiegészítése (JAVASOLT VÁZLAT, még nem implementálva)
+title Ramses-0a §8.2 — speciális kártyák adatmodell-kiegészítése (VÉGLEGESÍTETT TERV, még nem implementálva)
 
 note as N1
-  Ez a diagram CSAK azt a részt modellezi, ami már most,
-  nyitott kérdések nélkül eldönthető (lásd docs/ramses-0a-specifikacio.md
-  §8.2). A Homokvihar/Záró kártya feldolgozása pontosan megtervezhető;
-  az Ajándék/Kockázat/Fata Morgana/Sivatagi póker pontos, lépésenkénti
-  folyamata NYITOTT kérdés (§2.5) — ezeknek nincs itt turn-flow ága,
-  amíg a szabály nem tisztázódik.
+  A 2.5/8.2 nyitott kérdései 2026-07-30-án lezárultak, majd ugyanaznap
+  a maradék 3 "Feltételezés" pont is megerősítésre került — ez a diagram
+  már a TELJES, véglegesített modellt mutatja (docs/ramses-0a-specifikacio.md
+  §8.2/8.4), a 4 többlépéses kártya (Ajándék/Kockázat/Sivatagi póker/
+  Fata Morgana) saját turnPhase-eivel együtt. A nevezési lépések UI-ja
+  (Ajándék/Kockázat/Sivatagi póker) a Hotel WheelMenu tárcsa-mintáját
+  követi (§8.4) — nem külön modalok.
 end note
 
 abstract class DrawnCard {
@@ -36,11 +37,81 @@ DrawnCard <|-- TreasureCard
 DrawnCard <|-- SpecialCard
 SpecialCard -- SpecialCardType
 
+enum RamsesTurnPhase {
+  SEARCHING
+  AWAITING_GIFT_TARGET
+  AWAITING_GIFT_SLIDE
+  AWAITING_RISK_NAMING
+  AWAITING_RISK_SLIDE
+  AWAITING_POKER_NAMING
+  AWAITING_POKER_SLIDE
+  AWAITING_FATA_MORGANA_SLIDE
+}
+
+abstract class PendingSpecialEffect {
+  drawerId: PlayerId
+}
+
+class GiftEffect extends PendingSpecialEffect {
+  holderId: PlayerId
+  targetTreasureId: string | null
+}
+
+class RiskEffect extends PendingSpecialEffect {
+  treasureIds: [string, string]
+  firstFound: boolean
+}
+
+class PokerEffect extends PendingSpecialEffect {
+  searcherId: PlayerId
+  treasureId: string | null
+}
+
+class FataMorganaEffect extends PendingSpecialEffect {
+  treasureId: string
+  borrowedCardId: string
+}
+
+note right of GiftEffect
+  Siker: minden MÁS játékos, akinek van a
+  megcélzott kincsből nyert lapja, ad belőle
+  egyet (legkisebb pontértékűt) a holderId-nek.
+  Utána a kör a DRAWER (nem a megtaláló) utáni
+  játékosra lép — megerősítve 2026-07-30.
+  Kudarc: holderId a következő játékosra lép,
+  vissza AWAITING_GIFT_TARGET-be (körbejárhat).
+end note
+
+note right of RiskEffect
+  Siker (mindkét treasureId megtalálva sorban):
+  vak húzás a bal szomszédtól (currentPlayerIndex-1).
+  Kudarc (egy 3. kincs kerül elő): drawer választva
+  ad egy lapot a bal szomszédnak.
+end note
+
+note right of PokerEffect
+  currentPlayerIndex ÁTMENETILEG searcherId-ra vált,
+  utána visszaáll a drawerre. Siker: searcher VAKON
+  húz a drawertől. Kudarc: drawer VAKON húz a
+  searchertől — megerősítve 2026-07-30, ugyanaz a
+  mechanika, mint Kockázatnál.
+end note
+
+note right of FataMorganaEffect
+  KIVÉTEL a "minden speciális lezárja a kört" alól:
+  ha a jobb szomszédnak nincs lapja, a húzás
+  eldobódik, új lap jön, a húzó köre FOLYTATÓDIK.
+  Egyébként: vak kölcsönvétel a jobb szomszédtól,
+  majd valódi kereséssel kell megtalálni.
+end note
+
 class RamsesState {
   board: RamsesCell[]
   emptyCellId: string
   drawPile: DrawnCard[]
   activeCard: TreasureCard | null
+  turnPhase: RamsesTurnPhase
+  pendingSpecialEffect: PendingSpecialEffect | null
   treasureLayerRotated: boolean
   players: Player[]
   currentPlayerIndex: number
@@ -48,16 +119,18 @@ class RamsesState {
   winnerIds: PlayerId[]
 }
 note right of RamsesState::treasureLayerRotated
-  Homokvihar hatása — a 6x8 rács 180°-ra
-  szimmetrikus, ezért egy flag elég: a
-  "hatékony" treasureId a flag alapján a
-  cella sajátja vagy a 180°-kal átellenes
-  cella EREDETI treasureId-je.
-  NYITOTT: vonatkozik-e a már felfedett
-  mezőkre is (§2.5/5. kérdés).
+  Homokvihar hatása, MINDEN mezőre vonatkozik
+  (a már felfedettekre is — megerősítve 2026-07-30).
+  A 6x8 rács 180°-ra szimmetrikus, ezért egy flag
+  elég: a "hatékony" treasureId a flag alapján a
+  cella sajátja vagy a 180°-kal átellenes cella
+  EREDETI treasureId-je (effectiveTreasureId helper).
+  Mindig activeCard===null pillanatban sül el, tehát
+  sosem üt egybe egy már folyó kereséssel.
 end note
 
 RamsesState "1" *-- "0..*" DrawnCard : drawPile
 RamsesState "1" o-- "0..1" TreasureCard : activeCard
+RamsesState "1" o-- "0..1" PendingSpecialEffect : pendingSpecialEffect
 
 @enduml

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './Modal.module.css';
 
 export interface ModalProps {
@@ -12,7 +13,7 @@ export interface ModalProps {
 export function Modal({ open, onClose, children, className }: ModalProps) {
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className={styles.overlay} onClick={onClose}>
       <div
         className={[styles.content, className].filter(Boolean).join(' ')}
@@ -29,6 +30,14 @@ export function Modal({ open, onClose, children, className }: ModalProps) {
         </button>
         <div className={styles.body}>{children}</div>
       </div>
-    </div>
+    </div>,
+    // Always portalled straight to <body> — a caller nesting a Modal inside
+    // ANY ancestor with backdrop-filter/filter/transform/perspective/contain
+    // (e.g. Ramses's HUD panel, which uses backdrop-filter for its glass
+    // look) otherwise traps this `position: fixed` overlay inside that
+    // ancestor's box instead of covering the viewport — a real CSS
+    // containing-block gotcha, caught 2026-07-30 (the "kinagyítható lap" modal
+    // rendered squeezed into the HUD corner instead of centered fullscreen).
+    document.body,
   );
 }

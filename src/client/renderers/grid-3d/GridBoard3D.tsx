@@ -24,7 +24,10 @@ export interface GridBoard3DProps<TCellData> {
   boardColor?: string;
 }
 
-const CELL_SIZE = 1.2;
+// Exported so a consumer's own `background` content (e.g. a full-board decal)
+// can align itself to the exact same per-cell spacing/centering `cellPosition`
+// uses internally — see docs/ramses-0a-specifikacio.md §8.1's frame.png overlay.
+export const CELL_SIZE = 1.2;
 const BOARD_MARGIN = 0.6;
 const DEFAULT_BOARD_THICKNESS = 0.5;
 const DEFAULT_BOARD_COLOR = '#2b2b2b';

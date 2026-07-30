@@ -13,6 +13,7 @@ import {
 } from '../../../core/transport/useOnlineGameRoom';
 import { Button } from '../../../ui-kit/Button';
 import { OnlineStatusScreen } from '../../../ui-kit/OnlineStatusScreen';
+import onlineStatusStyles from '../../../ui-kit/OnlineStatusScreen.module.css';
 import { useAuth } from '../../../shell/auth/AuthContext';
 import { HotelGamePage } from './HotelGamePage';
 
@@ -36,15 +37,19 @@ function PendingRequestsList({
   return (
     <div>
       <h3>Csatlakozási kérelmek</h3>
-      {requests.map((request) => (
-        <p key={request.sessionId}>
-          {request.displayName} szeretne csatlakozni{' '}
-          <Button onClick={() => onRespond(request.sessionId, true)}>Elfogad</Button>{' '}
-          <Button variant="secondary" onClick={() => onRespond(request.sessionId, false)}>
-            Elutasít
-          </Button>
-        </p>
-      ))}
+      <div className={onlineStatusStyles.pendingRequestsList}>
+        {requests.map((request) => (
+          <div key={request.sessionId} className={onlineStatusStyles.pendingRequestRow}>
+            <span>{request.displayName} szeretne csatlakozni</span>
+            <div className={onlineStatusStyles.pendingRequestActions}>
+              <Button onClick={() => onRespond(request.sessionId, true)}>Elfogad</Button>
+              <Button variant="secondary" onClick={() => onRespond(request.sessionId, false)}>
+                Elutasít
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

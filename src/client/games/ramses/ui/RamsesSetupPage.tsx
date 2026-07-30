@@ -39,6 +39,7 @@ export function RamsesSetupPage() {
   const [names, setNames] = useState<string[]>(defaultNames(MIN_PLAYERS));
   const [aiFlags, setAiFlags] = useState<boolean[]>(() => Array(MIN_PLAYERS).fill(false));
   const [difficulty, setDifficulty] = useState<RamsesAiDifficulty>('MEDIUM');
+  const [includeSpecialCards, setIncludeSpecialCards] = useState(true);
   const [started, setStarted] = useState(false);
 
   // No localStorage persistence for Ramses (unlike Hotel) — "Kilépés" simply
@@ -53,6 +54,7 @@ export function RamsesSetupPage() {
         playerNames={names}
         hotSeatAiSlots={buildAiSlots(names, aiFlags, difficulty)}
         onRequestNewGame={startFresh}
+        includeSpecialCards={includeSpecialCards}
       />
     );
   }
@@ -117,6 +119,14 @@ export function RamsesSetupPage() {
             </select>
           </label>
         )}
+        <label className={styles.specialCardsToggle}>
+          <input
+            type="checkbox"
+            checked={includeSpecialCards}
+            onChange={(event) => setIncludeSpecialCards(event.target.checked)}
+          />
+          <span>Speciális kártyák (Homokvihar, Ajándék, Kockázat, Fata Morgana, Sivatagi póker, Záró)</span>
+        </label>
         <Button onClick={() => setStarted(true)} disabled={!canStart}>
           Játék indítása
         </Button>

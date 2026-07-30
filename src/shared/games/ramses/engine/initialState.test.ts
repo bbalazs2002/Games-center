@@ -50,6 +50,25 @@ describe('createInitialState', () => {
     expect(state.currentPlayerIndex).toBe(0);
     expect(state.status).toBe('IN_PROGRESS');
     expect(state.activeCard).not.toBeNull();
-    expect(state.drawPile).toHaveLength(29);
+    expect(state.turnPhase).toBe('SEARCHING');
+    expect(state.pendingSpecialEffect).toBeNull();
+    expect(state.treasureLayerRotated).toBe(false);
+    // 48-card real deck (20+19+9, see §2.1/§8.1), minus the one card the
+    // first draw always takes — always from pack 1 (all-treasure), so
+    // activeCard is guaranteed a TreasureCard, never a SpecialCard.
+    expect(state.drawPile).toHaveLength(47);
+  });
+
+  it('includes all 12 special cards by default (11 in pack 2 + Záró in pack 3), none of them ever becoming activeCard', () => {
+    const state = createInitialState(['Alice', 'Bob']);
+    const specialCount = state.drawPile.filter((card) => card.kind === 'special').length;
+    expect(specialCount).toBe(12);
+    expect(state.activeCard?.kind).toBe('treasure');
+  });
+
+  it('includeSpecialCards: false yields the original 36-card, special-card-free deck', () => {
+    const state = createInitialState(['Alice', 'Bob'], { includeSpecialCards: false });
+    expect(state.drawPile.every((card) => card.kind === 'treasure')).toBe(true);
+    expect(state.drawPile).toHaveLength(35); // 20+8+8, minus the one already drawn
   });
 });

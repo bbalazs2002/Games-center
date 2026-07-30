@@ -26,8 +26,8 @@ describe('getScoreboard / getWinners', () => {
   it('sorts highest score first', () => {
     const state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [{ id: 'c1', treasureId: 'x', points: 1 }] },
-        { id: 'player-2', name: 'Bob', wonCards: [{ id: 'c2', treasureId: 'y', points: 4 }] },
+        { id: 'player-1', name: 'Alice', wonCards: [{ kind: 'treasure', id: 'c1', treasureId: 'x', points: 1 }] },
+        { id: 'player-2', name: 'Bob', wonCards: [{ kind: 'treasure', id: 'c2', treasureId: 'y', points: 4 }] },
       ],
     });
     const scoreboard = getScoreboard(state);
@@ -46,8 +46,8 @@ describe('getDrawPileCount', () => {
   it('returns the number of cards left in the draw pile', () => {
     const state = buildTestState({
       drawPile: [
-        { id: 'c1', treasureId: 'x', points: 1 },
-        { id: 'c2', treasureId: 'y', points: 2 },
+        { kind: 'treasure', id: 'c1', treasureId: 'x', points: 1 },
+        { kind: 'treasure', id: 'c2', treasureId: 'y', points: 2 },
       ],
     });
     expect(getDrawPileCount(state)).toBe(2);

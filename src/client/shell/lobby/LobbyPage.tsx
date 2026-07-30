@@ -129,6 +129,19 @@ function AiOpponentCountFieldset({
   );
 }
 
+/** Ramses-only — see docs/ramses-0a-specifikacio.md §8.3. */
+function SpecialCardsFieldset({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <fieldset className={styles.fieldset}>
+      <legend>Speciális kártyák</legend>
+      <label>
+        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+        Homokvihar, Ajándék, Kockázat, Fata Morgana, Sivatagi póker, Záró
+      </label>
+    </fieldset>
+  );
+}
+
 function PasswordModeFieldset({
   passwordMode,
   generatedPassword,
@@ -172,6 +185,7 @@ interface CreateRoomValues {
   playerCount: number;
   aiCount: number;
   aiDifficulty: AiDifficulty;
+  includeSpecialCards: boolean;
   passwordMode: PasswordMode;
   generatedPassword: string;
   customPassword: string;
@@ -192,6 +206,9 @@ function applyOpponentParams(params: URLSearchParams, game: GameDescriptor | und
   if (game?.online?.supportsAiOpponent) applyBinaryAiOpponentParams(params, values);
   if (game?.online?.playerCountRange) params.set('playerCount', String(values.playerCount));
   if (game?.online?.supportsAiOpponentCount) applyAiOpponentCountParams(params, values);
+  // Only sent when the value deviates from the server's own default (true) —
+  // keeps the URL clean for every OTHER game, which doesn't have this concept.
+  if (game?.online?.supportsSpecialCardsToggle && !values.includeSpecialCards) params.set('specialCards', '0');
 }
 
 function applyPasswordParams(params: URLSearchParams, values: CreateRoomValues): void {
@@ -225,6 +242,8 @@ function CreateRoomModal({
   onAiCountChange,
   aiDifficulty,
   onAiDifficultyChange,
+  includeSpecialCards,
+  onIncludeSpecialCardsChange,
   passwordMode,
   generatedPassword,
   customPassword,
@@ -244,6 +263,8 @@ function CreateRoomModal({
   onAiCountChange: (count: number) => void;
   aiDifficulty: AiDifficulty;
   onAiDifficultyChange: (difficulty: AiDifficulty) => void;
+  includeSpecialCards: boolean;
+  onIncludeSpecialCardsChange: (checked: boolean) => void;
   passwordMode: PasswordMode;
   generatedPassword: string;
   customPassword: string;
@@ -278,6 +299,10 @@ function CreateRoomModal({
         />
       )}
 
+      {game.online?.supportsSpecialCardsToggle && (
+        <SpecialCardsFieldset checked={includeSpecialCards} onChange={onIncludeSpecialCardsChange} />
+      )}
+
       <PasswordModeFieldset
         passwordMode={passwordMode}
         generatedPassword={generatedPassword}
@@ -309,6 +334,7 @@ export function LobbyPage() {
   const [playerCount, setPlayerCount] = useState(2);
   const [aiCount, setAiCount] = useState(0);
   const [aiDifficulty, setAiDifficulty] = useState<AiDifficulty>('MEDIUM');
+  const [includeSpecialCards, setIncludeSpecialCards] = useState(true);
   const [passwordMode, setPasswordMode] = useState<PasswordMode>('none');
   const [customPassword, setCustomPassword] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
@@ -363,6 +389,7 @@ export function LobbyPage() {
     setPlayerCount(game?.online?.playerCountRange?.[0] ?? 2);
     setAiCount(0);
     setAiDifficulty('MEDIUM');
+    setIncludeSpecialCards(true);
     setPasswordMode('none');
     setCustomPassword('');
     setGeneratedPassword(generateRoomPassword());
@@ -386,6 +413,7 @@ export function LobbyPage() {
       playerCount,
       aiCount,
       aiDifficulty,
+      includeSpecialCards,
       passwordMode,
       generatedPassword,
       customPassword,
@@ -481,6 +509,8 @@ export function LobbyPage() {
         onAiCountChange={setAiCount}
         aiDifficulty={aiDifficulty}
         onAiDifficultyChange={setAiDifficulty}
+        includeSpecialCards={includeSpecialCards}
+        onIncludeSpecialCardsChange={setIncludeSpecialCards}
         passwordMode={passwordMode}
         generatedPassword={generatedPassword}
         customPassword={customPassword}

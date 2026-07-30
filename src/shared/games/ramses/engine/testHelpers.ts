@@ -16,6 +16,9 @@ export function buildTestState(overrides: Partial<RamsesState> = {}): RamsesStat
     emptyCellId: 'r0c0',
     drawPile: [],
     activeCard: null,
+    turnPhase: 'SEARCHING',
+    pendingSpecialEffect: null,
+    treasureLayerRotated: false,
     players: [
       { id: 'player-1', name: 'Alice', wonCards: [] },
       { id: 'player-2', name: 'Bob', wonCards: [] },
@@ -26,6 +29,10 @@ export function buildTestState(overrides: Partial<RamsesState> = {}): RamsesStat
     log: [],
     ...overrides,
   };
+}
+
+export function treasureCard(id: string, treasureId: string, points: number): { kind: 'treasure'; id: string; treasureId: string; points: number } {
+  return { kind: 'treasure', id, treasureId, points };
 }
 
 export function updateCell(state: RamsesState, cellId: string, patch: Partial<RamsesCell>): RamsesState {

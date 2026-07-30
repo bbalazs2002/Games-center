@@ -1,0 +1,53 @@
+/* Real playtest report (2026-07-30): "a tárcsa menü kilóg a játéktérről" —
+   the WheelMenu itself is a fixed 20rem x 20rem (see ui-kit/WheelMenu.module.css),
+   but this container previously capped ITSELF at max-width: 14rem — the wheel
+   doesn't respect a parent's max-width, so it just bled out past both sides
+   of that too-narrow box. The max-width now lives on .title alone (where it
+   was actually needed, to keep the caption from stretching wide), and this
+   container is positioned to keep the full-size wheel inside the canvas. */
+.container {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  max-width: calc(100% - 2rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.title {
+  max-width: 14rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.75rem;
+  background: rgba(23, 18, 10, 0.55);
+  color: #f3ecd9;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+.treasureIcon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background-size: cover;
+  background-position: center;
+}
+
+.playerIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #5a9b8e;
+  color: #17120a;
+  font-weight: 700;
+  font-size: 0.8rem;
+}

@@ -1,0 +1,30 @@
+/**
+ * Shared "dark glass" theme for every Ramses modal — mirrors Hotel's
+ * identical hotelModalTheme.module.css. Passed to the shared ui-kit
+ * `Modal`'s `className` prop, which otherwise defaults to a plain white
+ * box — a real playtest complaint (2026-07-30): "A kártya mutató modál
+ * stílusa sima fehér, ez nem illik bele a játékba." Matches
+ * RamsesGamePage.module.css's own HUD/wheel panels instead of introducing a
+ * third, one-off look.
+ */
+/* Doubled selector to reliably out-specificity Modal.module.css's own
+   `.content` (background: white) regardless of CSS bundle/import order —
+   same convention as DamaSetupPage.module.css's `.primaryButton.primaryButton`.
+   Without this, the two classes have EQUAL specificity, and which one's
+   `background` actually wins depends on unpredictable stylesheet ordering —
+   real playtest report (2026-07-30): the card modal still showed white at
+   its edges, this override having silently lost that ordering contest. */
+.ramsesModal.ramsesModal {
+  background: rgba(23, 18, 10, 0.92);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  color: #f3ecd9;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(5, 10, 20, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.ramsesModal.ramsesModal h2,
+.ramsesModal.ramsesModal h3 {
+  color: #5a9b8e;
+}

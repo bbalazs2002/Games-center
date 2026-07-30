@@ -1,7 +1,7 @@
 # Ramses-0a — Specifikáció: helyi vertikum (alapjáték motor + 3D renderer + N-fős hot-seat)
 
-**Státusz:** Az eredeti 0a alapjáték (ebben a dokumentumban lent leírt terv szerint) KÉSZ, implementálva és élesben ellenőrizve — sőt, azóta a 0b (multiplayer) és 0c (AI) is elkészült (lásd `ramses-0b-specifikacio.md`, `ramses-0c-ai-specifikacio.md`). **A 8. szakasz (2026-07-29) egy UTÓLAGOS kiegészítést tervez** — a felhasználó pontosította a speciális kártyák szabályát, és elkészültek a valódi (fényképezett) assetek — ez a kiegészítés MÉG NEM implementálva, ez a dokumentum-frissítés csak a tervet igazítja hozzá.
-**Utolsó frissítés:** 2026-07-29
+**Státusz:** Az eredeti 0a alapjáték (ebben a dokumentumban lent leírt terv szerint) KÉSZ, implementálva és élesben ellenőrizve — sőt, azóta a 0b (multiplayer) és 0c (AI) is elkészült (lásd `ramses-0b-specifikacio.md`, `ramses-0c-ai-specifikacio.md`). **A 8. szakasz (2026-07-29, kiegészítve 2026-07-30) egy UTÓLAGOS kiegészítést tervez** — a felhasználó pontosította a speciális kártyák szabályát, elkészültek a valódi (fényképezett) assetek, és a 2026-07-30-i kör lezárta a 2.5/8.2 nyitott kérdéseit (a Homokvihar hatóköre is tisztázva) + felmerült egy új igény (speciális kártyák ki/bekapcsolható legyen indítás előtt, lásd 8.3). **A 8.2/8.3 terv MOST MÁR implementálásra kész** — de a kód még NEM változott, ez a dokumentum-frissítés csak a tervet rögzíti.
+**Utolsó frissítés:** 2026-07-30
 **Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md) (E klaszter — Hanabi, Ramses), [hotel-0a-specifikacio.md](./hotel-0a-specifikacio.md) (a követett minta: framework-agnosztikus reducer, core/games szeparáció, fokozatos fázisokra bontás), [hotel-0c-specifikacio.md](./hotel-0c-specifikacio.md) (a valódi-asset-pipeline mintája, amit a 8. szakasz követ)
 
 > **Fontos korrekció:** a projekt korábbi játéklistájában "Ramses II" szerepelt — ez tévesnek bizonyult. A valódi játék a Ravensburger **"Ramses"** (1997/2006/2017, szerző: Gunter Baars), egy teljesen más játék: nem egy csempe-lerakós stratégiai játék, hanem egy **memóriajáték csúszó piramisokkal**. A hivatalos szabálykönyv forrása: [ravensburger.org PDF](https://www.ravensburger.org/spielanleitungen/ecm/Spielanleitungen/Ramses.pdf) (angol fordítás, ebből dolgoztam). A `Projekt-conception.md`-ben a névhiba javítva ("Ramses II" → "Ramses").
@@ -90,7 +90,7 @@
 2. **Kockázat** — a "Lépj hozzá" ugyanígy valódi csúsztatás-lánc-e? A "bal oldali szomszéd" az ülésrend (`currentPlayerIndex - 1`) szerint értendő? - Valódi lépések. Igen currentPlayerIndex - 1 megfelelő.
 3. **Fata Morgana** — a legbizonytalanabb: "Ha sikerül hiba nélkül megtalálnod" — MIT kell megtalálni, és milyen eljárással? A kártya szövege nem részletezi a keresési feladatot. Playteszteléssel vagy a fizikai szabálykönyv-betét újraolvasásával tisztázandó, mielőtt implementálható. - Azt a kincset kell megtalálni, amit a jobb oldali szomszédodtól húztál. Valódi lépésekkel.
 4. **Sivatagi póker** — a megnevezett CÉLJÁTÉKOS keres — az ő köre lesz-e átmenetileg (currentPlayerIndex rá vált), vagy a soron lévő játékos irányítja helyette? - Átmenetileg a választott játékos köre lesz, de utána vissza kell állítani, hogy a kör folytatódjon.
-5. **Homokvihar** — a 180°-os forgatás a MÁR FELFEDETT (jelenleg látható, felfedett) mezőkre is vonatkozik, vagy csak a piramisok alatt még rejtett kincs-hozzárendelésekre? Javasolt modell: lásd 8.2.
+5. **Homokvihar** — a 180°-os forgatás a MÁR FELFEDETT (jelenleg látható, felfedett) mezőkre is vonatkozik, vagy csak a piramisok alatt még rejtett kincs-hozzárendelésekre? Javasolt modell: lásd 8.2. - **Minden mezőre, felfedettre is vonatkozik** (megerősítve 2026-07-30). Következmény: mivel a Homokvihar mindig a "soron lévő játékos automatikusan húz" pillanatban sül el (lásd 8.2), ilyenkor `activeCard` még mindig `null` — a forgatás tehát sosem üt egybe egy már folyó kereséssel, nincs szükség külön "azonnali szerencsés találat forgatás után" ágra.
 6. **Automatikus húzás speciális kártya után** — ha a húzott lap speciális (nem kincs), a soron lévő játékos `activeCard` nélkül marad; a jelenlegi "szerencsés eset" minta szerint feltehetően a speciális hatás lezárása UTÁN ugyanő automatikusan húz tovább, amíg kincs-kártya nem jön ki — ezt érdemes megerősíteni. - Minden speciális kártya mellékhatása legyen, hogy annak a játékosnak a körét, aki húzta lezárja.
 7. **Elnevezési apróság**: a 3-as pakli `candlebar-b3-f4.png` fájlneve valószínűleg elírás — a kép ugyanazt a kincset ábrázolja, mint az 1-es/2-es pakli `candlestick-*` fájljai (megerősítve, közvetlenül megnézve a képeket) — a tervben `candlestick` `treasureId`-ra képezve, de érdemes a fájlt átnevezni/megerősíteni. - Megnéztem a fájlt, helyesen van elnevezve. Az előlapján 4-es szerepel, a 2-es és 1-es paklikban más-más szám szerepel az előlapján.
 
@@ -255,22 +255,24 @@ public/assets/ramses/**                 (verziózott, tényleg kiszolgálva)
 - A **kártya-UI** (jelenleg `activeCard`/`wonCards` egy színes körrel + szöveggel jelenik meg a HUD-on) valódi kártyaképet kap: `cards/{pakli}/{treasureId}-b{pakli}-f{pontérték}.png` az előlaphoz, `cards/back/{pakli}.png` a húzópakli hátulnézetéhez.
 - `treasureConfigs.ts` a placeholder Egyiptom-témájú, kitalált nevek (szkarabeusz, ankh, Hórusz szeme, ...) helyett a valódi 12 kincs nevét/id-ját kapja (lásd 2.1), `imagePath` mezővel kiegészítve.
 
-### 8.2 Adatmodell-kiegészítés a speciális kártyákhoz — JAVASOLT VÁZLAT, nyitott kérdésekkel
+### 8.2 Adatmodell-kiegészítés a speciális kártyákhoz — VÉGLEGESÍTETT TERV
 
-Diagram: [diagrams/ramses-0a-special-cards-draft.puml](./diagrams/ramses-0a-special-cards-draft.puml).
+Diagram: [diagrams/ramses-0a-special-cards-draft.puml](./diagrams/ramses-0a-special-cards-draft.puml) — frissítve, most már a teljes, véglegesített modellt mutatja (nem csak a korábbi részleges vázlatot).
 
-**Ami már MOST, ambiguity nélkül eldönthető és tervezhető:**
+A 2.5 szakasz nyitott kérdéseire adott válaszok (2026-07-30) alapján ez a szakasz most **implementálásra kész** — a 4 db többlépéses kártya (Ajándék, Kockázat, Sivatagi póker, Fata Morgana) mindegyikéhez konkrét `turnPhase`/action-terv készült. Néhány apró, a kártyaszöveg által nem részletezett döntést **ÉSSZERŰ ALAPÉRTELMEZÉSSEL** töltöttem ki (lásd az egyes kártyáknál a "Feltételezés:" jelölést) — ezek playteszt közben könnyen módosíthatók, nem blokkolják az implementációt.
+
+**Közös elv — mikor sül el egy speciális kártya:** ugyanabban a pillanatban, amikor a motor egyébként egy új `activeCard`-ot húzna (3. szakasz, "Automatikus lap-húzás" — vagyis kezdéskor, vagy egy siker UTÁN). Ha a lehúzott lap `SpecialCard`, `activeCard` NEM áll be belőle — helyette a kártya saját feldolgozása indul. **Minden speciális kártya (a Fata Morgana egy kivétellel, lásd ott) azonnal lezárja annak a játékosnak a körét, aki húzta** (2.5/6. válasz) — a kártya saját hatása ezután, már a KÖVETKEZŐ kör "keretében" zajlik le, még akkor is, ha (Sivatagi póker, Ajándék-lánc) átmenetileg más játékos hajtja végre a keresést.
 
 ```typescript
-// state.ts — kiegészítés terve
+// state.ts — kiegészítés terve, VÉGLEGESÍTVE
+export type SpecialCardType = 'SANDSTORM' | 'GIFT' | 'RISK' | 'FATA_MORGANA' | 'POKER' | 'FINISH';
+
 export interface TreasureCard {
   kind: 'treasure';
   id: string;
   treasureId: string;
   points: number; // 1-4
 }
-
-export type SpecialCardType = 'SANDSTORM' | 'GIFT' | 'RISK' | 'FATA_MORGANA' | 'POKER' | 'FINISH';
 
 export interface SpecialCard {
   kind: 'special';
@@ -280,30 +282,114 @@ export interface SpecialCard {
 
 export type DrawnCard = TreasureCard | SpecialCard;
 
+export type RamsesTurnPhase =
+  | 'SEARCHING'                    // normál — SLIDE_PYRAMID célja activeCard
+  | 'AWAITING_GIFT_TARGET'         // a jelenlegi ajándék-tartó nevez meg egy még rejtett kincset
+  | 'AWAITING_GIFT_SLIDE'          // SLIDE_PYRAMID célja pendingSpecialEffect.targetTreasureId
+  | 'AWAITING_RISK_NAMING'         // a húzó játékos megnevez 2 még rejtett kincset
+  | 'AWAITING_RISK_SLIDE'          // SLIDE_PYRAMID célja a 2 közül még meg nem talált
+  | 'AWAITING_POKER_NAMING'        // a húzó megnevez egy kincset + egy céljátékost
+  | 'AWAITING_POKER_SLIDE'         // a megnevezett játékos keres (currentPlayerIndex átmenetileg rá vált)
+  | 'AWAITING_FATA_MORGANA_SLIDE'; // a húzó keresi a jobb szomszédtól vakon húzott lap kincsét
+
+export type PendingSpecialEffect =
+  | { type: 'GIFT'; drawerId: PlayerId; holderId: PlayerId; targetTreasureId: string | null }
+  | { type: 'RISK'; drawerId: PlayerId; treasureIds: [string, string]; firstFound: boolean }
+  | { type: 'POKER'; drawerId: PlayerId; searcherId: PlayerId; treasureId: string | null }
+  | { type: 'FATA_MORGANA'; drawerId: PlayerId; treasureId: string; borrowedCardId: string };
+
 export interface RamsesState {
   // ... a meglévő mezők (3. szakasz) ...
-  drawPile: DrawnCard[];       // korábban SearchCard[] — most a 2-3. pakliban special is lehet
-  activeCard: TreasureCard | null; // csak kincskártya lehet aktív keresési cél, változatlan
+  drawPile: DrawnCard[];             // korábban SearchCard[] — most a 2-3. pakliban special is lehet
+  activeCard: TreasureCard | null;   // csak kincskártya lehet aktív keresési cél, változatlan
+  turnPhase: RamsesTurnPhase;
+  pendingSpecialEffect: PendingSpecialEffect | null;
   /**
-   * Homokvihar hatása — a felhasználó megfogalmazása szerint a kincs-réteget
-   * kell 180°-kal elforgatni. Mivel a 6×8 rács 180°-os elforgatásra nézve
-   * szimmetrikus (r,c -> 5-r,7-c pontosan egy másik valódi cellára képez),
-   * ez modellezhető egyetlen boolean flag-gel ahelyett, hogy az összes
-   * RamsesCell.treasureId-t ténylegesen újraírnánk: a "hatékony" treasureId
-   * a flag alapján vagy a cella saját, vagy a 180°-kal átellenes cella
-   * EREDETI treasureId-je. Ez pontosan megfelel annak, mintha a fizikai
-   * kincs-réteget elforgatnánk a piramis-réteg/keret alatt. NYITOTT: a már
-   * felfedett (piramis nélküli) mezőkre is vonatkozik-e — lásd lent.
+   * Homokvihar hatása — a kincs-réteget kell 180°-kal elforgatni, MINDEN
+   * mezőre vonatkozóan, a már felfedettekre is (2.5/5. válasz, 2026-07-30).
+   * Mivel a 6×8 rács 180°-os elforgatásra nézve szimmetrikus (r,c ->
+   * 5-r,7-c pontosan egy másik valódi cellára képez), ez modellezhető
+   * egyetlen boolean flag-gel ahelyett, hogy az összes RamsesCell.treasureId-t
+   * ténylegesen újraírnánk: minden treasureId-olvasásnak (renderelés,
+   * összehasonlítás activeCard-dal/pendingSpecialEffect célokkal) egy közös
+   * `effectiveTreasureId(state, cell)` helperen kell átmennie, ami a flag
+   * alapján vagy a cella sajátját, vagy a 180°-kal átellenes cella EREDETI
+   * treasureId-jét adja vissza. Mivel a Homokvihar mindig az "automatikus
+   * húzás" pillanatában sül el (activeCard ekkor null), a forgatás sosem
+   * üt egybe egy már folyó kereséssel — nincs szükség extra "azonnali
+   * találat forgatás után" ágra.
    */
   treasureLayerRotated: boolean;
 }
 ```
 
-**Ami MÉG NYITOTT — ezek nélkül a fenti váz nem véglegesíthető implementálásra** (lásd 2.5 "Nyitott kérdések" is, ugyanazok, itt technikai szemszögből):
-- Kell-e egy Hotel-stílusú `turnPhase`/`pendingSpecialEffect` állapot-gép (pl. `AWAITING_GIFT_CHOICE`, `AWAITING_RISK_NAMING`, `AWAITING_RISK_SLIDE_1`, `AWAITING_POKER_NAMING`, ...), és pontosan hány lépésből áll egyik-másik kártya feldolgozása? Ez csak azután dönthető el, hogy a 2.5-ös nyitott kérdések (különösen az Ajándék/Kockázat "valódi lépés vagy csak megnevezés" kérdése) tisztázódtak.
-- Milyen ÚJ `RamsesAction` típusok kellenek (pl. `CHOOSE_GIFT_TREASURE`, `NAME_RISK_TREASURES`, `NAME_POKER_TARGET`) — a pontos mezőik a fenti nyitott kérdésektől függenek.
-- A Fata Morgana mechanikája annyira bizonytalan (2.5/3. nyitott kérdés), hogy egyelőre NEM javaslok konkrét adatmodellt hozzá — playteszteléssel/szabálykönyv-tisztázással kell kezdeni.
+```typescript
+// actions.ts — kiegészítés terve
+export type RamsesAction =
+  | { type: 'SLIDE_PYRAMID'; fromCellId: string }
+  | { type: 'NAME_GIFT_TARGET'; treasureId: string }
+  | { type: 'NAME_RISK_TREASURES'; treasureIds: [string, string] }
+  | { type: 'NAME_POKER_CHALLENGE'; treasureId: string; targetPlayerId: PlayerId };
+  // A Homokvihar/Záró/Fata Morgana NEM igényel új játékos-akciót — automatikusan
+  // feloldódnak húzáskor (a Fata Morgana csak a vak-húzás UTÁN vár egy normál
+  // SLIDE_PYRAMID-ra, a meglévő action-típussal, csak más `turnPhase`-ben).
+```
 
-**Javasolt következő lépés:** a 2.5/8.2 nyitott kérdéseinek megválaszolása (playteszt vagy a fizikai szabálykönyv-betét újraolvasása) — utána egy külön, immár implementálásra kész kiegészítő kör tervezhető (saját diagramokkal), ugyanabban a mintában, mint ez a dokumentum eredetileg épült.
+**Minden nevezési action (`NAME_GIFT_TARGET`, `NAME_RISK_TREASURES`, `NAME_POKER_CHALLENGE`) validációja közös szabály szerint** (`rules.ts`, ugyanaz a `can*` minta): a megnevezett `treasureId` NEM lehet olyan, aminek a (12 kincsből pontosan 1-1 saját cellája van, lásd 2.2) cellája már felfedett — mivel minden kincsnek pontosan egy cellája van a táblán, ez egyetlen "van-e még piramis a treasureId egyetlen celláján" ellenőrzés.
 
-A 2.5 nyitott kérdéseire válaszoltam. A válaszok alapján a 8.2 is le fog tisztulni. Ha mégis marad nyitott kérdés, azt egy következő körben megválaszolom.
+**Kártyánkénti feldolgozás:**
+
+- **Homokvihar (SANDSTORM):** `treasureLayerRotated = !treasureLayerRotated` (a ki-be kapcsolgatás fizikailag megfelel egy 180°-os elforgatásnak: két egymást követő Homokvihar pontosan visszaállítja az eredetit, mint a valóságban). Ezután azonnal lezárul a húzó köre → `currentPlayerIndex` a következőre lép → automatikus húzás a következő játékosnak (rekurzívan, ugyanaz a lépés, mint bármely köridő-váltás után).
+- **Záró kártya (FINISH):** `status = 'FINISHED'`, `winnerIds` kiszámítása a 2.4 szabály szerint. Nincs további húzás.
+- **Ajándék (GIFT):** `turnPhase = 'AWAITING_GIFT_TARGET'`, `pendingSpecialEffect = { type: 'GIFT', drawerId, holderId: drawerId, targetTreasureId: null }`. A `holderId` játékos (kezdetben a húzó) `NAME_GIFT_TARGET`-tel megnevez egy még rejtett kincset → `turnPhase = 'AWAITING_GIFT_SLIDE'`, `currentPlayerIndex` a `holderId`-re mutat (a UI mindig azt mutassa, ki dönt éppen). Ezután `SLIDE_PYRAMID` a szokásos lánc-logikával fut, de a célja `pendingSpecialEffect.targetTreasureId`:
+  - üres mező → lánc folytatódik, marad `AWAITING_GIFT_SLIDE`.
+  - **eltalálja** → SIKER: minden MÁS játékos, akinek van a megcélzott kincsből nyert lapja, ad belőle egyet a megtalálónak (a LEGKISEBB pontértékűt, 2.5/1. válasz szerint). `pendingSpecialEffect = null`, `turnPhase = 'SEARCHING'`, `currentPlayerIndex` az EREDETI húzó (`pendingSpecialEffect.drawerId`, NEM a megtaláló) UTÁNI játékosra lép — megerősítve 2026-07-30: ugyanaz a szabály, mint a többi speciális kártyánál (Kockázat/Sivatagi póker/Fata Morgana), függetlenül attól, hányszor járt körbe a lánc sikertelenül — majd automatikus húzás.
+  - **más kincset talál** → KUDARC: `pendingSpecialEffect.holderId` a KÖVETKEZŐ játékosra lép (2.5 kártyaszöveg: "a következő játékos jön ugyanezzel a kártyával"), `targetTreasureId = null`, vissza `AWAITING_GIFT_TARGET`-be (az új tartó nevez saját célt). Elvben körbe-körbe járhat, amíg valaki sikerrel jár, vagy — elméleti szélsőeset — vissza az eredeti húzóig; ez a fizikai játékban is megeshet, nincs külön limit.
+- **Kockázat (RISK):** `turnPhase = 'AWAITING_RISK_NAMING'`, `pendingSpecialEffect = { type: 'RISK', drawerId, treasureIds: [...], firstFound: false }` a `NAME_RISK_TREASURES` után (2 KÜLÖNBÖZŐ, még rejtett kincs). `turnPhase = 'AWAITING_RISK_SLIDE'`, a húzó keres — mindig a `treasureIds` közül a MÉG MEG NEM TALÁLTAT célozva:
+  - üres → lánc folytatódik.
+  - eltalálja az elsőt → `firstFound = true`, marad `AWAITING_RISK_SLIDE`, most a MÁSODIK a cél.
+  - eltalálja a másodikat (miután az első már megvan) → SIKER.
+  - bármikor egy HARMADIK (egyik célponttal sem egyező) kincset talál → KUDARC, azonnal (2.5/2. válasz: valódi lépések, nincs "második esély").
+  - SIKER: a bal szomszéd (`currentPlayerIndex - 1`, 2.5/2. válasz) egy lapját VAKON (csak a hátlapot látva) húzza a drawer — ha a szomszédnak nincs lapja, húzás nélkül folytatódik.
+  - KUDARC: a drawer a bal szomszédnak ad egy, a drawer ÁLTAL kiválasztott lapot a saját nyert lapjai közül — ha a drawernek nincs lapja, csere nélkül folytatódik.
+  - Mindkét esetben: `pendingSpecialEffect = null`, `turnPhase = 'SEARCHING'`, `currentPlayerIndex` a drawer UTÁNI játékosra lép, automatikus húzás.
+- **Sivatagi póker (POKER):** `turnPhase = 'AWAITING_POKER_NAMING'`, `pendingSpecialEffect = { type: 'POKER', drawerId, searcherId: drawerId, treasureId: null }` a `NAME_POKER_CHALLENGE` (egy még rejtett kincs + egy MÁSIK játékos) után frissül `searcherId`-ra és `treasureId`-ra. `turnPhase = 'AWAITING_POKER_SLIDE'`, **`currentPlayerIndex` átmenetileg a megnevezett `searcherId`-ra vált** (2.5/4. válasz), aki `SLIDE_PYRAMID`-dal keresi a megnevezett kincset:
+  - eltalálja → SIKER: a searcher **VAKON** (csak a hátlapot látva) húz egyet a drawer nyert lapjai közül — megerősítve 2026-07-30, ugyanaz a mechanika, mint Kockázatnál.
+  - más kincset talál → KUDARC: a drawer **VAKON** húz egyet a searcher nyert lapjai közül — ugyanígy.
+  - ha az adandó félnek nincs lapja, csere nélkül folytatódik.
+  - Mindkét esetben: `currentPlayerIndex` VISSZAÁLL a drawerre, majd a drawer UTÁNI játékosra lép (2.5/4. válasz: "utána vissza kell állítani, hogy a kör folytatódjon"), `pendingSpecialEffect = null`, `turnPhase = 'SEARCHING'`, automatikus húzás.
+- **Fata Morgana (FATA_MORGANA):** **kivétel az "azonnal lezárja a kört" főszabály alól** — a kártyaszöveg explicit kivételt tartalmaz. Húzáskor a jobb szomszédot (`currentPlayerIndex + 1`) nézi:
+  - ha a jobb szomszédnak NINCS egyetlen nyert lapja sem → "a speciális kártya helyett újat kell húzni, és folytatni a játékot" (2.5 kártyaszöveg) — ez a Fata Morgana-húzás EGYSZERŰEN EL LESZ DOBVA, a húzó köre NEM zárul le, a motor rögtön tovább húz a pakliból (rekurzívan, mintha ez a lap elő sem került volna).
+  - egyébként: egyenletes véletlennel kiválaszt EGY lapot a jobb szomszéd nyert lapjai közül, VAKON (a drawer nem látja előre, melyik az) — ideiglenesen "kölcsönveszi" (`borrowedCardId`), `turnPhase = 'AWAITING_FATA_MORGANA_SLIDE'`, `pendingSpecialEffect = { type: 'FATA_MORGANA', drawerId, treasureId: <a kölcsönvett lap treasureId-ja>, borrowedCardId }`. **Ez a húzó KÖRE ITT MÁR lezárásra kerül** (a kölcsönvétel pillanatában, nem a keresés végén) — csak maga a keresés-mechanika halasztott.
+  - A drawer ezután `SLIDE_PYRAMID`-dal keresi a kölcsönvett lap kincsét:
+    - eltalálja → SIKER: a kölcsönvett lap VÉGLEGESEN a drawer nyert lapjai közé kerül (a korábbi ideiglenes elvétel a szomszédtól most válik véglegessé).
+    - más kincset talál → KUDARC: a kölcsönvett lap VISSZAKERÜL a jobb szomszédhoz — megerősítve 2026-07-30 ("Ez rendben van így"): pontosan ugyanaz a lap adódik vissza, nem egy másik/plusz büntetés.
+  - Mindkét esetben: `pendingSpecialEffect = null`, `turnPhase = 'SEARCHING'`, `currentPlayerIndex` a drawer UTÁNI játékosra lép, automatikus húzás.
+
+**A 2026-07-30-i kör mindhárom eredeti "Feltételezés" pontját lezárta** — a fenti szöveg már a megerősített változatot mutatja, nincs több nyitott feltételezés a kártyák logikájában.
+
+### 8.4 Kliens-oldali UI a nevezési lépésekhez — a Hotel tárcsa-mintáját követi (2026-07-30)
+
+A felhasználó döntése: mindenhol, ahol a speciális kártyák feldolgozásához MENÜ/választás kell a játékostól (`AWAITING_GIFT_TARGET`, `AWAITING_RISK_NAMING`, `AWAITING_POKER_NAMING`), a Hotelnél már bevált **radiális tárcsa-menüt** kell használni, NEM új, egyedi modalokat építeni.
+
+**Ez a minta már game-agnosztikus, közvetlenül újrafelhasználható:**
+- `src/client/ui-kit/WheelMenu.tsx` + `WheelMenu.module.css` — a tényleges donut-alakú SVG tárcsa, `slices: WheelMenuSlice[]` (`id`, `label`, `icon`, `disabled?`, `onSelect?`) + `onBack`/`onClose` propokkal. Semmit nem tud sem Hotelről, sem Ramsesről — pontosan úgy, ahogy Hotel is csak felhasználja, nem "birtokolja".
+- Hotel saját `PlayerActionWheel.tsx` + `hotelMenuLevels.ts` adja a Hotel-specifikus tartalmat (navigációs verem a fúrásokhoz, az egyes menüszintek `WheelMenuSlice[]`-jét legyártó függvények) — ez a réteg NEM újrahasználható közvetlenül (Hotel szabályait ismeri), de a FELÉPÍTÉSE igen.
+
+**Terv Ramseshez, ugyanabban a mintában:**
+- Új `src/client/games/ramses/ui/ramsesMenuLevels.ts` — Hotel `hotelMenuLevels.ts`-ének megfelelője: egy `MenuLevel` unió (pl. `{ kind: 'root' }`, `{ kind: 'gift-target-treasures' }`, `{ kind: 'risk-treasure-1' }`, `{ kind: 'risk-treasure-2' }`, `{ kind: 'poker-treasure' }`, `{ kind: 'poker-target-player' }`) + egy-egy függvény, ami az adott szinthez legyártja a `WheelMenuSlice[]`-t a `RamsesState`-ből (pl. a még rejtett 12 kincs közül azok, amikre `NAME_GIFT_TARGET` engedélyezett — lásd 8.2 validáció — mind egy-egy szelet, kincs-ikonnal/névvel).
+- Új `src/client/games/ramses/ui/RamsesActionWheel.tsx` — `PlayerActionWheel.tsx` megfelelője: birtokolja a navigációs vermet (pl. Kockázatnál/Sivatagi pókernél a "válaszd ki az 1. kincset" → "válaszd ki a 2. kincset"/"válaszd ki a céljátékost" két lépését), a `turnPhase` alapján dönti el, melyik menüszinten kell indulnia (pl. `AWAITING_RISK_NAMING` esetén automatikusan a `risk-treasure-1` szinten nyit), és a végső kiválasztásokból építi fel a megfelelő action-t (`NAME_GIFT_TARGET`/`NAME_RISK_TREASURES`/`NAME_POKER_CHALLENGE`).
+- A `RamsesGamePage.tsx` jelenlegi HUD-ja (`activeCard` egy egyszerű felirat, nincs tárcsa — a normál `SEARCHING` fázisban a húzópakli automatikus, a játékosnak csak a 3D táblán kell kattintania, nincs is választandó MENÜ-döntés) a `RamsesActionWheel`-t csak akkor jeleníti meg, ha `turnPhase` egy `AWAITING_*_NAMING` fázisban van — a `SLIDE_PYRAMID` maga (akár normál keresésnél, akár egy speciális kártya keresési szakaszában) továbbra is a 3D táblán történő közvetlen kattintás, a `GridBoard3D` mintájának megfelelően (5. szakasz), NEM a tárcsán keresztül — a tárcsa csak a NEVEZÉSI lépésekhez kell.
+
+**Miért illik ez a Ramses architektúrájába:** az 5. szakasz már eleve tudatosan ELTÉRT a Hotel mintájától a tábla-interakcióban (valódi 3D-kattintás, nem képernyő-térbeli overlay) — a tárcsa-menü viszont pont azokra a pillanatokra kell, amikor NEM a táblán, hanem egy elvont listából (kincsek, játékosok) kell választani, ahol a Hotel mintája közvetlenül illeszkedik, mert ott sem a 3D tábla adja a döntést, hanem egy szöveges/ikonos lista.
+
+### 8.3 Új igény (2026-07-30): speciális kártyák ki/bekapcsolása játék indítás előtt
+
+A felhasználó kérése: mielőtt egy Ramses parti elindul (hot-seat VAGY online szobalétrehozás), legyen választható, hogy a 2-es/3-as pakli speciális kártyáit (Homokvihar/Ajándék/Kockázat/Fata Morgana/Sivatagi póker/Záró) tartalmazza-e a húzópakli, vagy a parti a speciális kártyák NÉLKÜLI, EREDETI (3. szakasz szerinti) alapjáték-motorral fusson.
+
+**Terv:**
+- `createDeck(includeSpecialCards: boolean)` (`initialState.ts`) — ha `false`: a 2-es pakli csak a 8 kincs-kártyáját tartalmazza (a benne lévő 11 speciálist kihagyja), a 3-as pakli csak a 8 kincs-kártyáját (a Záró kártyát is kihagyva — ez is "speciális kártya" típus szerint, tehát a kikapcsolás ezt is automatikusan lefedi). A paklik húzási sorrendje (1→2→3, mindegyik önmagában megkeverve) változatlan. A `turnPhase`/`pendingSpecialEffect` gépezet ekkor sosem aktiválódik — a motor pontosan úgy viselkedik, mint a jelenlegi, élesben futó 0a implementáció.
+- `createInitialState(playerNames, { includeSpecialCards })` — az opció végigfut ugyanazon a csatornán, mint a meglévő `aiOpponentCount`/`aiDifficulty` (lásd `ramses-0c-ai-specifikacio.md` §6): hot-seat módban `RamsesSetupPage.tsx` egy új checkbox (`aiToggle`-höz hasonló stílus, ott már van minta rá — lásd `HotelSetupPage.module.css`/`RamsesSetupPage.module.css` `.aiToggle`), online módban a `LobbyPage.tsx` "Új szoba" moduljában egy új, Ramses-specifikus fieldset (`GameDescriptor.online` egy új `supportsSpecialCardsToggle?: boolean` mezővel `gamesRegistry.ts`-ben, csak Ramsesnél `true`), ami a szoba-létrehozási `URLSearchParams`-ba egy `specialCards=0|1` paramétert ír, amit `RamsesOnlineGamePage.tsx`'s `buildCreateOptions` olvas ki és ad tovább a szerver felé (ugyanaz a minta, mint `aiCount`/`aiDifficulty`).
+- Alapértelmezett érték: **BEKAPCSOLVA** (`includeSpecialCards: true`), miután a fenti 8.2 terv implementálva és leellenőrizve lett — amíg ez folyamatban van, érdemes lehet átmenetileg default `false`-t használni, hogy a meglévő, már élesben stabil alapjáték ne törjön el egy még nem teljesen kiforrott funkcióval.
+
+**Javasolt következő lépés:** ha a fenti 8.2/8.3/8.4 terv rendben van, a következő kör az implementáció — `state.ts`/`actions.ts`/`reducer.ts`/`rules.ts` bővítése, majd a kliens-oldali UI (`RamsesActionWheel`/`ramsesMenuLevels.ts`, lásd 8.4, a Hotel tárcsa-mintáját követve), a `PlantUML` diagram frissítése egy teljes turn-flow ábrával, végül a 8.1 szerinti valódi assetek bekötése.

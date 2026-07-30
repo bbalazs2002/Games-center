@@ -20,6 +20,7 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "assets:convert-heic": "node scripts/convert-hotel-heic.mjs",
     "assets:resize-images": "node scripts/resize-hotel-images.mjs",
+    "assets:resize-ramses-images": "node scripts/resize-ramses-images.mjs",
     "assets:box-covers": "node scripts/resize-box-covers.mjs",
     "assets:compress-hotel-glb": "node scripts/compress-hotel-glb.mjs",
     "ai:simulate-hotel": "tsx scripts/simulate-hotel-ai-games.ts",
