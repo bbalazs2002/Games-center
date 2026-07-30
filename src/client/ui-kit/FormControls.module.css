@@ -1,0 +1,68 @@
+/**
+ * Shared custom look for native <input type="checkbox">, used on every
+ * setup/lobby page (Dáma, Hotel, Ramses, LobbyPage) — real playtest report
+ * (2026-07-30): "A selectek és a checkboxok pedig kapjanak saját stílust
+ * minden oldalon, hogy jobban illeszkedjenek a környezetükbe." Before this,
+ * `accent-color` was the only customization — a real improvement, but still
+ * visibly the browser's own OS-native widget shape (square corners) sitting
+ * among otherwise fully custom, rounded, glassmorphic UI.
+ *
+ * `<select>` used to get the same treatment here, but its OPEN dropdown
+ * popup is OS-rendered and unreachable by CSS in any broadly-supported way
+ * — restyling only the closed box still left a jarring native popup on
+ * open (a second real playtest report, same date). Replaced everywhere by
+ * ui-kit/Select.tsx, a fully custom (non-native) dropdown instead.
+ *
+ * Reads the same `--shell-*` tokens Button.module.css already established
+ * (see docs/shell-ux-specifikacio.md §2.3) with the same fallback values, so
+ * it Just Works everywhere those are already in scope — Hotel/Ramses/
+ * LobbyPage directly, and Dáma via clusterBTheme.module.css's own existing
+ * `--shell-*` aliases onto its "B klaszter" token names (`--ink`/`--accent`/...).
+ */
+
+.checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  border-radius: 0.3rem;
+  border: 1.5px solid var(--shell-line, #cbd5e0);
+  background: var(--shell-surface, #ffffff);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.checkbox:hover:not(:disabled) {
+  border-color: var(--shell-accent, #3b6ea5);
+}
+
+.checkbox:checked {
+  background: var(--shell-accent, #3b6ea5);
+  border-color: var(--shell-accent, #3b6ea5);
+}
+
+/* Plain clip-path checkmark rather than an SVG background-image — no data-URI
+   color to keep in sync with the theme, and it's crisp at any size. */
+.checkbox:checked::after {
+  content: '';
+  width: 0.65rem;
+  height: 0.65rem;
+  background: white;
+  clip-path: polygon(14% 44%, 0% 65%, 38% 100%, 100% 16%, 85% 0%, 38% 68%);
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--shell-accent, #3b6ea5);
+  outline-offset: 2px;
+}
+
+.checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

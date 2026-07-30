@@ -20,8 +20,8 @@ export function buildTestState(overrides: Partial<RamsesState> = {}): RamsesStat
     pendingSpecialEffect: null,
     treasureLayerRotated: false,
     players: [
-      { id: 'player-1', name: 'Alice', wonCards: [] },
-      { id: 'player-2', name: 'Bob', wonCards: [] },
+      { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+      { id: 'player-2', name: 'Bob', wonCards: [], forfeited: false },
     ],
     currentPlayerIndex: 0,
     status: 'IN_PROGRESS',

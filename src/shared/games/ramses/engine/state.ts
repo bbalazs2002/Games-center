@@ -38,6 +38,8 @@ export interface Player {
   id: PlayerId;
   name: string;
   wonCards: TreasureCard[];
+  /** Gave up their own turn early (see rules.ts's canForfeit/reducer.ts's applyForfeit) — skipped for all future turns, ineligible to win, but keeps whatever cards they'd already won. Mirrors Hotel's own Player.bankrupt. */
+  forfeited: boolean;
 }
 
 export type RamsesStatus = 'IN_PROGRESS' | 'FINISHED';

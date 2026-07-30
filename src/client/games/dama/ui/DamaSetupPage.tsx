@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../../../ui-kit/Button';
 import { MenuNav } from '../../../ui-kit/MenuNav';
+import { Select } from '../../../ui-kit/Select';
 import theme from '../../../renderers/grid-2d/clusterBTheme.module.css';
 import type { DamaAiDifficulty } from '../../../../shared/games/dama/ai';
 import { DamaGamePage } from './DamaGamePage';
@@ -8,6 +9,12 @@ import type { HotSeatAiSlots } from './useDamaHotSeatAi';
 import styles from './DamaSetupPage.module.css';
 
 type OpponentType = 'HUMAN' | 'AI';
+
+const DIFFICULTY_OPTIONS = [
+  { value: 'EASY', label: 'Könnyű' },
+  { value: 'MEDIUM', label: 'Közepes' },
+  { value: 'HARD', label: 'Nehéz' },
+];
 
 /**
  * Fixed 2-player LIGHT/DARK slot model, unlike Hotel/Ramses's N-player
@@ -66,11 +73,12 @@ export function DamaSetupPage() {
         {opponentType === 'AI' && (
           <fieldset className={styles.fieldset}>
             <legend>Nehézség</legend>
-            <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as DamaAiDifficulty)}>
-              <option value="EASY">Könnyű</option>
-              <option value="MEDIUM">Közepes</option>
-              <option value="HARD">Nehéz</option>
-            </select>
+            <Select
+              className={styles.select}
+              value={difficulty}
+              onChange={(next) => setDifficulty(next as DamaAiDifficulty)}
+              options={DIFFICULTY_OPTIONS}
+            />
           </fieldset>
         )}
         <Button className={styles.primaryButton} onClick={() => setStarted(true)}>

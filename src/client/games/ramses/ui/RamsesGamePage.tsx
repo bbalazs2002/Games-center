@@ -18,7 +18,7 @@ import { useRamsesHotSeatAi, type HotSeatAiSlots } from './useRamsesHotSeatAi';
 import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
 import { createInitialState } from '../../../../shared/games/ramses/engine/initialState';
 import { reducer } from '../../../../shared/games/ramses/engine/reducer';
-import { BOARD_COLS, BOARD_ROWS } from '../../../../shared/games/ramses/engine/rules';
+import { BOARD_COLS, BOARD_ROWS, canForfeit } from '../../../../shared/games/ramses/engine/rules';
 import {
   getCurrentActiveCard,
   getCurrentPlayer,
@@ -391,12 +391,49 @@ function RamsesActiveCardDisplay({
   );
 }
 
+/**
+ * Self-contained "Feladás" button + confirm modal — owns its own open/close
+ * state so RamsesGamePage itself doesn't have to (split out purely to stay
+ * under this codebase's eslint complexity limit, same established pattern as
+ * RamsesWinnerScreen/RamsesActiveCardDisplay). Real playtest report
+ * (2026-07-30): "Szeretném, ha a Ramses-ben lenne egy feladás gomb."
+ */
+function RamsesForfeitControl({ canForfeit, onForfeit }: { canForfeit: boolean; onForfeit: () => void }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  function confirm(): void {
+    setConfirmOpen(false);
+    onForfeit();
+  }
+
+  return (
+    <>
+      {canForfeit && (
+        <button type="button" className={styles.forfeitButton} onClick={() => setConfirmOpen(true)}>
+          Feladás
+        </button>
+      )}
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} className={ramsesModalTheme.ramsesModal}>
+        <h2>Feladod a játékot?</h2>
+        <p>Kiesel a játékból, a köröd átkerül a következő játékoshoz. Ez nem vonható vissza.</p>
+        <div className={styles.forfeitModalActions}>
+          <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
+            Mégse
+          </Button>
+          <Button onClick={confirm}>Igen, feladom</Button>
+        </div>
+      </Modal>
+    </>
+  );
+}
+
 function ScoreboardList({ scoreboard }: { scoreboard: PlayerScore[] }) {
   return (
     <ul className={styles.scoreboard}>
       {scoreboard.map(({ player, score }) => (
         <li key={player.id}>
           {player.name}: {score} pont ({player.wonCards.length} lap)
+          {player.forfeited && ' — feladta'}
         </li>
       ))}
     </ul>
@@ -531,6 +568,11 @@ export function RamsesGamePage({
   // doesn't react while an AI-controlled slot's turn is being decided/applied,
   // same "no reaction, no extra message" principle as the online !isMyTurn gate.
   const isCurrentPlayerAi = (hotSeatAiSlots ?? {})[currentPlayer.id] !== undefined;
+  // Real playtest report (2026-07-30): "Szeretném, ha a Ramses-ben lenne egy
+  // feladás gomb." Only offered during a normal turn (see rules.ts's
+  // canForfeit) — never mid-special-card-decision, and never for a spot that
+  // isn't actually the local/hot-seat player's own right now.
+  const canForfeitNow = isMyTurn && !isCurrentPlayerAi && canForfeit(state);
 
   const cells: GridBoard3DCell<RamsesCellViewData>[] = state.board.map((cell) => ({
     id: cell.id,
@@ -584,6 +626,7 @@ export function RamsesGamePage({
           )}
           <p className={styles.drawPileCount}>{drawPileCount} lap maradt a pakliban</p>
           <ScoreboardList scoreboard={scoreboard} />
+          <RamsesForfeitControl canForfeit={canForfeitNow} onForfeit={() => dispatch({ type: 'FORFEIT' })} />
         </div>
         <RamsesActionWheel state={state} dispatch={dispatch} interactive={isMyTurn && !isCurrentPlayerAi} />
         {isLocalMode && <LocalGameControls gameId="ramses" onRequestNewGame={onRequestNewGame} resumable={false} />}

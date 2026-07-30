@@ -172,7 +172,10 @@ function chooseNamingAction(state: RamsesState): RamsesAction | null {
     case 'AWAITING_RISK_NAMING':
       return hidden.length >= 2 ? { type: 'NAME_RISK_TREASURES', treasureIds: pickTwoDistinct(hidden) } : null;
     case 'AWAITING_POKER_NAMING': {
-      const others = state.players.filter((p) => p.id !== getCurrentPlayer(state).id);
+      // Excludes forfeited players too — see rules.ts's canNamePokerChallenge,
+      // which would reject naming one anyway (nobody would ever act for
+      // their temporarily-borrowed turn).
+      const others = state.players.filter((p) => p.id !== getCurrentPlayer(state).id && !p.forfeited);
       return hidden.length > 0 && others.length > 0
         ? { type: 'NAME_POKER_CHALLENGE', treasureId: pickRandom(hidden), targetPlayerId: pickRandom(others).id }
         : null;

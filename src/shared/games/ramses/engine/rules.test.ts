@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  activePlayerCount,
+  canForfeit,
   canNameGiftTarget,
   canNamePokerChallenge,
   canNameRiskTreasures,
@@ -9,6 +11,7 @@ import {
   getAdjacentCellIds,
   getHiddenTreasureIds,
   isTreasureRevealed,
+  nextActivePlayerIndexAfter,
   nextPlayerIndex,
   renamePlayer,
   scoreOf,
@@ -66,36 +69,86 @@ describe('nextPlayerIndex', () => {
     const state = buildTestState({ currentPlayerIndex: 1 }); // 2 players in buildTestState
     expect(nextPlayerIndex(state)).toBe(0);
   });
+
+  it('skips a forfeited player in between', () => {
+    const state = buildTestState({
+      currentPlayerIndex: 0,
+      players: [
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: true },
+        { id: 'player-3', name: 'Cid', wonCards: [], forfeited: false },
+      ],
+    });
+    expect(nextPlayerIndex(state)).toBe(2);
+  });
+});
+
+describe('nextActivePlayerIndexAfter / activePlayerCount / canForfeit', () => {
+  it('nextActivePlayerIndexAfter walks from an ARBITRARY seat, not just currentPlayerIndex', () => {
+    const state = buildTestState({
+      currentPlayerIndex: 2, // deliberately NOT player-1 — mirrors Sivatagi póker's temporary hand-off
+      players: [
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: false },
+        { id: 'player-3', name: 'Cid', wonCards: [], forfeited: false },
+      ],
+    });
+    expect(nextActivePlayerIndexAfter(state, 'player-1')).toBe(1);
+  });
+
+  it('activePlayerCount excludes forfeited players', () => {
+    const state = buildTestState({
+      players: [
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: true },
+      ],
+    });
+    expect(activePlayerCount(state)).toBe(1);
+  });
+
+  it('canForfeit is true only during a normal SEARCHING turn', () => {
+    expect(canForfeit(buildTestState({ turnPhase: 'SEARCHING' }))).toBe(true);
+    expect(canForfeit(buildTestState({ turnPhase: 'AWAITING_RISK_SLIDE' }))).toBe(false);
+    expect(canForfeit(buildTestState({ status: 'FINISHED' }))).toBe(false);
+  });
 });
 
 describe('scoreOf / computeWinnerIds', () => {
   it('sums point values across won cards', () => {
-    const player = { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 2), treasureCard('c2', 'y', 3)] };
+    const player = { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 2), treasureCard('c2', 'y', 3)], forfeited: false };
     expect(scoreOf(player)).toBe(5);
   });
 
   it('a single clear leader wins outright', () => {
     const players = [
-      { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 4)] },
-      { id: 'p2', name: 'B', wonCards: [treasureCard('c2', 'y', 1)] },
+      { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 4)], forfeited: false },
+      { id: 'p2', name: 'B', wonCards: [treasureCard('c2', 'y', 1)], forfeited: false },
     ];
     expect(computeWinnerIds(players)).toEqual(['p1']);
   });
 
   it('equal points, more cards wins', () => {
     const players = [
-      { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 2), treasureCard('c2', 'y', 2)] },
-      { id: 'p2', name: 'B', wonCards: [treasureCard('c3', 'z', 4)] },
+      { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 2), treasureCard('c2', 'y', 2)], forfeited: false },
+      { id: 'p2', name: 'B', wonCards: [treasureCard('c3', 'z', 4)], forfeited: false },
     ];
     expect(computeWinnerIds(players)).toEqual(['p1']);
   });
 
   it('equal points AND equal card count — both co-win', () => {
     const players = [
-      { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 3)] },
-      { id: 'p2', name: 'B', wonCards: [treasureCard('c2', 'y', 3)] },
+      { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 3)], forfeited: false },
+      { id: 'p2', name: 'B', wonCards: [treasureCard('c2', 'y', 3)], forfeited: false },
     ];
     expect(computeWinnerIds(players).sort()).toEqual(['p1', 'p2']);
+  });
+
+  it('a forfeited player is never eligible to win, even with the highest score', () => {
+    const players = [
+      { id: 'p1', name: 'A', wonCards: [treasureCard('c1', 'x', 99)], forfeited: true },
+      { id: 'p2', name: 'B', wonCards: [treasureCard('c2', 'y', 1)], forfeited: false },
+    ];
+    expect(computeWinnerIds(players)).toEqual(['p2']);
   });
 });
 
@@ -104,8 +157,8 @@ describe('renamePlayer', () => {
     const state = buildTestState();
     const next = renamePlayer(state, 'player-2', 'Real Name');
     expect(next.players).toEqual([
-      { id: 'player-1', name: 'Alice', wonCards: [] },
-      { id: 'player-2', name: 'Real Name', wonCards: [] },
+      { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+      { id: 'player-2', name: 'Real Name', wonCards: [], forfeited: false },
     ]);
   });
 });

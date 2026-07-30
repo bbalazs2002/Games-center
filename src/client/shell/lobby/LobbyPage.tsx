@@ -6,8 +6,10 @@ import type { RoomMetadata } from '../../../shared/core/RoomMetadata';
 import { colyseusClient } from '../../core/transport/colyseusClient';
 import { NEW_ROOM_PARAM } from '../../core/transport/onlineRoomConstants';
 import { Button } from '../../ui-kit/Button';
+import formControls from '../../ui-kit/FormControls.module.css';
 import { MenuNav } from '../../ui-kit/MenuNav';
 import { Modal } from '../../ui-kit/Modal';
+import { Select } from '../../ui-kit/Select';
 import themedModal from '../../ui-kit/themedModalContent.module.css';
 import { useAuth } from '../auth/AuthContext';
 import { GAMES_REGISTRY, type GameDescriptor } from '../gamesRegistry';
@@ -18,19 +20,19 @@ type OpponentType = 'HUMAN' | 'AI';
 type PasswordMode = 'none' | 'generate' | 'custom';
 type AiDifficulty = 'EASY' | 'MEDIUM' | 'HARD';
 
+const DIFFICULTY_OPTIONS = [
+  { value: 'EASY', label: 'Könnyű' },
+  { value: 'MEDIUM', label: 'Közepes' },
+  { value: 'HARD', label: 'Nehéz' },
+];
+
 function playerCountOptions([min, max]: [number, number]): number[] {
   return Array.from({ length: max - min + 1 }, (_, i) => min + i);
 }
 
 /** Shared by the binary Ember/AI picker (Dáma) and the N-AI-count picker (Hotel/Ramses) below — avoids duplicating the same 3-option markup twice. */
 function AiDifficultySelect({ value, onChange }: { value: AiDifficulty; onChange: (difficulty: AiDifficulty) => void }) {
-  return (
-    <select value={value} onChange={(event) => onChange(event.target.value as AiDifficulty)}>
-      <option value="EASY">Könnyű</option>
-      <option value="MEDIUM">Közepes</option>
-      <option value="HARD">Nehéz</option>
-    </select>
-  );
+  return <Select value={value} onChange={(next) => onChange(next as AiDifficulty)} options={DIFFICULTY_OPTIONS} />;
 }
 
 /** Dáma's binary Ember/AI choice — the difficulty picker below only ever mattered for Hotel/Ramses's AiOpponentCountFieldset until now (see docs/dama-0d-ai-specifikacio.md §10). */
@@ -79,15 +81,11 @@ function PlayerCountFieldset({
   return (
     <fieldset className={styles.fieldset}>
       <legend>Játékosok száma</legend>
-      <label>
-        <select value={playerCount} onChange={(event) => onChange(Number(event.target.value))}>
-          {playerCountOptions(range).map((count) => (
-            <option key={count} value={count}>
-              {count} fő
-            </option>
-          ))}
-        </select>
-      </label>
+      <Select
+        value={String(playerCount)}
+        onChange={(next) => onChange(Number(next))}
+        options={playerCountOptions(range).map((count) => ({ value: String(count), label: `${count} fő` }))}
+      />
     </fieldset>
   );
 }
@@ -109,15 +107,14 @@ function AiOpponentCountFieldset({
   return (
     <fieldset className={styles.fieldset}>
       <legend>AI ellenfelek</legend>
-      <label>
-        <select value={aiCount} onChange={(event) => onAiCountChange(Number(event.target.value))}>
-          {Array.from({ length: maxAiCount + 1 }, (_, i) => i).map((count) => (
-            <option key={count} value={count}>
-              {count === 0 ? 'Nincs AI' : `${count} AI`}
-            </option>
-          ))}
-        </select>
-      </label>
+      <Select
+        value={String(aiCount)}
+        onChange={(next) => onAiCountChange(Number(next))}
+        options={Array.from({ length: maxAiCount + 1 }, (_, i) => i).map((count) => ({
+          value: String(count),
+          label: count === 0 ? 'Nincs AI' : `${count} AI`,
+        }))}
+      />
       {aiCount > 0 && (
         <label>
           {' '}
@@ -135,7 +132,7 @@ function SpecialCardsFieldset({ checked, onChange }: { checked: boolean; onChang
     <fieldset className={styles.fieldset}>
       <legend>Speciális kártyák</legend>
       <label>
-        <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+        <input className={formControls.checkbox} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
         Homokvihar, Ajándék, Kockázat, Fata Morgana, Sivatagi póker, Záró
       </label>
     </fieldset>

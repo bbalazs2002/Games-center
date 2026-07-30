@@ -69,15 +69,7 @@
   height: 1rem;
 }
 
-.fieldset select {
-  color-scheme: light dark;
-  font-family: var(--body-font);
-  font-size: 0.9rem;
-  color: var(--ink);
-  background: var(--surface-raised);
-  border: 1px solid var(--line-strong);
-  border-radius: 3px;
-  padding: 0.4rem 0.6rem;
+.select {
   width: 100%;
 }
 

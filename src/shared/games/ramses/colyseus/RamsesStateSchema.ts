@@ -35,8 +35,9 @@ export class RamsesPlayerSchema extends Schema {
   declare id: string;
   declare name: string;
   declare wonCards: ArraySchema<TreasureCardSchema>;
+  declare forfeited: boolean;
 }
-defineTypes(RamsesPlayerSchema, { id: 'string', name: 'string', wonCards: [TreasureCardSchema] });
+defineTypes(RamsesPlayerSchema, { id: 'string', name: 'string', wonCards: [TreasureCardSchema], forfeited: 'boolean' });
 
 /**
  * Flattened "tagged union" — @colyseus/schema has no native union type, so

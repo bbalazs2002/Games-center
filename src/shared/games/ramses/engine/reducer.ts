@@ -1,11 +1,14 @@
 import type { RamsesAction } from './actions';
 import {
+  activePlayerCount,
+  canForfeit,
   canNameGiftTarget,
   canNamePokerChallenge,
   canNameRiskTreasures,
   canSlidePyramid,
   computeWinnerIds,
   effectiveTreasureId,
+  nextActivePlayerIndexAfter,
   nextPlayerIndex,
   playerIndexOf,
 } from './rules';
@@ -117,7 +120,7 @@ export function awardActiveCardToCurrentPlayer(state: RamsesState): RamsesState 
 
 /** Ends drawerId's turn and hands off to whoever comes after them — the shared "next" every special card resolves to (2.5/6, and 2.5/1 for Ajándék specifically: the DRAWER's next, never the finder's), then draws for that new current player. */
 function closeSpecialEffectAndAdvance(state: RamsesState, drawerId: PlayerId): RamsesState {
-  const nextIndex = (playerIndexOf(state, drawerId) + 1) % state.players.length;
+  const nextIndex = nextActivePlayerIndexAfter(state, drawerId);
   const cleared: RamsesState = {
     ...state,
     turnPhase: 'SEARCHING',
@@ -144,7 +147,7 @@ function resolveGiftReveal(next: RamsesState, revealed: string | null): RamsesSt
     return closeSpecialEffectAndAdvance(withGift, effect.drawerId);
   }
   // Wrong treasure — the card (and the decision) passes to the next player, see docs/ramses-0a-specifikacio.md §8.2.
-  const nextHolderIndex = (playerIndexOf(next, effect.holderId) + 1) % next.players.length;
+  const nextHolderIndex = nextActivePlayerIndexAfter(next, effect.holderId);
   return {
     ...next,
     turnPhase: 'AWAITING_GIFT_TARGET',
@@ -357,6 +360,31 @@ function applyNamePokerChallenge(state: RamsesState, treasureId: string, targetP
   };
 }
 
+/**
+ * Gives up the CURRENT player's own turn for the rest of the game — real
+ * playtest report (2026-07-30): "Szeretném, ha a Ramses-ben lenne egy
+ * feladás gomb." Only ever the current player (see rules.ts's canForfeit,
+ * SEARCHING-only), so there's never a pendingSpecialEffect naming/controlling
+ * them to unwind. Doesn't touch activeCard — the search for it simply
+ * continues with the next ACTIVE player, same as a wrong-treasure reveal
+ * (resolveSearchingReveal). Mirrors Hotel's own applyForfeit/checkWinCondition
+ * pair (reducer.ts there), just without a "send lots to the bank" equivalent
+ * — Ramses has no bank, so a forfeited player simply keeps whatever they'd
+ * already won (still ineligible to WIN, see computeWinnerIds).
+ */
+function applyForfeit(state: RamsesState): RamsesState {
+  if (!canForfeit(state)) return state;
+  const player = state.players[state.currentPlayerIndex];
+  const forfeited: RamsesState = {
+    ...state,
+    players: state.players.map((p) => (p.id === player.id ? { ...p, forfeited: true } : p)),
+  };
+  if (activePlayerCount(forfeited) <= 1) {
+    return { ...forfeited, status: 'FINISHED', winnerIds: computeWinnerIds(forfeited.players) };
+  }
+  return { ...forfeited, currentPlayerIndex: nextActivePlayerIndexAfter(forfeited, player.id) };
+}
+
 export function reducer(state: RamsesState, action: RamsesAction): RamsesState {
   if (state.status !== 'IN_PROGRESS') return state;
   switch (action.type) {
@@ -368,6 +396,8 @@ export function reducer(state: RamsesState, action: RamsesAction): RamsesState {
       return applyNameRiskTreasures(state, action.treasureIds);
     case 'NAME_POKER_CHALLENGE':
       return applyNamePokerChallenge(state, action.treasureId, action.targetPlayerId);
+    case 'FORFEIT':
+      return applyForfeit(state);
     default:
       return state;
   }

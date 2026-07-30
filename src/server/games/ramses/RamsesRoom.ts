@@ -97,6 +97,8 @@ export class RamsesRoom extends GameRoom<RamsesState, RamsesAction, PlayerId, Ra
         );
       case 'NAME_POKER_CHALLENGE':
         return typeof candidate.treasureId === 'string' && typeof candidate.targetPlayerId === 'string';
+      case 'FORFEIT':
+        return true;
       default:
         return false;
     }

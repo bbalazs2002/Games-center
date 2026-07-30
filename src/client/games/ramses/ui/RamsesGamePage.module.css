@@ -169,6 +169,32 @@
   gap: 0.15rem;
 }
 
+/* De-emphasized on purpose — a "give up" action shouldn't visually compete
+   with the HUD's own informational content above it (real playtest report,
+   2026-07-30: "Szeretném, ha a Ramses-ben lenne egy feladás gomb"). */
+.forfeitButton {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(243, 236, 217, 0.6);
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.forfeitButton:hover {
+  color: #f3ecd9;
+}
+
+.forfeitModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
 .winnerActions {
   display: flex;
   gap: 0.75rem;

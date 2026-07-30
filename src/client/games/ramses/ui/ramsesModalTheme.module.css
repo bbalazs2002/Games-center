@@ -15,6 +15,19 @@
    real playtest report (2026-07-30): the card modal still showed white at
    its edges, this override having silently lost that ordering contest. */
 .ramsesModal.ramsesModal {
+  /* The shared ui-kit `Button` only ever reads --shell-accent/-surface/-ink/
+     -line (see Button.module.css) — without these, any <Button> rendered
+     inside a Ramses modal falls back to its generic blue/gray default,
+     clashing with this theme (real playtest report, 2026-07-30, caught via
+     RamsesForfeitControl's confirm modal). Modal portals to document.body,
+     outside RamsesGamePage.module.css's own `.page`/`.winnerPage` scopes
+     entirely, so these have to be set HERE, on the modal's own content, not
+     assumed to be inherited from wherever the triggering page happens to be. */
+  --shell-surface: rgba(23, 18, 10, 0.55);
+  --shell-ink: #f3ecd9;
+  --shell-accent: #5a9b8e;
+  --shell-line: rgba(90, 155, 142, 0.4);
+
   background: rgba(23, 18, 10, 0.92);
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);

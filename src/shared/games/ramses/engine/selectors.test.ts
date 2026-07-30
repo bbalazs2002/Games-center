@@ -26,8 +26,8 @@ describe('getScoreboard / getWinners', () => {
   it('sorts highest score first', () => {
     const state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [{ kind: 'treasure', id: 'c1', treasureId: 'x', points: 1 }] },
-        { id: 'player-2', name: 'Bob', wonCards: [{ kind: 'treasure', id: 'c2', treasureId: 'y', points: 4 }] },
+        { id: 'player-1', name: 'Alice', wonCards: [{ kind: 'treasure', id: 'c1', treasureId: 'x', points: 1 }], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [{ kind: 'treasure', id: 'c2', treasureId: 'y', points: 4 }], forfeited: false },
       ],
     });
     const scoreboard = getScoreboard(state);

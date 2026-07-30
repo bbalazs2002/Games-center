@@ -171,8 +171,8 @@ describe('reducer — Ajándék (GIFT)', () => {
   it('full success flow: names a target, slides to it, and the lowest-point matching cards transfer to the holder; turn passes to the DRAWER\'s next player', () => {
     let state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [] },
-        { id: 'player-2', name: 'Bob', wonCards: [treasureCard('b1', 'mummy', 4), treasureCard('b2', 'mummy', 2)] },
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [treasureCard('b1', 'mummy', 4), treasureCard('b2', 'mummy', 2)], forfeited: false },
       ],
       drawPile: [{ kind: 'special', id: 'g1', specialType: 'GIFT' }, treasureCard('c1', 'scarab', 1)],
     });
@@ -213,8 +213,8 @@ describe('reducer — Kockázat (RISK)', () => {
   it('success: finds both named treasures in order, then blind-draws from the left neighbor', () => {
     let state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [] },
-        { id: 'player-2', name: 'Bob', wonCards: [treasureCard('b1', 'dog', 1)] }, // left neighbor of player-1 in a 2-player game
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [treasureCard('b1', 'dog', 1)], forfeited: false }, // left neighbor of player-1 in a 2-player game
       ],
       turnPhase: 'AWAITING_RISK_NAMING',
       pendingSpecialEffect: { type: 'RISK', drawerId: 'player-1', treasureIds: ['', ''], firstFound: false },
@@ -241,8 +241,8 @@ describe('reducer — Kockázat (RISK)', () => {
   it('failure: a third, unrelated treasure surfaces — the drawer gives their own lowest-point card to the left neighbor', () => {
     let state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [treasureCard('a1', 'sphinx', 4), treasureCard('a2', 'sphinx', 1)] },
-        { id: 'player-2', name: 'Bob', wonCards: [] },
+        { id: 'player-1', name: 'Alice', wonCards: [treasureCard('a1', 'sphinx', 4), treasureCard('a2', 'sphinx', 1)], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: false },
       ],
       turnPhase: 'AWAITING_RISK_SLIDE',
       pendingSpecialEffect: { type: 'RISK', drawerId: 'player-1', treasureIds: ['mummy', 'ankh'], firstFound: false },
@@ -262,9 +262,9 @@ describe('reducer — Sivatagi póker (POKER)', () => {
   it('success: temporarily borrows the named player\'s turn, then correctly reverts to the DRAWER\'s own next player afterward (not the searcher\'s)', () => {
     let state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [treasureCard('a1', 'duck', 2)] },
-        { id: 'player-2', name: 'Bob', wonCards: [] },
-        { id: 'player-3', name: 'Cid', wonCards: [] },
+        { id: 'player-1', name: 'Alice', wonCards: [treasureCard('a1', 'duck', 2)], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: false },
+        { id: 'player-3', name: 'Cid', wonCards: [], forfeited: false },
       ],
       turnPhase: 'AWAITING_POKER_NAMING',
       pendingSpecialEffect: { type: 'POKER', drawerId: 'player-1', searcherId: 'player-1', treasureId: null },
@@ -286,8 +286,8 @@ describe('reducer — Sivatagi póker (POKER)', () => {
   it('failure: the drawer draws blind from the searcher', () => {
     let state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [] },
-        { id: 'player-2', name: 'Bob', wonCards: [treasureCard('b1', 'duck', 2)] },
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [treasureCard('b1', 'duck', 2)], forfeited: false },
       ],
       turnPhase: 'AWAITING_POKER_SLIDE',
       pendingSpecialEffect: { type: 'POKER', drawerId: 'player-1', searcherId: 'player-2', treasureId: 'mummy' },
@@ -309,8 +309,8 @@ describe('drawCardForCurrentPlayer / reducer — Fata Morgana', () => {
   it('no card to borrow from the right neighbor: the draw is discarded, the turn is NOT closed, and the next card is drawn immediately', () => {
     const state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [] },
-        { id: 'player-2', name: 'Bob', wonCards: [] }, // right neighbor, has nothing
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: false }, // right neighbor, has nothing
       ],
       drawPile: [{ kind: 'special', id: 'fm1', specialType: 'FATA_MORGANA' }, treasureCard('c1', 'scarab', 1)],
     });
@@ -323,8 +323,8 @@ describe('drawCardForCurrentPlayer / reducer — Fata Morgana', () => {
   it('borrows a card from the right neighbor and awaits a real search for its treasure', () => {
     const state = buildTestState({
       players: [
-        { id: 'player-1', name: 'Alice', wonCards: [] },
-        { id: 'player-2', name: 'Bob', wonCards: [treasureCard('b1', 'mummy', 3)] },
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [treasureCard('b1', 'mummy', 3)], forfeited: false },
       ],
       drawPile: [{ kind: 'special', id: 'fm1', specialType: 'FATA_MORGANA' }],
     });
@@ -366,5 +366,65 @@ describe('drawCardForCurrentPlayer / reducer — Fata Morgana', () => {
     const next = reducer(state, { type: 'SLIDE_PYRAMID', fromCellId: 'r1c0' });
     expect(next.players[1].wonCards).toEqual([treasureCard('b1', 'mummy', 3)]); // returned
     expect(next.players[0].wonCards).toEqual([]);
+  });
+});
+
+describe('reducer — FORFEIT', () => {
+  it('is a no-op outside the normal SEARCHING phase (mid special-card decision)', () => {
+    const state = buildTestState({ turnPhase: 'AWAITING_GIFT_TARGET', pendingSpecialEffect: { type: 'GIFT', drawerId: 'player-1', holderId: 'player-1', targetTreasureId: null } });
+    const next = reducer(state, { type: 'FORFEIT' });
+    expect(next).toBe(state);
+  });
+
+  it('is a no-op once the game has finished', () => {
+    const state = buildTestState({ status: 'FINISHED' });
+    const next = reducer(state, { type: 'FORFEIT' });
+    expect(next).toBe(state);
+  });
+
+  it('marks the current player forfeited, keeps their wonCards, and hands the turn (and the same activeCard target) to the next player', () => {
+    const state = buildTestState({
+      activeCard: treasureCard('c1', 'scarab', 3),
+      players: [
+        { id: 'player-1', name: 'Alice', wonCards: [treasureCard('a1', 'duck', 2)], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: false },
+        { id: 'player-3', name: 'Cid', wonCards: [], forfeited: false },
+      ],
+    });
+    const next = reducer(state, { type: 'FORFEIT' });
+    expect(next.players[0]).toEqual({ id: 'player-1', name: 'Alice', wonCards: [treasureCard('a1', 'duck', 2)], forfeited: true });
+    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.activeCard).toEqual(treasureCard('c1', 'scarab', 3));
+    expect(next.status).toBe('IN_PROGRESS');
+  });
+
+  it('skips an already-forfeited player when handing off the turn', () => {
+    // 4 players so TWO end up forfeited (player-1, now; player-2, already)
+    // and the game still has enough active players (player-3/4) left to
+    // continue — otherwise this would exercise the "only one left" ending
+    // path instead of the turn hand-off this test actually targets.
+    const state = buildTestState({
+      players: [
+        { id: 'player-1', name: 'Alice', wonCards: [], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: true },
+        { id: 'player-3', name: 'Cid', wonCards: [], forfeited: false },
+        { id: 'player-4', name: 'Dee', wonCards: [], forfeited: false },
+      ],
+    });
+    const next = reducer(state, { type: 'FORFEIT' });
+    expect(next.status).toBe('IN_PROGRESS');
+    expect(next.currentPlayerIndex).toBe(2); // player-2 (index 1) skipped
+  });
+
+  it('ends the game once only one active player remains, declaring them the winner regardless of score', () => {
+    const state = buildTestState({
+      players: [
+        { id: 'player-1', name: 'Alice', wonCards: [treasureCard('a1', 'duck', 10)], forfeited: false },
+        { id: 'player-2', name: 'Bob', wonCards: [], forfeited: false },
+      ],
+    });
+    const next = reducer(state, { type: 'FORFEIT' });
+    expect(next.status).toBe('FINISHED');
+    expect(next.winnerIds).toEqual(['player-2']); // sole remaining active player wins despite the lower score
   });
 });

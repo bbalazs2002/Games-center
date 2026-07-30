@@ -43,12 +43,6 @@
   white-space: nowrap;
 }
 
-.aiToggle input[type='checkbox'] {
-  accent-color: var(--shell-accent, #3b6ea5);
-  width: 1rem;
-  height: 1rem;
-}
-
 /* Real playtest report (2026-07-30): reusing .aiToggle's white-space: nowrap
    for this much longer label made it overflow the page ("kilóg") instead of
    wrapping. This variant allows normal wrapping, with the checkbox pinned to
@@ -59,10 +53,10 @@
   gap: 0.5rem;
 }
 
+/* Layout only (top-alignment against a potentially multi-line label) — the
+   checkbox's own look comes from ui-kit/FormControls.module.css's .checkbox,
+   applied directly on the <input> alongside this. */
 .specialCardsToggle input[type='checkbox'] {
-  accent-color: var(--shell-accent, #3b6ea5);
-  width: 1rem;
-  height: 1rem;
   flex-shrink: 0;
   margin-top: 0.2rem;
 }
@@ -71,17 +65,6 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.difficultyRow select {
-  color-scheme: dark;
-  font: inherit;
-  font-size: 0.95rem;
-  color: inherit;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--shell-line, #cbd5e0);
-  border-radius: 0.375rem;
-  padding: 0.4rem 0.6rem;
 }
 
 .playerCountControls {

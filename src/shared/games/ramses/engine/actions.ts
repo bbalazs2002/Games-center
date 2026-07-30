@@ -13,4 +13,5 @@ export type RamsesAction =
   | { type: 'SLIDE_PYRAMID'; fromCellId: string }
   | { type: 'NAME_GIFT_TARGET'; treasureId: string }
   | { type: 'NAME_RISK_TREASURES'; treasureIds: [string, string] }
-  | { type: 'NAME_POKER_CHALLENGE'; treasureId: string; targetPlayerId: PlayerId };
+  | { type: 'NAME_POKER_CHALLENGE'; treasureId: string; targetPlayerId: PlayerId }
+  | { type: 'FORFEIT' };

@@ -43,8 +43,28 @@ export function canSlidePyramid(state: RamsesState, fromCellId: string): boolean
   return getAdjacentCellIds(state.board, state.emptyCellId).includes(fromCellId);
 }
 
+/** Next ACTIVE (non-forfeited) player index after `fromPlayerId`'s own seat — skips forfeited players, same "walk the circle, skip the inactive" pattern as Hotel's nextActivePlayerIndex. Defensively falls back to `fromPlayerId`'s own index if every other seat is forfeited (shouldn't happen — the game ends once only one active player remains, see reducer.ts's applyForfeit). */
+export function nextActivePlayerIndexAfter(state: RamsesState, fromPlayerId: PlayerId): number {
+  const total = state.players.length;
+  let index = playerIndexOf(state, fromPlayerId);
+  for (let i = 0; i < total; i += 1) {
+    index = (index + 1) % total;
+    if (!state.players[index].forfeited) return index;
+  }
+  return playerIndexOf(state, fromPlayerId);
+}
+
 export function nextPlayerIndex(state: RamsesState): number {
-  return (state.currentPlayerIndex + 1) % state.players.length;
+  return nextActivePlayerIndexAfter(state, state.players[state.currentPlayerIndex].id);
+}
+
+export function activePlayerCount(state: RamsesState): number {
+  return state.players.filter((p) => !p.forfeited).length;
+}
+
+/** Only during a normal turn (never mid-special-card-resolution — see docs/ramses-0a-specifikacio.md, this avoids ever having to unwind a pendingSpecialEffect that named/handed control to the forfeiting player). */
+export function canForfeit(state: RamsesState): boolean {
+  return state.status === 'IN_PROGRESS' && state.turnPhase === 'SEARCHING';
 }
 
 export function playerIndexOf(state: RamsesState, playerId: PlayerId): number {
@@ -146,7 +166,13 @@ export function canNameRiskTreasures(state: RamsesState, treasureIds: [string, s
 export function canNamePokerChallenge(state: RamsesState, treasureId: string, targetPlayerId: PlayerId): boolean {
   if (state.status !== 'IN_PROGRESS' || state.turnPhase !== 'AWAITING_POKER_NAMING') return false;
   if (targetPlayerId === currentPlayerId(state)) return false; // "rajtad kívül" — 2.5 Sivatagi póker
-  if (!state.players.some((p) => p.id === targetPlayerId)) return false;
+  // A forfeited player can never be handed the temporary "searcher" turn
+  // (applyNamePokerChallenge) — nobody would ever act for them, softlocking
+  // the game. Re-checked here (not just filtered out of the UI's own
+  // player-picker) since this is the actual authority a malicious/buggy
+  // client can't bypass.
+  const target = state.players.find((p) => p.id === targetPlayerId);
+  if (!target || target.forfeited) return false;
   return isKnownTreasureId(state, treasureId) && !isTreasureRevealed(state, treasureId);
 }
 
@@ -168,10 +194,19 @@ export function scoreOf(player: Player): number {
   return player.wonCards.reduce((sum, card) => sum + card.points, 0);
 }
 
-/** Highest score wins; ties broken by most cards won; a still-remaining tie means everyone involved co-wins (see docs/ramses-0a-specifikacio.md §2.4). */
+/**
+ * Highest score wins; ties broken by most cards won; a still-remaining tie
+ * means everyone involved co-wins (see docs/ramses-0a-specifikacio.md §2.4).
+ * A forfeited player is never eligible to win (they keep whatever they'd
+ * already won, but dropped out) — falls back to the full roster only in the
+ * unreachable case where everyone has forfeited, so this never throws on an
+ * empty Math.max.
+ */
 export function computeWinnerIds(players: Player[]): PlayerId[] {
-  const maxScore = Math.max(...players.map(scoreOf));
-  const topByScore = players.filter((p) => scoreOf(p) === maxScore);
+  const eligible = players.filter((p) => !p.forfeited);
+  const pool = eligible.length > 0 ? eligible : players;
+  const maxScore = Math.max(...pool.map(scoreOf));
+  const topByScore = pool.filter((p) => scoreOf(p) === maxScore);
   if (topByScore.length === 1) return [topByScore[0].id];
 
   const maxCards = Math.max(...topByScore.map((p) => p.wonCards.length));

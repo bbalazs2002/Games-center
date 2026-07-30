@@ -69,9 +69,10 @@ function treasureSlices(treasureIds: readonly string[], onSelect: (treasureId: s
   }));
 }
 
+/** Excludes forfeited players too — see rules.ts's canNamePokerChallenge, which rejects naming one anyway (nobody would ever act for a forfeited player's temporarily-borrowed turn). */
 function playerSlices(state: RamsesState, excludeId: PlayerId, onSelect: (playerId: PlayerId) => void): WheelMenuSlice[] {
   return state.players
-    .filter((player) => player.id !== excludeId)
+    .filter((player) => player.id !== excludeId && !player.forfeited)
     .map((player) => ({
       id: player.id,
       label: player.name,

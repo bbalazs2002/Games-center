@@ -123,6 +123,7 @@ function syncPlayers(schema: RamsesStateSchema, players: Player[]): void {
         const playerSchema = new RamsesPlayerSchema();
         playerSchema.id = player.id;
         playerSchema.name = player.name;
+        playerSchema.forfeited = player.forfeited;
         syncWonCards(playerSchema, player.wonCards);
         return playerSchema;
       }),
@@ -130,7 +131,8 @@ function syncPlayers(schema: RamsesStateSchema, players: Player[]): void {
     return;
   }
   players.forEach((player, i) => {
-    schema.players[i].name = player.name; // the only field that can change after creation, see renamePlayer
+    schema.players[i].name = player.name; // the only OTHER field that can change after creation, see renamePlayer
+    schema.players[i].forfeited = player.forfeited;
     syncWonCards(schema.players[i], player.wonCards);
   });
 }
@@ -239,6 +241,7 @@ export function decodeRamsesStateSchema(schema: RamsesStateSchema): RamsesState 
       id: playerSchema.id,
       name: playerSchema.name,
       wonCards: playerSchema.wonCards.map(decodeTreasureCard),
+      forfeited: playerSchema.forfeited,
     })),
     currentPlayerIndex: schema.currentPlayerIndex,
     status: schema.status as RamsesStatus,

@@ -159,6 +159,7 @@ export function createInitialState(playerNames: string[], options: CreateInitial
     id: `player-${index + 1}`,
     name,
     wonCards: [],
+    forfeited: false,
   }));
 
   const withoutFirstCard: RamsesState = {

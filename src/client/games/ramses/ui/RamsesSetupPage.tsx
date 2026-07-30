@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Button } from '../../../ui-kit/Button';
+import formControls from '../../../ui-kit/FormControls.module.css';
 import { MenuNav } from '../../../ui-kit/MenuNav';
+import { Select } from '../../../ui-kit/Select';
 import { useGameTheme } from '../../../shell/useGameTheme';
 import type { RamsesAiDifficulty } from '../../../../shared/games/ramses/ai';
 import { RamsesGamePage } from './RamsesGamePage';
@@ -12,6 +14,12 @@ const MIN_PLAYERS = 2;
 // 1-player solo variant itself is out of scope for Ramses-0a, see
 // docs/ramses-0a-specifikacio.md §1.
 const MAX_PLAYERS = 5;
+
+const DIFFICULTY_OPTIONS = [
+  { value: 'EASY', label: 'Könnyű' },
+  { value: 'MEDIUM', label: 'Közepes' },
+  { value: 'HARD', label: 'Nehéz' },
+];
 
 function defaultNames(count: number): string[] {
   return Array.from({ length: count }, (_, i) => `Játékos ${i + 1}`);
@@ -96,7 +104,7 @@ export function RamsesSetupPage() {
               onChange={(event) => updateName(index, event.target.value)}
             />
             <label className={styles.aiToggle}>
-              <input type="checkbox" checked={aiFlags[index]} onChange={() => toggleAi(index)} />
+              <input className={formControls.checkbox} type="checkbox" checked={aiFlags[index]} onChange={() => toggleAi(index)} />
               AI
             </label>
           </div>
@@ -110,17 +118,18 @@ export function RamsesSetupPage() {
           </Button>
         </div>
         {anyAi && (
-          <label className={styles.difficultyRow}>
-            AI nehézsége:{' '}
-            <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as RamsesAiDifficulty)}>
-              <option value="EASY">Könnyű</option>
-              <option value="MEDIUM">Közepes</option>
-              <option value="HARD">Nehéz</option>
-            </select>
-          </label>
+          <div className={styles.difficultyRow}>
+            <span>AI nehézsége:</span>
+            <Select
+              value={difficulty}
+              onChange={(next) => setDifficulty(next as RamsesAiDifficulty)}
+              options={DIFFICULTY_OPTIONS}
+            />
+          </div>
         )}
         <label className={styles.specialCardsToggle}>
           <input
+            className={formControls.checkbox}
             type="checkbox"
             checked={includeSpecialCards}
             onChange={(event) => setIncludeSpecialCards(event.target.checked)}
