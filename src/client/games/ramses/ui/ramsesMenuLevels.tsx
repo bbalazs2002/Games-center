@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react';
+import { assetUrl } from '../../../core/assetUrl';
 import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
 import type { PlayerId, RamsesState } from '../../../../shared/games/ramses/engine/state';
 import { getTreasureConfig } from '../../../../shared/games/ramses/engine/treasureConfigs';
@@ -51,7 +52,12 @@ export function levelTitle(level: MenuLevel): string {
 
 function treasureIcon(treasureId: string): ReactElement {
   const config = getTreasureConfig(treasureId);
-  return <span className={styles.treasureIcon} style={{ backgroundColor: config.color, backgroundImage: `url(${config.imagePath})` }} />;
+  return (
+    <span
+      className={styles.treasureIcon}
+      style={{ backgroundColor: config.color, backgroundImage: config.imagePath ? `url(${assetUrl(config.imagePath)})` : undefined }}
+    />
+  );
 }
 
 function treasureSlices(treasureIds: readonly string[], onSelect: (treasureId: string) => void): WheelMenuSlice[] {

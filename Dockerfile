@@ -46,5 +46,12 @@ EXPOSE 2567
 # `prisma migrate deploy` runs on every container start (idempotent — a
 # no-op if the schema is already current), not as a separate CI/deploy step,
 # so the schema is always current regardless of how the container gets
-# (re)started — see docs/deployment-specifikacio.md §7.1.
-CMD ["sh", "-c", "npx prisma migrate deploy && npx tsx src/server/index.ts"]
+# (re)started — see docs/deployment-specifikacio.md §7.1. `prisma db seed`
+# (prisma/seed.ts, itself just an idempotent `upsert`) runs right after for
+# the same reason — real production bug (2026-07-30): the seed step was
+# never part of the deploy/startup path at all, so the live database never
+# got its `FAMILY2026` InviteCode row, and every AI-opponent creation
+# (`ensureAiUser`'s own `user.upsert`, needed by ANY game's multiplayer AI
+# opponent, first hit for real by Ramses) failed on the `users_inviteCode_fkey`
+# foreign key.
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed && npx tsx src/server/index.ts"]

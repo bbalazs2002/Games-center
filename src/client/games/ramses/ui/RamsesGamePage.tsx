@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTexture } from '@react-three/drei';
+import { assetUrl } from '../../../core/assetUrl';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
@@ -63,10 +64,10 @@ const FRAME_OVERLAY_RENDER_ORDER = 2;
 // real playtest report (2026-07-30): without this, the first reveal of each
 // treasure showed the flat-color Suspense fallback for a beat while its
 // texture fetched on demand.
-useTexture.preload('/assets/ramses/board/empty.png');
-useTexture.preload('/assets/ramses/board/frame.png');
+useTexture.preload(assetUrl('/assets/ramses/board/empty.png'));
+useTexture.preload(assetUrl('/assets/ramses/board/frame.png'));
 for (const treasure of TREASURE_CONFIGS) {
-  if (treasure.imagePath) useTexture.preload(treasure.imagePath);
+  if (treasure.imagePath) useTexture.preload(assetUrl(treasure.imagePath));
 }
 
 interface RamsesCellViewData extends RamsesCell {
@@ -294,7 +295,7 @@ function FallbackPlane({ treasureId }: { treasureId: string | null }) {
 /** The real, resized photo (see docs/ramses-0a-specifikacio.md §8.1) of whichever treasure this cell shows — `board/empty.png` for a blank cell. Only ever rendered for the ONE currently-uncovered cell (renderCell below), whose `treasureId` the server has already Homokvihar-corrected before it ever reaches the client (see rules.ts's toPublicRamsesState) — no rotation math needed here. `useTexture` suspends, hence the per-cell Suspense boundary in renderCell below (pyramids never need one — they're plain geometry, no texture). */
 function RevealedCellPlane({ treasureId }: { treasureId: string | null }) {
   const imagePath = treasureId ? getTreasureConfig(treasureId).imagePath! : '/assets/ramses/board/empty.png';
-  const texture = useTexture(imagePath);
+  const texture = useTexture(assetUrl(imagePath));
   return (
     <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={TREASURE_LAYER_RENDER_ORDER}>
       <planeGeometry args={[0.9, 0.9]} />
@@ -331,7 +332,7 @@ function renderCell(cell: RamsesCellViewData) {
  * see docs/ramses-0a-specifikacio.md §8.1.
  */
 function RamsesBoardFrame() {
-  const texture = useTexture('/assets/ramses/board/frame.png');
+  const texture = useTexture(assetUrl('/assets/ramses/board/frame.png'));
   return (
     <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={FRAME_OVERLAY_RENDER_ORDER}>
       <planeGeometry args={[BOARD_COLS * CELL_SIZE, BOARD_ROWS * CELL_SIZE]} />
@@ -363,7 +364,7 @@ function RamsesActiveCardDisplay({
   points: number | null;
 }) {
   const [zoomed, setZoomed] = useState(false);
-  const cardPath = points !== null ? cardImagePath(treasureId, points) : null;
+  const cardPath = points !== null ? assetUrl(cardImagePath(treasureId, points)) : null;
 
   return (
     <>
@@ -371,7 +372,10 @@ function RamsesActiveCardDisplay({
         {cardPath ? (
           <img src={cardPath} alt={label} className={styles.cardThumb} />
         ) : (
-          <span className={styles.treasureSwatch} style={{ backgroundColor: color, backgroundImage: `url(${imagePath})` }} />
+          <span
+            className={styles.treasureSwatch}
+            style={{ backgroundColor: color, backgroundImage: imagePath ? `url(${assetUrl(imagePath)})` : undefined }}
+          />
         )}
         <span>
           {label}
