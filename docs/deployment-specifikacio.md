@@ -1,14 +1,14 @@
 # Éles béta telepítés — Specifikáció
 
-**Státusz:** TERVEZÉS — a döntött pontok (2. szakasz) jóváhagyva, implementáció még nem kezdődött el.
-**Utolsó frissítés:** 2026-07-29
+**Státusz:** IMPLEMENTÁLVA és élesben fut — a 12. szakasz szerinti lépések végrehajtva, a szolgáltatás nyilvánosan elérhető a `balazs.gyserver.domenet.info/game-center` alatt. A tényleges, végrehajtott parancsokat lásd [deployment-kezi-utmutato.md](./deployment-kezi-utmutato.md). Kezdetben (2026-07-29) Dáma+Hotel, 2026-07-30-tól (a Ramses-0d playtest-javítási kör lezárása után) Ramses is él — lásd 4. szakasz.
+**Utolsó frissítés:** 2026-07-30
 **Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md), [fazis-0b-multiplayer-specifikacio.md](./fazis-0b-multiplayer-specifikacio.md) (a mai `GameRoom`/Prisma/Colyseus architektúra, amit ez a terv változtatás nélkül visz élesbe)
 
 ## 1. Cél és hatókör
 
-A Dáma és a Hotel béta-kész állapotban van, a Ramses még nem — a cél egy **éles, de moduláris** telepítés a felhasználó saját szerverén, a `balazs.gyserver.domenet.info/game-center` útvonalon, úgy hogy:
+A cél egy **éles, de moduláris** telepítés a felhasználó saját szerverén, a `balazs.gyserver.domenet.info/game-center` útvonalon, úgy hogy:
 
-- csak a ténylegesen kész játékok (ma: Dáma, Hotel) érhetők el a nyilvánosság számára, a Ramses kódja a repóban marad és fejlődik tovább, de nem jelenik meg és nem hívható elő;
+- csak a ténylegesen kész játékok érhetők el a nyilvánosság számára — kezdetben (2026-07-29) Dáma és Hotel, a Ramses kódja a repóban maradt és tovább fejlődött, amíg 2026-07-30-án (a Ramses-0d playtest-javítási kör lezárása után) az is bekapcsolásra került;
 - egy új játék készre válásakor **egy konfigurációs kapcsoló** elég a bekapcsolásához, nem kódmódosítás;
 - a meglévő Apache2 + PHP-oldalak zavartalanul futnak tovább ugyanazon a domainen;
 - egy **központi, projekt-független PostgreSQL-konténer** szolgálja ki az adatbázist — nem a games-center repóhoz/deploy-hoz kötött, hanem egy önálló, később más projektek adatbázisait is befogadó, külön induló infrastruktúra-elem (6. szakasz);
@@ -46,8 +46,8 @@ Szerver (SSH, privát kulcs)
    │    └─ ProxyPass "/game-center/" → http://127.0.0.1:2567/  (HTTP + WS upgrade)
    ├─ games-center-app konténer (ÚJ, ebből a repóból épül)
    │    ├─ Express (API: /api/auth, /api/game-log, /api/feedback)
-   │    ├─ Colyseus (WS: lobby/dama/hotel — ramses kikapcsolva, lásd 4. szakasz)
-   │    └─ statikus kliens build kiszolgálása (express.static, ÚJ — ma nincs)
+   │    ├─ Colyseus (WS: lobby/dama/hotel/ramses — 2026-07-30-tól mindhárom bekapcsolva, lásd 4. szakasz)
+   │    └─ statikus kliens build kiszolgálása (express.static)
    └─ shared-postgres konténer (ÚJ, DE NEM ennek a repónak a része)
         ├─ saját docker-compose.yml, külön szerver-mappában (6. szakasz)
         ├─ saját docker hálózat (pl. "shared-infra"), amihez a games-center-app
@@ -61,15 +61,14 @@ Lásd [deployment-architektura.puml](./diagrams/deployment-architektura.puml) a 
 
 **Kulcs-döntés (adatbázis):** a Postgres tudatosan NEM a games-center `docker-compose.deploy.yml`-jében él, hanem egy teljesen önálló, külön mappában/repóban kezelt compose-fájlban — ha a games-center-app konténert bármikor törlik/újraépítik, a Postgres és a benne lévő adatok érintetlenek maradnak, és fordítva: a Postgres saját életciklusa (frissítés, backup, újraindítás) nem esik egybe a games-center deploy-jaival.
 
-## 4. Moduláris játék-kiadás mechanizmusa
+## 4. Moduláris játék-kiadás mechanizmusa — IMPLEMENTÁLVA
 
-Ma a `src/client/shell/gamesRegistry.ts` egy statikus tömb (mindhárom játék feltétel nélkül szerepel benne), és `src/server/index.ts` feltétel nélkül regisztrálja mind a három Colyseus szobát (`gameServer.define('dama', ...)`, `'hotel'`, `'ramses'`). Ez a terv egy **egyetlen, közös `ENABLED_GAMES` környezeti változót** vezet be, aminek mindkét oldal ugyanazt a forrás-listát olvassa:
+`src/client/shell/gamesRegistry.ts` és `src/server/index.ts` egy **egyetlen, közös `ENABLED_GAMES` környezeti változót** olvas, aminek mindkét oldal ugyanazt a forrás-listát látja:
 
 - **Kliens (build-idejű):** mivel a Vite csak build-időben tudja a kódba fordítani a környezeti változókat, a `vite.config.ts` explicit módon átvezeti a build-kontextusból kapott `ENABLED_GAMES` értéket `import.meta.env.VITE_ENABLED_GAMES`-ként (`define` opció) — így nem kell két külön, szinkronban tartandó változónevet bevezetni, csak egy build-argot. `gamesRegistry.ts` egy `getEnabledGames()` szűrést kap, amit `HomePage`/`GameLoader`/routing mind ugyanonnan olvas.
-- **Szerver (futásidejű):** `src/server/index.ts` a `gameServer.define(...)` hívásokat egy `ENABLED_GAMES.includes(id)` feltétellel látja el — ez nemcsak a menüből tünteti el a Ramsest, hanem ténylegesen NEM regisztrálja azt Colyseus szobaként sem, tehát egy direkt API/WS-hívással sem érhető el kikapcsolt állapotban.
-- **Alapértelmezett érték** (ha a változó nincs beállítva): minden játék — így a helyi fejlesztői környezet (`npm run dev`) és a `vitest`/CI futás viselkedése nem változik, csak az éles `.env`-ben kell explicit `ENABLED_GAMES=dama,hotel`-t megadni.
-
-Ez kód-szintű változtatás, amit a terv jóváhagyása után, az implementáció első lépéseként kell elvégezni (lásd 12. szakasz).
+- **Szerver (futásidejű):** `src/server/index.ts` a `gameServer.define(...)` hívásokat egy `ENABLED_GAMES.includes(id)` feltétellel látja el — ez nemcsak a menüből tünteti el egy kikapcsolt játékot, hanem ténylegesen NEM regisztrálja azt Colyseus szobaként sem, tehát egy direkt API/WS-hívással sem érhető el kikapcsolt állapotban.
+- **Alapértelmezett érték** (ha a változó nincs beállítva): minden játék — így a helyi fejlesztői környezet (`npm run dev`) és a `vitest`/CI futás viselkedése nem változik.
+- **A `.github/workflows/deploy.yml`-ben ténylegesen beállított build-idejű érték:** kezdetben (2026-07-29) `ENABLED_GAMES: dama,hotel`, 2026-07-30-tól (a Ramses-0d playtest-javítási kör lezárása után) `ENABLED_GAMES: dama,hotel,ramses` — a specifikáció szerinti "egy játék készre válásakor csak ezt az egy sort kell bővíteni" pontosan így valósult meg. **A szerver-oldali `/var/www/games-center/.env.production` fájlban nincs explicit `ENABLED_GAMES` sor** — ez a fenti "nincs beállítva → minden játék" alapértelmezésre hagyatkozik szándékosan (a runtime oldal sosem volt ténylegesen korlátozva, csak a kliens build), ami eltér az eredeti "defense in depth" szándéktól (mindkét oldal explicit tiltsa a ki nem kapcsolt játékot), de a jelenlegi (mindhárom játék be van kapcsolva) állapotban ez nem okoz gyakorlati különbséget.
 
 ## 5. Docker image (games-center-app)
 
@@ -172,7 +171,7 @@ networks:
 - `JWT_SECRET`
 - `PORT=2567` (a konténer belső portja — meg kell egyeznie a fenti `ports:` leképezés jobb oldalával és a §8 Apache-blokkjának portjával)
 - `VITE_SERVER_URL` — **build-idejű** Vite-változó, ezért ezt build-argként kell átadni a `docker compose build`-nek, nem elég futásidejű env-ként megadni (a Vite a build pillanatában égeti be a kliens bundle-be). Éles értéke a nyilvános, `/game-center`-t is tartalmazó cím (pl. `https://balazs.gyserver.domenet.info/game-center`).
-- `ENABLED_GAMES=dama,hotel`
+- `ENABLED_GAMES` — **opcionális**, futásidejű (szerver-oldali) szűrés (lásd 4. szakasz). A ténylegesen élesített szerveren ez a sor NINCS beállítva (a 4. szakasz "nincs beállítva → minden játék" alapértelmezésére hagyatkozva) — csak a build-idejű, kliens-oldali `ENABLED_GAMES` (a `.github/workflows/deploy.yml` saját `env:` blokkja) tartja karban ténylegesen, melyik játék jelenik meg a menüben.
 
 ### 7.1 Rendszerindításkori automatikus indulás — pontosítva (2026-07-29)
 
@@ -317,9 +316,9 @@ A `docker compose up -d` a régi games-center-app konténert leállítja, mielő
 - a szerveren futó parancs(ok): `cd <deploy-mappa> && git pull && docker compose -f docker-compose.deploy.yml build --build-arg VITE_SERVER_URL=... --build-arg VITE_BASE_PATH=/game-center/ && docker compose -f docker-compose.deploy.yml up -d`
 - a `prisma migrate deploy` a konténer saját `ENTRYPOINT`-jában fut (5. szakasz Docker-résznél már említve), nem a workflow-ban — így akkor is lefut, ha valaki a konténert a workflow-n kívül, kézzel indítja újra. Ez a lépés a 6. szakaszban létrehozott `games_center` adatbázist módosítja, a `shared-postgres` konténert magát sosem — a deploy workflow-nak nincs is jogosultsága/oka hozzáférni ahhoz.
 
-## 12. Implementációs lépések sorrendje
+## 12. Implementációs lépések sorrendje — MIND VÉGREHAJTVA
 
-A terv jóváhagyása után, ebben a sorrendben (mindegyik önállóan tesztelhető/commitolható):
+Ebben a sorrendben valósult meg (mindegyik önállóan tesztelhető/commitolható volt) — a tényleges, végrehajtott parancsokért lásd [deployment-kezi-utmutato.md](./deployment-kezi-utmutato.md):
 
 1. `ENABLED_GAMES` szűrés bevezetése — kliens (`gamesRegistry.ts`) + szerver (`index.ts`) egyaránt, alapértelmezett "minden játék" viselkedéssel (ne törjön semmit helyi fejlesztésben/CI-ban).
 2. `express.static` + SPA-fallback bekötése a szerverbe, hogy a `dist/` build kiszolgálható legyen ugyanabból a Node-folyamatból.

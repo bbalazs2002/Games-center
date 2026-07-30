@@ -1,6 +1,6 @@
 # Games Center — éles telepítés: kézi útmutató
 
-**Státusz (2026-07-30):** A.0-A.2 élesben végrehajtva és igazolva a valódi szerveren (`gyserver.domenet.info`) — a `shared-postgres` fut, a games-center-app image megépült, a konténer elindult, a Prisma migrációk lefutottak, a szerver válaszol a `127.0.0.1:2567`-en. A.3-A.6 még hátravan — ezek kizárólag root-hozzáférést igényelnek, `claude-ops`-nak nincs sudo-ja, úgyhogy ezeket a felhasználónak kell elvégeznie.
+**Státusz (2026-07-30, frissítve):** A teljes telepítés élesben fut — a szolgáltatás nyilvánosan elérhető a `balazs.gyserver.domenet.info/game-center` alatt (tehát A.3, Apache reverse proxy, és A.5, GitHub Secrets, is elvégezve — a `Deploy` workflow több sikeres futása és a nyilvános elérhetőség ezt közvetve igazolja). Mindhárom játék (Dáma, Hotel, majd 2026-07-30-tól Ramses is) él. A.4 (systemd auto-start) és A.6 (kifejezett `reboot`-teszt) elvégzését Claude nem tudja közvetlenül visszaigazolni (root-hozzáférést igénylő, a felhasználó saját gépén végzett lépések) — ha ezek még nincsenek meg, egy szerver-újraindítás a konténerek kézi újraindítását igényelheti, lásd A.4/A.6 lent.
 
 **Kapcsolódik:** [deployment-specifikacio.md](./deployment-specifikacio.md) — ott van a teljes indoklás/architektúra; ez a dokumentum csak a ténylegesen végrehajtandó parancsokat gyűjti össze, sorban.
 

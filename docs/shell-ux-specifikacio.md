@@ -1,7 +1,7 @@
 # Játékfüggetlen UX-fejlesztések — Specifikáció
 
-**Státusz:** IMPLEMENTÁLVA és élesben (Playwright) ellenőrizve — lásd 10. szakasz.
-**Utolsó frissítés:** 2026-07-29
+**Státusz:** IMPLEMENTÁLVA és élesben (Playwright) ellenőrizve — lásd 10. szakasz. **Kiegészítve** egy egyedi select/checkbox UI-cserével és az online kapcsolódási hibaüzenetek fordításával (2026-07-30) — lásd 11. szakasz.
+**Utolsó frissítés:** 2026-07-30
 **Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md) (roadmap-tétel 4d), [b-klaszter-ui-specifikacio.md](./b-klaszter-ui-specifikacio.md) (a per-játék "téma" fogalom előzménye), [hotel-0c-specifikacio.md](./hotel-0c-specifikacio.md) / [ramses-0a-specifikacio.md](./ramses-0a-specifikacio.md) (a jelenlegi Hotel/Ramses paletta forrása)
 
 ## 1. Cél és hatókör
@@ -300,3 +300,27 @@ A felhasználó a terv elolvasása után egy apró, korábban nem szereplő megj
 **Ellenőrzés:** `tsc --noEmit` mindkét tsconfigra tiszta, `eslint .` 0 hiba (4 figyelmeztetés, mind a kör előtt is létező osztályokból: `HotelGamePage` komplexitás-13, `AuthContext`/`FeedbackContext` react-refresh — utóbbi kettő ugyanaz a Context+hook-fájl minta, ami már `AuthContext.tsx`-nél is elfogadott volt). `vitest run` 218/218 (Dáma +2 új napló-teszt, Ramses 3 meglévő teszt bővítve napló-ellenőrzéssel, mindkét motor `reducer.test.ts`-e). `vite build` sikeres, a téma/szabály-modulok mind saját, apró, külön chunkban jelennek meg (pl. `hotelTheme-*.css`, `DamaRules-*.js`) — megerősítve, hogy egyik játék témája/szabálya sem duzzasztja a másik (vagy a fő) bundle-t. Élő Playwright-ellenőrzés minden ponton: HomePage csempe-rács (üveg hatással), mindhárom játék `GameModeSelectPage`+`RulesModal` kombinációja (helyes téma, görgethető tartalom, X gomb), Hotel Lobby + "Új szoba" modál (téma öröklődik a beágyazott modálba is), hibabejelentés mindkét kontextusban (menü és játékon belül, valós adatbázis-sorral igazolva), és egy gyors regressziós kör Dáma/Ramses helyi módban (lépés utáni konzol-ellenőrzés, nincs végtelen újrarenderelési hurok a `FeedbackContext` bekötése miatt).
 
 **Nem ellenőrizve élesben:** a `LoadingScreen` tényleges vizuális megjelenése (a helyi dev-szerver mellett a lusta betöltés túl gyors ahhoz, hogy a Playwright screenshot időben elkapja, ugyanaz a jelenség, mint a régi `<p>Betöltés…</p>` esetén is fennállt) — a kódja/témázása közvetlenül, más, már ellenőrzött komponensekkel (téma-betöltés, pulzáló animáció CSS-e) azonos mintát követ, alacsony kockázatú, nem blokkoló.
+
+## 11. Kiegészítés (2026-07-30): egyedi select/checkbox UI + online kapcsolódási hibaüzenetek — IMPLEMENTÁLVA és élesben ellenőrizve
+
+A Ramses-0d playtest-javítási kör (lásd `ramses-0a-specifikacio.md` §9) közben felmerült két, nem Ramses-specifikus, hanem a teljes shell-réteget érintő hiba.
+
+### 11.1 Natív `<select>`/checkbox lecserélése
+
+**Első kör:** a natív `<select>`/`<input type="checkbox">` elemek (Dáma/Hotel/Ramses saját setup oldalán + a Lobby "Új szoba" moduljában) csak `accent-color`-t (checkbox) és egy háttér/keret-testreszabást (select) kaptak — ez a natív böngésző-widget ALAKJÁT (szögletes checkbox-sarkak, natív lenyíló nyíl) nem tudta megváltoztatni, ami az egyébként teljesen egyedi, lekerekített/üveg-hatású UI mellett zavaróan natívnak hatott.
+
+Új `src/client/ui-kit/FormControls.module.css`.`checkbox` — `appearance: none` + saját, lekerekített, `--shell-accent` színű pipa (`clip-path`), a `--shell-*` tokeneket olvasva (2.3 szakasz), ugyanazzal a fallback-lánccal, mint `Button.module.css`.
+
+**Második kör, ugyanaznap:** kiderült, hogy egy natív `<select>` OPEN (lenyílt) állapota böngésző-függetlenül NEM stílusozható CSS-ből — a fenti kezelés csak a ZÁRT dobozt tudta testreszabni, a lenyíló lista natív maradt. Emiatt a select is lecserélődött egy teljesen egyedi (nem natív) komponensre:
+
+- Új `src/client/ui-kit/Select.tsx` + `Select.module.css` — egy gomb (a záró állapot, saját chevron-ikonnal) + egy `document.body`-ba portalolt, `position: fixed`-del pozicionált lista (ugyanaz a "kerüld el az ős elemek clipping/containing-block csapdáit" minta, mint `Modal.tsx`-nél, szükséges, mert egy `Select` egy Modal BELSEJÉBŐL is nyílhat — pl. Lobby "Új szoba" — aminek saját `.body`-ja görgethető, egy naiv `position: absolute` panelt levágna). Mivel a portalolt panel a DOM-fában KÍVÜL esik az eredeti témázott ősökön, a `--shell-*` tokenek értékeit a trigger gombról olvassa ki (`getComputedStyle`) és írja rá explicit inline stílusként a panelre, hogy a téma öröklés hiányában is helyesen jelenjen meg.
+- Lecserélve mind a 6 helyen (Dáma/Hotel/Ramses saját nehézség-választója + Lobby 3 selectje).
+- `FormControls.module.css`-ből a natív-select szabályok törölve (csak a `.checkbox` maradt).
+
+### 11.2 Online kapcsolódási hibaüzenetek fordítása + navigáció
+
+A `useOnlineGameRoom.ts` hook egy sikertelen `create`/`join`/`reconnect` esetén a Colyseus kliens SAJÁT, angol hibaüzenetét (`err.message`, pl. `"room \"xyz\" not found"` egy törölt/lejárt szobánál) mutatta a felhasználónak, fordítás nélkül — emellett az ezt megjelenítő `*OnlineGamePage.tsx` képernyők egyikén sem volt kilépési lehetőség (`MenuNav`), csak a böngésző vissza-gombja.
+
+**Javítás:** `translateConnectionError(err)` — a jól ismert, gyakori "szoba nem található" esetet (`/not found/i` illesztéssel) magyarra fordítja ("A szoba már nem érhető el — lehet, hogy törölték, vagy lejárt."), minden más esetben a már meglévő, generikus magyar üzenetre esik vissza (sosem jut ki nyers angol szöveg a képernyőre). Mind a három `*OnlineGamePage.tsx` (Dáma/Hotel/Ramses) hibaüzenet-ága kapott egy `<MenuNav backTo="/games/{gameId}/lobby" />`-t, a lobbyba visszavezető "Vissza"/"Főmenü" gombpárral.
+
+**Ellenőrzés:** `tsc`/`eslint`/`vitest` mind tiszta; a select/checkbox cserét élő Playwright-teszt igazolta (Dáma világos + Ramses/Hotel sötét témában is helyesen jelenik meg a lenyíló panel); a kapcsolódási hiba + `MenuNav` javítást a `RamsesForfeitControl`/multiplayer teszt közben, két valódi kliens közötti manuális próbával igazoltam.

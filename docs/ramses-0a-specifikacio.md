@@ -1,6 +1,6 @@
 # Ramses-0a — Specifikáció: helyi vertikum (alapjáték motor + 3D renderer + N-fős hot-seat)
 
-**Státusz:** Az eredeti 0a alapjáték (ebben a dokumentumban lent leírt terv szerint) KÉSZ, implementálva és élesben ellenőrizve — sőt, azóta a 0b (multiplayer) és 0c (AI) is elkészült (lásd `ramses-0b-specifikacio.md`, `ramses-0c-ai-specifikacio.md`). **A 8. szakasz (2026-07-29, kiegészítve 2026-07-30) egy UTÓLAGOS kiegészítést tervez** — a felhasználó pontosította a speciális kártyák szabályát, elkészültek a valódi (fényképezett) assetek, és a 2026-07-30-i kör lezárta a 2.5/8.2 nyitott kérdéseit (a Homokvihar hatóköre is tisztázva) + felmerült egy új igény (speciális kártyák ki/bekapcsolható legyen indítás előtt, lásd 8.3). **A 8.2/8.3 terv MOST MÁR implementálásra kész** — de a kód még NEM változott, ez a dokumentum-frissítés csak a tervet rögzíti.
+**Státusz:** Az eredeti 0a alapjáték (ebben a dokumentumban lent leírt terv szerint) KÉSZ, implementálva és élesben ellenőrizve — azóta a 0b (multiplayer) és 0c (AI) is elkészült (lásd `ramses-0b-specifikacio.md`, `ramses-0c-ai-specifikacio.md`). **A 8. szakasz (speciális kártyák + valódi assetek + ki/bekapcsolható speciális kártyák) MOST MÁR SZINTÉN IMPLEMENTÁLVA és élesben ellenőrizve** — mind a 6 speciális kártya (Homokvihar, Ajándék, Kockázat, Sivatagi póker, Fata Morgana, Záró), a valódi fényképezett assetek, és az `includeSpecialCards` kapcsoló a lent leírt terv szerint készült el, alapértelmezetten BEKAPCSOLVA. **A 9. szakasz (2026-07-30) egy további playtest-javítási kört ír le** — feladás (FORFEIT) funkció, AI-finomítás (gondolkodási szünet, BFS célkeresés, anti-oszcilláció), vizuális visszajelzés a speciális kártyákhoz, és egy valós, kritikus multiplayer szinkron-hiba javítása.
 **Utolsó frissítés:** 2026-07-30
 **Kapcsolódik:** [Projekt-conception.md](./Projekt-conception.md) (E klaszter — Hanabi, Ramses), [hotel-0a-specifikacio.md](./hotel-0a-specifikacio.md) (a követett minta: framework-agnosztikus reducer, core/games szeparáció, fokozatos fázisokra bontás), [hotel-0c-specifikacio.md](./hotel-0c-specifikacio.md) (a valódi-asset-pipeline mintája, amit a 8. szakasz követ)
 
@@ -17,8 +17,8 @@
 - N-fős (2–5) hot-seat körvezérlés
 - 3D tábla-renderer, valódi kattintható 3D-elemekkel (lásd 5. szakasz)
 
-**Eredetileg (2026-07-26) nem volt hatókörben, de a 8. szakasz (2026-07-29) szerint MOST MÁR igen, egy jövőbeli implementációs körben:**
-- **A 6 valódi speciális kártya** (Homokvihar, Ajándék, Kockázat, Fata Morgana, Sivatagi póker, Záró kártya) — a korábbi, 2026-07-26-i verzióban itt szereplő 4 név (Homokvihar, Skorpió, Szuperképesség, Párbaj) TÉVES volt, egy előzetes, nem-megerősített találgatás — a felhasználó 2026-07-29-én pontosította a valódi szabályt és a valódi kártya-neveket (lásd 2.5 és 8. szakasz). A húzópakli-felépítés emiatt is változik: a korábban (a speciális kártyák hiánya miatt) EGYETLEN, 30 lapos összekevert paklira egyszerűsített modell helyett a valódi, 3 db KÜLÖN (egymás után kijátszott) pakli tervezett — lásd 2.1/8. szakasz.
+**Eredetileg (2026-07-26) nem volt hatókörben, a 8. szakasz (2026-07-29) szerint bővült a terv, AZÓTA IMPLEMENTÁLVA:**
+- **A 6 valódi speciális kártya** (Homokvihar, Ajándék, Kockázat, Fata Morgana, Sivatagi póker, Záró kártya) — a korábbi, 2026-07-26-i verzióban itt szereplő 4 név (Homokvihar, Skorpió, Szuperképesség, Párbaj) TÉVES volt, egy előzetes, nem-megerősített találgatás — a felhasználó 2026-07-29-én pontosította a valódi szabályt és a valódi kártya-neveket (lásd 2.5 és 8. szakasz). A húzópakli-felépítés emiatt is változott: a korábban (a speciális kártyák hiánya miatt) EGYETLEN, 30 lapos összekevert paklira egyszerűsített modell helyett a valódi, 3 db KÜLÖN (egymás után kijátszott) pakli készült el — lásd 2.1/8. szakasz.
 
 **Továbbra sem hatókörben (külön, jövőbeli fázis):**
 - **Haladó ("profi kincsvadász") verzió** — 21 zseton (szkarabeusz, múmia-átok, felfedező), amik az arany piramisok ALÁ kerülnek (a piramishoz kötve mozognak, nem a mezőhöz)
@@ -191,9 +191,9 @@ A felhasználó döntése alapján a Ramses **3D renderelőt** kap (nem a koráb
 
 Lásd: [diagrams/ramses-0a-engine-class-diagram.puml](./diagrams/ramses-0a-engine-class-diagram.puml) (adatmodell) és [diagrams/ramses-0a-turn-flow.puml](./diagrams/ramses-0a-turn-flow.puml) (egy `SLIDE_PYRAMID` akció három lehetséges kimenetele). **Mindkettő az EREDETI, speciális kártyák nélküli modellt írja le.** A 8. szakasz kiegészítéséhez lásd [diagrams/ramses-0a-special-cards-draft.puml](./diagrams/ramses-0a-special-cards-draft.puml) — ez CSAK a már nyitott kérdés nélkül eldönthető részt (a `DrawnCard` felosztás, `treasureLayerRotated`) modellezi; a bizonytalan kártyák (Ajándék/Kockázat/Fata Morgana/Sivatagi póker) lépésenkénti folyamatának saját turn-flow diagramja csak a 8.2-es nyitott kérdések tisztázása után készülhet el.
 
-## 8. Kiegészítés (2026-07-29): speciális kártyák valós szabályai + valódi assetek — TERV, MÉG NEM IMPLEMENTÁLVA
+## 8. Kiegészítés (2026-07-29): speciális kártyák valós szabályai + valódi assetek — IMPLEMENTÁLVA és élesben ellenőrizve
 
-A felhasználó két dolgot adott át ehhez a körhöz: (1) pontosította a speciális kártyák szabályát közvetlenül ebben a dokumentumban (2.5 szakasz), és (2) elkészítette a valódi, fényképezett assetek első verzióját (`assets/Ramses/png/`, gitignore-olt, ~223MB nyersen — a webes kiszolgáláshoz túl nagy, tömörítés szükséges, ugyanaz a helyzet, mint Hotel-0c-nél volt). Ez a szakasz a valódi képek átnézése + a 2.5-ös szabály alapján igazítja a tervet — **kód még NEM változott, ez tisztán dokumentáció.**
+A felhasználó két dolgot adott át ehhez a körhöz: (1) pontosította a speciális kártyák szabályát közvetlenül ebben a dokumentumban (2.5 szakasz), és (2) elkészítette a valódi, fényképezett assetek első verzióját (`assets/Ramses/png/`, gitignore-olt, ~223MB nyersen — a webes kiszolgáláshoz túl nagy, tömörítés szükséges, ugyanaz a helyzet, mint Hotel-0c-nél volt). Ez a szakasz eredetileg a valódi képek átnézése + a 2.5-ös szabály alapján igazította a tervet — **a lenti terv azóta 1:1 megvalósult** (`shared/games/ramses/engine/{state,actions,reducer,rules}.ts`, `scripts/resize-ramses-images.mjs`, `treasureConfigs.ts`), a 9. szakasz pedig egy további playtest-javítási kört ír le rá.
 
 ### 8.1 Valódi assetek — leltár és tervezett pipeline
 
@@ -259,7 +259,7 @@ public/assets/ramses/**                 (verziózott, tényleg kiszolgálva)
 
 Diagram: [diagrams/ramses-0a-special-cards-draft.puml](./diagrams/ramses-0a-special-cards-draft.puml) — frissítve, most már a teljes, véglegesített modellt mutatja (nem csak a korábbi részleges vázlatot).
 
-A 2.5 szakasz nyitott kérdéseire adott válaszok (2026-07-30) alapján ez a szakasz most **implementálásra kész** — a 4 db többlépéses kártya (Ajándék, Kockázat, Sivatagi póker, Fata Morgana) mindegyikéhez konkrét `turnPhase`/action-terv készült. Néhány apró, a kártyaszöveg által nem részletezett döntést **ÉSSZERŰ ALAPÉRTELMEZÉSSEL** töltöttem ki (lásd az egyes kártyáknál a "Feltételezés:" jelölést) — ezek playteszt közben könnyen módosíthatók, nem blokkolják az implementációt.
+A 2.5 szakasz nyitott kérdéseire adott válaszok (2026-07-30) alapján ez a szakasz **implementálva** — a 4 db többlépéses kártya (Ajándék, Kockázat, Sivatagi póker, Fata Morgana) mindegyike a lent leírt `turnPhase`/action-terv szerint készült el, 1:1 megfeleltetve a kódban (`reducer.ts`'s `resolveGiftReveal`/`resolveRiskReveal`/`resolvePokerReveal`/`resolveFataMorganaReveal`). Néhány apró, a kártyaszöveg által nem részletezett döntést **ÉSSZERŰ ALAPÉRTELMEZÉSSEL** töltöttem ki (lásd az egyes kártyáknál a "Feltételezés:" jelölést) — ezek a végleges, playteszttel megerősített viselkedést tükrözik.
 
 **Közös elv — mikor sül el egy speciális kártya:** ugyanabban a pillanatban, amikor a motor egyébként egy új `activeCard`-ot húzna (3. szakasz, "Automatikus lap-húzás" — vagyis kezdéskor, vagy egy siker UTÁN). Ha a lehúzott lap `SpecialCard`, `activeCard` NEM áll be belőle — helyette a kártya saját feldolgozása indul. **Minden speciális kártya (a Fata Morgana egy kivétellel, lásd ott) azonnal lezárja annak a játékosnak a körét, aki húzta** (2.5/6. válasz) — a kártya saját hatása ezután, már a KÖVETKEZŐ kör "keretében" zajlik le, még akkor is, ha (Sivatagi póker, Ajándék-lánc) átmenetileg más játékos hajtja végre a keresést.
 
@@ -390,6 +390,49 @@ A felhasználó kérése: mielőtt egy Ramses parti elindul (hot-seat VAGY onlin
 **Terv:**
 - `createDeck(includeSpecialCards: boolean)` (`initialState.ts`) — ha `false`: a 2-es pakli csak a 8 kincs-kártyáját tartalmazza (a benne lévő 11 speciálist kihagyja), a 3-as pakli csak a 8 kincs-kártyáját (a Záró kártyát is kihagyva — ez is "speciális kártya" típus szerint, tehát a kikapcsolás ezt is automatikusan lefedi). A paklik húzási sorrendje (1→2→3, mindegyik önmagában megkeverve) változatlan. A `turnPhase`/`pendingSpecialEffect` gépezet ekkor sosem aktiválódik — a motor pontosan úgy viselkedik, mint a jelenlegi, élesben futó 0a implementáció.
 - `createInitialState(playerNames, { includeSpecialCards })` — az opció végigfut ugyanazon a csatornán, mint a meglévő `aiOpponentCount`/`aiDifficulty` (lásd `ramses-0c-ai-specifikacio.md` §6): hot-seat módban `RamsesSetupPage.tsx` egy új checkbox (`aiToggle`-höz hasonló stílus, ott már van minta rá — lásd `HotelSetupPage.module.css`/`RamsesSetupPage.module.css` `.aiToggle`), online módban a `LobbyPage.tsx` "Új szoba" moduljában egy új, Ramses-specifikus fieldset (`GameDescriptor.online` egy új `supportsSpecialCardsToggle?: boolean` mezővel `gamesRegistry.ts`-ben, csak Ramsesnél `true`), ami a szoba-létrehozási `URLSearchParams`-ba egy `specialCards=0|1` paramétert ír, amit `RamsesOnlineGamePage.tsx`'s `buildCreateOptions` olvas ki és ad tovább a szerver felé (ugyanaz a minta, mint `aiCount`/`aiDifficulty`).
-- Alapértelmezett érték: **BEKAPCSOLVA** (`includeSpecialCards: true`), miután a fenti 8.2 terv implementálva és leellenőrizve lett — amíg ez folyamatban van, érdemes lehet átmenetileg default `false`-t használni, hogy a meglévő, már élesben stabil alapjáték ne törjön el egy még nem teljesen kiforrott funkcióval.
+- Alapértelmezett érték: **BEKAPCSOLVA** (`includeSpecialCards: true`) — a 8.2 terv implementálva és élesben leellenőrizve, az átmeneti `false` alapértelmezés nem vált szükségessé.
 
-**Javasolt következő lépés:** ha a fenti 8.2/8.3/8.4 terv rendben van, a következő kör az implementáció — `state.ts`/`actions.ts`/`reducer.ts`/`rules.ts` bővítése, majd a kliens-oldali UI (`RamsesActionWheel`/`ramsesMenuLevels.ts`, lásd 8.4, a Hotel tárcsa-mintáját követve), a `PlantUML` diagram frissítése egy teljes turn-flow ábrával, végül a 8.1 szerinti valódi assetek bekötése.
+**A fenti 8.1/8.2/8.3/8.4 terv teljes egészében implementálva** — `state.ts`/`actions.ts`/`reducer.ts`/`rules.ts` bővítése, a kliens-oldali UI (`RamsesActionWheel.tsx`/`ramsesMenuLevels.tsx`, lásd 8.4, a Hotel tárcsa-mintáját követve), a `PlantUML` diagram, és a 8.1 szerinti valódi assetek mind elkészültek, élesben ellenőrizve. A 9. szakasz egy további, ezt követő playtest-javítási kört ír le.
+
+## 9. Playtest-javítási kör (2026-07-30): feladás funkció, AI-finomítás, UI polish, multiplayer szinkron-hiba — IMPLEMENTÁLVA és élesben ellenőrizve
+
+A 8. szakasz szerinti speciális kártyák élesbe kerülése után a felhasználó valós böngészős playteszteket futtatott (hot-seat, AI ellen, és két valódi bejelentkezett kliens közötti online multiplayer is) — ez a szakasz az ott talált hibákat és a kért finomításokat rögzíti.
+
+### 9.1 Vizuális visszajelzés a speciális kártyákhoz és a köráthelyezéshez
+
+A speciális kártyák (Homokvihar hatása, egy speciális kártya kihúzása) és a normál kör-áthelyezés (rossz kincs felfedése, egy AI/másik játékos köre kezdődik) korábban semmilyen látható jelzést nem adtak — a `RamsesGamePage.tsx` három, egymás alatt megjelenő, önmagát pár másodperc után eltüntető bannert kapott:
+- `useSpecialCardAnnouncement` — Homokvihar/speciális kártya-fázisba lépés.
+- `useCardTransferAnnouncement` — amikor egy lap ténylegesen gazdát cserél két játékos között (Kockázat/Sivatagi póker vak húzása, Fata Morgana sikeres megtartása, Ajándék kifizetése) — tisztán a `players[].wonCards` renderek közti diffelésével észlelve, nem igényel új motor-mezőt.
+- `useTurnStartAnnouncement` — minden tényleges játékosváltásnál ("🎯 X köre!"), AI-vezérelt szereplőnél "🤖 X gondolkodik..." szöveggel — ez adja a látható visszajelzést az addig is meglévő, de néma `RAMSES_AI_MOVE_DELAY_MS` szünethez.
+
+Emellett: a kártya-mutató modál (`RamsesActiveCardDisplay`, kattintásra nagyítható valódi kártyakép), a piramisok mérete (pontosan összeérnek a szélükkel), a tábla-keret/kincs-réteg z-sort hibája (THREE.js `renderOrder`), a multiplayer szoba elfogadás/elutasítás gombjainak elrendezése, és a győztes képernyő stílusa mind ebben a körben készültek el/lettek javítva.
+
+### 9.2 AI-finomítás
+
+- `RAMSES_AI_MOVE_DELAY_MS` 500→1000ms — minden AI-lépés előtt (a kör elsőjét is beleértve) egy másodperces "gondolkodási" szünet, hot-seat ÉS online módban egyaránt (`useRamsesHotSeatAi.ts` / `RamsesRoom.aiMoveDelayMs()`).
+- `findKnownPathToTarget` (`shared/games/ramses/ai/strategy.ts`) — BFS-alapú útkeresés a HARD nehézségnél: a memóriában megerősítetten üres mezőkön át, egy megerősítetten ismert kincs-mezőig, valódi többlépéses terv (nem csak egylépéses mohó választás).
+- `justVacatedCellId` + `deprioritize` — anti-oszcillációs logika (MEDIUM/HARD-nál, EASY-nél szándékosan nem): a piramis, ami épp most jött egy mezőről, nem preferált cél a saját kör folytatásakor, csökkentve az oda-vissza lépkedést.
+
+### 9.3 Feladás (FORFEIT) funkció
+
+Új `{ type: 'FORFEIT' }` action — a Hotel `FORFEIT`/`bankrupt` mintáját követi, Ramses-specifikus adaptációval (nincs "bank", akinek a vagyona visszaszállna):
+
+- **Motor** (`state.ts`/`rules.ts`/`reducer.ts`): `Player.forfeited: boolean`; `canForfeit(state)` csak a normál `SEARCHING` fázisban engedi (SOSEM egy speciális kártya nevezési/döntési fázisában — így a `pendingSpecialEffect` sosem hivatkozhat feladott játékosra, nincs mit visszabontani); a kör-továbbadás (`nextPlayerIndex`/`nextActivePlayerIndexAfter`) kihagyja a feladott játékosokat; ha a feladás után csak EGY aktív játékos marad, a játék azonnal véget ér, ő a győztes (`computeWinnerIds` mostantól kizárja a feladott játékosokat a győzelemre esélyesek közül, akkor is, ha egyébként a legmagasabb pontszámuk lenne). A feladó játékos megtartja az addig megnyert lapjait.
+- **Softlock-védelem:** egy feladott játékos sosem nevezhető ki Sivatagi póker keresőjének — sem a kliens-oldali menü (`ramsesMenuLevels.tsx`'s `playerSlices`), sem az AI (`strategy.ts`), sem a szerver-oldali `canNamePokerChallenge` validáció nem ajánlja/engedi, mert senki sem lépne a nevében.
+- **UI:** `RamsesForfeitControl` — önálló "Feladás" gomb a HUD-on (csak a soron lévő, normál körben lévő helyi/hot-seat játékosnak látszik) + megerősítő modál, saját state-tel (kiemelve `RamsesGamePage`-ből a projekt eszlint-komplexitási határa miatt, ugyanaz a minta, mint `RamsesWinnerScreen`/`RamsesActiveCardDisplay` esetén).
+- **Multiplayer:** `RamsesStateSchema`/`ramsesStateCodec.ts` szinkronizálja a `forfeited` mezőt; `RamsesRoom.isValidAction` elfogadja a `FORFEIT` action-t (az `isActionAllowed` alapszabálya — csak a soron lévő játékos — változatlanul érvényes rá).
+- **Tesztek:** 10 új reducer/rules teszt (kör-átadás, kihagyás, győzelem-feltétel, `computeWinnerIds` kizárás).
+
+### 9.4 Kritikus multiplayer szinkron-hiba: `@colyseus/schema` `ArraySchema#splice()` korlátja
+
+Két valódi, egyszerre bejelentkezett kliens közötti élő teszt (nem hot-seat!) közben derült ki: **online Ramses-parti feladás (és ÁLTALÁBAN bármilyen befejezése) után a kliensek nem jutottak el a "Vége a játéknak" képernyőre** — a szerver konzolján `Error: ArraySchema#splice(): insertCount must be equal or lower than deleteCount` hibával.
+
+**Gyökérok:** a `@colyseus/schema` könyvtár saját `ArraySchema#splice()` implementációja NEM enged egyetlen hívásban több elemet beszúrni, mint amennyit töröl. A megosztott `replaceStringArray` helper (`shared/core/colyseusSyncHelpers.ts`, Hotel-0b-ből származik, Ramses-0b vette át) egyetlen `target.splice(0, target.length, ...values)` hívással próbálta cserélni a tartalmat — ez pontosan azon a ponton dobott kivételt, amikor `winnerIds` üresről (a normál játékmenet alatt mindig) nem-üresre vált (a játék végén) — vagyis MINDEN online Ramses-parti befejezése érintett volt, nem csak a feladás. A kivétel megszakította a `syncState()`-et, mielőtt a `status: 'FINISHED'` változás ténylegesen kiment volna a kliensekhez.
+
+**Javítás:** `replaceStringArray` most külön törli (`splice(0, target.length)`, delete-only, biztonságos), majd külön `push`-olja (`target.push(...values)`, tiszta beszúrás, szintén biztonságos) az új tartalmat. Mivel a helpert a Hotel is használja (`passedPlayerIds`, `lotsWithStaircasePurchasedThisTurn` — ezek is üresről nem-üresre váltanak az első licitpasszolásnál/lépcső-vásárlásnál), a javítás mindkét játékot érinti. Új regressziós teszt (`colyseusSyncHelpers.test.ts`), valódi `ArraySchema`-val (nem mockkal), kifejezetten az üres→nem-üres átmenetet ellenőrizve. Élesben, két valódi kliens közötti manuális teszttel megerősítve (mindkét oldal helyesen navigál a győztes képernyőre).
+
+### 9.5 Kapcsolódó, nem Ramses-specifikus javítások
+
+Ugyanebben a körben, a Ramses tesztelése közben derült ki, ezért itt kerül rögzítésre, bár a hatókörük szélesebb:
+- A Colyseus kapcsolódási hiba (`joinById`/`reconnect` sikertelensége, pl. törölt/lejárt szoba) korábban a nyers, angol `err.message`-et mutatta a felhasználónak — `useOnlineGameRoom.ts` mostantól lefordítja ("A szoba már nem érhető el…"), és mind a három `*OnlineGamePage.tsx` hibaüzenet-képernyője kapott egy `MenuNav` (Vissza + Főmenü) gombpárt, amivel korábban egyik sem rendelkezett.
+- A natív `<select>`/checkbox HTML-elemek egyedi, témázott megfelelőkre cserélődtek mind a négy setup/lobby oldalon (Dáma/Hotel/Ramses/LobbyPage) — lásd [shell-ux-specifikacio.md §11](./shell-ux-specifikacio.md).
