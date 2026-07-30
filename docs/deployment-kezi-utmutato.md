@@ -1,6 +1,6 @@
 # Games Center — éles telepítés: kézi útmutató
 
-**Státusz:** ELSŐ VÁZLAT — a konkrét parancsok a `docs/deployment-specifikacio.md`-ben rögzített, `server-diagnostics.sh`-val megerősített adatokból állnak össze, de ez a végrehajtási sorrend maga még nem lett élesben kipróbálva. Az első valódi végigfuttatás során talált eltéréseket ide, visszamenőleg kell javítani (ugyanaz a minta, mint a projekt más "best-effort, később pontosítjuk" dokumentumainál).
+**Státusz (2026-07-30):** A.0-A.2 élesben végrehajtva és igazolva a valódi szerveren (`gyserver.domenet.info`) — a `shared-postgres` fut, a games-center-app image megépült, a konténer elindult, a Prisma migrációk lefutottak, a szerver válaszol a `127.0.0.1:2567`-en. A.3-A.6 még hátravan — ezek kizárólag root-hozzáférést igényelnek, `claude-ops`-nak nincs sudo-ja, úgyhogy ezeket a felhasználónak kell elvégeznie.
 
 **Kapcsolódik:** [deployment-specifikacio.md](./deployment-specifikacio.md) — ott van a teljes indoklás/architektúra; ez a dokumentum csak a ténylegesen végrehajtandó parancsokat gyűjti össze, sorban.
 
@@ -19,7 +19,7 @@ Egyik usernek sincs sudo-ja — minden, ami valódi root-ot igényel (felhaszná
 
 ## A) Egyszeri beállítások
 
-### A.0 🔧 TE (root) — a két felhasználó létrehozása
+### A.0 ✅ KÉSZ — 🔧 TE (root) — a két felhasználó létrehozása
 
 ```bash
 sudo groupadd --system webapps
@@ -49,7 +49,7 @@ sudo chmod 600 ~deploy/.ssh/authorized_keys
 
 Miután ez megvan, add meg a szerver címét (host, esetleg egyedi port), hogy `claude-ops`-ként tudjak csatlakozni és folytatni az A.1-től.
 
-### A.1 🤖 CLAUDE — Központi Postgres (`shared-postgres`)
+### A.1 ✅ KÉSZ — 🤖 CLAUDE — Központi Postgres (`shared-postgres`)
 
 ```bash
 cd /var/www/database
@@ -91,7 +91,9 @@ GRANT ALL ON SCHEMA public TO games_center;
 \q
 ```
 
-### A.2 🤖 CLAUDE — games-center-app célmappa
+### A.2 ✅ KÉSZ (+ első build/indítás igazolva) — 🤖 CLAUDE — games-center-app célmappa
+
+**A build és az első indítás is megtörtént és igazolva van** (nem csak a klónozás/`.env.production`): `docker compose -f docker-compose.deploy.yml build` majd `up -d` lefutott, a konténer elindult, a `prisma migrate deploy` mindkét migrációt sikeresen alkalmazta a `shared-postgres`-en, a szerver válaszol (`curl http://127.0.0.1:2567/` → HTTP 200). A konténer egyelőre csak a szerver saját loopback-jén érhető el — az A.3 (Apache) hiányzik ahhoz, hogy kívülről is elérhető legyen.
 
 ```bash
 git clone https://github.com/bbalazs2002/Games-center.git /var/www/games-center
@@ -183,11 +185,12 @@ sudo systemctl enable shared-postgres.service games-center.service
 
 ### A.5 🔧 TE — GitHub Secrets
 
-A repo GitHub oldalán: **Settings → Secrets and variables → Actions → New repository secret**, három bejegyzés:
+A repo GitHub oldalán: **Settings → Secrets and variables → Actions → New repository secret**, négy bejegyzés:
 
 | Név | Érték |
 |---|---|
 | `SSH_HOST` | a szerver címe/domainje |
+| `SSH_PORT` | a szerver SSH-portja (nem a szokásos 22, lásd `server-diagnostics.sh` kimenete) |
 | `SSH_USER` | `deploy` |
 | `SSH_PRIVATE_KEY` | a `deploy` userhez tartozó privát kulcs (Claude generálta, `games_center_ci_deploy` — a teljes fájltartalom, `-----BEGIN OPENSSH PRIVATE KEY-----`-től `-----END...`-ig) |
 
