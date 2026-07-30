@@ -277,6 +277,15 @@ export function canBuildWithoutPermit(state: HotelState, playerId: PlayerId, pla
 
 /** Everything except the specific space choice — shared by canBuyStaircaseRight and getStaircaseEligibleLots so "is this lot eligible at all" and "is this exact space valid" can't drift apart. */
 function canBuyStaircaseRightForLot(state: HotelState, lotId: string): boolean {
+  // `staircasePurchaseRightActive` alone stays true across the WHOLE rest of
+  // the turn (cleared only at finishTurn) — without this phase check, an
+  // auction/debt-resolution interrupting the same turn (e.g. the mover
+  // couldn't afford a purchase right after crossing the lane) left the wheel
+  // showing "Lépcső vásárlása" as still available to every player, not just
+  // the bidding controls the AUCTION_IN_PROGRESS phase should restrict them
+  // to — a real playtest bug (2026-07-30). Matches the same
+  // RESOLVING_SPACE-only pattern canBuyLot/canStartConstruction already use.
+  if (state.turnPhase !== 'RESOLVING_SPACE') return false;
   if (!state.staircasePurchaseRightActive) return false;
   const player = getCurrentPlayer(state);
   const lot = getLot(state, lotId);

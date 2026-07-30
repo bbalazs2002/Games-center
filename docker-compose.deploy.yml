@@ -1,0 +1,24 @@
+# Éles szerveren élő compose-fájl a games-center-app-hoz — lásd
+# docs/deployment-specifikacio.md §7. NEM definiál Postgres szolgáltatást
+# (az a /var/www/database alatti, ettől teljesen független docker-compose.yml
+# felelőssége, §6) — a "shared-infra" hálózaton keresztül csatlakozik hozzá.
+#
+# Build-időben szükséges argumentumok (a deploy workflow adja át, lásd
+# .github/workflows/deploy.yml): ENABLED_GAMES, VITE_BASE_PATH,
+# VITE_SERVER_URL — ezek a kliens bundle-be égnek be, futásidejű env-ként
+# nem elegendők.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env.production
+    ports:
+      # Csak a loopback-interfészen — a konténer kizárólag a hoszton futó
+      # Apache-ról érhető el, az internet felől közvetlenül nem.
+      - "127.0.0.1:2567:2567"
+    networks:
+      - shared-infra
+
+networks:
+  shared-infra:
+    external: true

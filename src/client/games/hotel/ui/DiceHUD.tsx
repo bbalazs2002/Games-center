@@ -76,6 +76,12 @@ export function DiceHUD({ state }: DiceHUDProps) {
   const moveRollCount = state.log.filter((entry) => entry.type === 'MOVED').length;
   const nightsRollCount = state.log.filter((entry) => entry.type === 'NIGHTS_STAY').length;
   const permitRollCount = state.log.filter((entry) => entry.type === 'CONSTRUCTION_PERMIT_ROLLED').length;
+  // Every ROLL_NIGHTS dispatch sets lastNightsRoll AND appends exactly one
+  // NIGHTS_STAY log entry in the same reducer call, so the latest one always
+  // corresponds to the currently-shown roll — used to show the actual final
+  // price charged, not just the night count (a real playtest request,
+  // 2026-07-30: "a végső ár is látszódjon").
+  const lastNightsStay = [...state.log].reverse().find((entry) => entry.type === 'NIGHTS_STAY');
 
   return (
     <div className={styles.hud}>
@@ -92,7 +98,11 @@ export function DiceHUD({ state }: DiceHUDProps) {
           faceTextures={MOVE_DIE_FACE_TEXTURES}
           resultFaceIndex={state.lastNightsRoll - 1}
           rollKey={nightsRollCount}
-          caption={`Éjszakák: ${state.lastNightsRoll}`}
+          caption={
+            lastNightsStay
+              ? `Éjszakák: ${state.lastNightsRoll} — ${lastNightsStay.rentAmount} fizetve`
+              : `Éjszakák: ${state.lastNightsRoll}`
+          }
         />
       )}
       {state.lastBuildingPermitRoll !== null && (

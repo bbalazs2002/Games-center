@@ -90,9 +90,21 @@ function tokenOffset(index: number, radius: number): [number, number] {
   return [Math.cos(angle) * radius, Math.sin(angle) * radius];
 }
 
-/** Every board index walked from `from` to `to`, stepping +1 with wraparound — a negative `from` (e.g. Hotel's "parkoló" sentinel) means there's no real path to walk, just appear at `to` directly. */
+/**
+ * Every board index walked from `from` to `to`, stepping +1 with wraparound.
+ * A negative `from` (e.g. Hotel's "parkoló" sentinel, meaning the token
+ * hasn't entered the track yet) enters the track at space 0 first, then
+ * walks from there like any other move — a single straight-line jump
+ * straight to `to` (the old behavior) skipped the per-space hop animation
+ * entirely for every player's very first move, reading as an unanimated
+ * "slide" instead of the same stepped motion every later move already has
+ * (a real playtest report, 2026-07-30). The one remaining straight-line
+ * hop — off-track parking spot to space 0 — is unavoidable (parking isn't
+ * itself a point on the track) and reads fine as "pulling onto the road."
+ */
 function stepPath(from: number, to: number, boardLength: number): number[] {
-  if (from < 0 || from === to) return [to];
+  if (from < 0) return to === 0 ? [0] : [0, ...stepPath(0, to, boardLength)];
+  if (from === to) return [to];
   const path: number[] = [];
   let index = from;
   for (let i = 0; i < boardLength && index !== to; i++) {

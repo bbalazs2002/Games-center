@@ -19,8 +19,13 @@ const OPPONENT_RISK_WEIGHT = 0.5;
 // makes low cash increasingly costly BEFORE the cliff — quadratic so it
 // stays mild near the threshold but sharpens close to zero, encouraging a
 // safety buffer without hard-capping how much can be spent.
-const CASH_SAFETY_THRESHOLD = 2500;
-const CASH_SAFETY_MAX_PENALTY = 6000; // penalty magnitude at cash === 0
+// Raised from 2500/6000 (2026-07-30 playtest: "az AI játékosok viszonylag
+// kevés pénz tartalékot tartanak, ezért sokszor előfordul, hogy
+// árverezniük kell") — a real Hotel game bankrupts you into an auction the
+// moment you can't cover a debt, so the old threshold left too little
+// buffer against an unlucky rent charge landing right after a big spend.
+const CASH_SAFETY_THRESHOLD = 4000;
+const CASH_SAFETY_MAX_PENALTY = 8000; // penalty magnitude at cash === 0
 
 function cashSafetyPenalty(cash: number): number {
   if (cash >= CASH_SAFETY_THRESHOLD) return 0;
@@ -58,7 +63,14 @@ const UNBUILT_LOT_PORTFOLIO_FACTOR = 0.65;
 // distorting later, already-invested portfolio decisions where the plain
 // cash/rent math (already well-tuned, see UNBUILT_LOT_PORTFOLIO_FACTOR's own
 // history above) should keep deciding things on its own.
-const FIRST_LOTS_BONUS = [1300, 500] as const;
+//
+// Only the FIRST lot gets this nudge (2026-07-30 playtest: "csak a
+// legelső telek megvásárlása legyen kiemelt jelentőségű, nem kell, hogy
+// mindent felvásároljon azonnal") — a second/third bonus on top of the
+// already-well-tuned cash/rent math was pushing the AI to keep buying
+// lots for their own sake rather than developing/staircasing what it
+// already has.
+const FIRST_LOTS_BONUS = [1300] as const;
 
 function firstLotsBonus(ownedLotCount: number): number {
   let bonus = 0;
@@ -72,14 +84,42 @@ function portfolioCredit(lot: HotelLot): number {
   return isUnbuilt ? value * UNBUILT_LOT_PORTFOLIO_FACTOR : value;
 }
 
-/** Average nightly rent across all 6 possible roll outcomes, at the lot's CURRENT build state — a proxy for "how much would landing here cost someone." */
-function estimateRentPotential(lot: HotelLot): number {
+/**
+ * A built lot with NO staircase anywhere on the board can't yet actually
+ * charge rent — the reducer only ever prompts a nights-roll (and therefore
+ * only ever collects money) when a player lands on a space with
+ * `staircaseForLotId` set for that lot (see reducer.ts's
+ * `staircaseLotWithPossibleRent`), never just from owning/building on the
+ * lot itself. The ORIGINAL `estimateRentPotential` didn't know this — it
+ * credited the same hypothetical rent whether or not a staircase actually
+ * existed, so the heuristic never specifically rewarded GETTING one, even
+ * though it's what turns a built hotel into real income (2026-07-30
+ * playtest: "Ez a játékban a legfontosabb bevételi forrás, ehhez mérten a
+ * heurisztika jutalmazza ezt a döntést"). A first attempt zeroed this out
+ * entirely without a staircase — confirmed via a real simulation batch to
+ * regress the difficulty ladder badly (HARD's deeper search lost the
+ * gradient that made continuing to invest look good at all pre-staircase,
+ * and started losing to EASY/MEDIUM, sometimes going bankrupt outright).
+ * A partial discount instead of a hard cliff keeps that gradient — building
+ * still visibly helps before a staircase exists, just less than once one is
+ * in place, which is what actually makes GETTING one look like an
+ * improvement rather than a `0 -> anything` step-change.
+ */
+const NO_STAIRCASE_RENT_FACTOR = 0.35;
+
+/** Average nightly rent across all 6 possible roll outcomes, at the lot's CURRENT build state — a proxy for "how much would landing here cost someone," discounted if there's no staircase yet to actually collect it through (see NO_STAIRCASE_RENT_FACTOR's own note). */
+function estimateRentPotential(state: HotelState, lot: HotelLot): number {
   if (lot.buildingsBuilt === 0 && !lot.hasGarden) return 0;
   let total = 0;
   for (let nights = 1; nights <= 6; nights += 1) {
     total += computeNightlyRent(lot, nights);
   }
-  return total / 6;
+  const average = total / 6;
+  return hasStaircase(state, lot.id) ? average : average * NO_STAIRCASE_RENT_FACTOR;
+}
+
+function hasStaircase(state: HotelState, lotId: string): boolean {
+  return state.board.some((space) => space.staircaseForLotId === lotId);
 }
 
 function opponentNetWorth(state: HotelState, opponentId: PlayerId): number {
@@ -103,7 +143,7 @@ export function evaluateState(state: HotelState, forPlayerId: PlayerId): number 
   let score = me.cash + cashSafetyPenalty(me.cash) + firstLotsBonus(ownedLots.length);
   for (const lot of ownedLots) {
     score += portfolioCredit(lot) * PORTFOLIO_WEIGHT;
-    score += estimateRentPotential(lot) * RENT_POTENTIAL_WEIGHT;
+    score += estimateRentPotential(state, lot) * RENT_POTENTIAL_WEIGHT;
   }
 
   for (const opponent of state.players) {

@@ -343,6 +343,18 @@ describe('reducer — staircase rent (nights)', () => {
     expect(next.pendingNightsRollLotId).toBe('fujiyama');
   });
 
+  it('skips the nights-roll procedure at a bank-owned staircase lot even if it still has buildings (e.g. after a forfeit/no-bid auction, which never resets buildingsBuilt/hasGarden)', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: null, buildingsBuilt: 2 });
+    state = updateSpace(state, 'space-3', { staircaseForLotId: 'fujiyama' });
+    state = updatePlayer(state, 'player-1', { position: 1 }); // +1 roll lands on space-3
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+    expect(next.pendingNightsRollLotId).toBeNull();
+    expect(getPlayer(next, 'player-1').cash).toBe(15000);
+  });
+
   it('a shortfall parks the turn in AWAITING_DEBT_RESOLUTION instead of going negative', () => {
     let state = twoPlayerState();
     state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 2 });
@@ -359,7 +371,7 @@ describe('reducer — staircase rent (nights)', () => {
 describe('reducer — BUY_STAIRCASE_RIGHT (paid staircase-purchase right)', () => {
   function stateWithRightActive(): HotelState {
     const state = updateLot(twoPlayerState(), 'fujiyama', { ownerId: 'player-1' });
-    return { ...state, staircasePurchaseRightActive: true };
+    return { ...state, staircasePurchaseRightActive: true, turnPhase: 'RESOLVING_SPACE' };
   }
 
   it('places the staircase on the space the player picked and charges the price', () => {

@@ -112,7 +112,14 @@ function afterDebtRaisingAction(state: HotelState, playerId: PlayerId): HotelSta
 function staircaseLotWithPossibleRent(state: HotelState, playerId: PlayerId, space: HotelState['board'][number]): string | null {
   if (!space.staircaseForLotId) return null;
   const staircaseLot = getLot(state, space.staircaseForLotId);
-  const rentCouldBeOwed = staircaseLot.ownerId !== playerId && (staircaseLot.buildingsBuilt > 0 || staircaseLot.hasGarden);
+  // `ownerId === null` means the BANK owns it (e.g. after a forfeit/no-bid
+  // auction — see applyForfeit/resolveAuction, neither of which resets
+  // buildingsBuilt/hasGarden, so a bank-owned lot can still have buildings)
+  // — no one to pay rent to in that case, same as landing on your own lot.
+  const rentCouldBeOwed =
+    staircaseLot.ownerId !== null &&
+    staircaseLot.ownerId !== playerId &&
+    (staircaseLot.buildingsBuilt > 0 || staircaseLot.hasGarden);
   return rentCouldBeOwed ? space.staircaseForLotId : null;
 }
 
@@ -302,7 +309,9 @@ function applyRollNights(state: HotelState, value: number): HotelState {
   const player = getCurrentPlayer(state);
 
   let next: HotelState = { ...state, pendingNightsRollLotId: null, lastNightsRoll: value };
-  const isOwnHotel = lot.ownerId === player.id;
+  // Bank-owned (ownerId === null) is treated the same as your own hotel here
+  // — no one to pay rent to — see staircaseLotWithPossibleRent's own note.
+  const isOwnHotel = lot.ownerId === player.id || lot.ownerId === null;
   const rentAmount = isOwnHotel ? 0 : computeNightlyRent(lot, value);
   next = appendLog(next, {
     type: 'NIGHTS_STAY',

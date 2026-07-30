@@ -18,6 +18,13 @@ const RamsesOnlineGamePage = lazy(() => import('../games/ramses/ui/RamsesOnlineG
 // Debug-only raw .glb inspector — see docs/hotel-0c-specifikacio.md §5.7.
 const HotelModelViewerPage = lazy(() => import('../games/hotel/ui/HotelModelViewerPage'));
 
+// Vite's BASE_URL always mirrors vite.config.ts's `base` (build-time
+// VITE_BASE_PATH, e.g. "/game-center/" in production — see
+// docs/deployment-specifikacio.md §8) and always ends in "/", but
+// react-router's basename wants no trailing slash — `undefined` for the
+// default root deploy keeps local dev/CI's URLs exactly as before.
+const BASENAME = import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export const router = createBrowserRouter([
   {
     // No `path` — a pure layout wrapper (RootLayout's <Outlet/>), doesn't add
@@ -78,4 +85,4 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]);
+], { basename: BASENAME });

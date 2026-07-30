@@ -88,9 +88,21 @@
 
 .cashFlourish {
   animation: cash-flourish-rise 1.2s ease-out forwards;
-  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   white-space: nowrap;
   text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.6);
+}
+
+.cashFlourishLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.cashFlourishAmount {
+  font-weight: 700;
 }
 
 .cashFlourishGain {
@@ -200,6 +212,23 @@
 
 .lotName {
   font-weight: 600;
+}
+
+/** Same look as .lotName, just clickable — opens that lot's full data sheet from inside PlayerInfoModal. */
+.lotNameButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(243, 236, 217, 0.4);
+  cursor: pointer;
+}
+
+.lotNameButton:hover {
+  color: #d4af37;
 }
 
 .lotDetail {

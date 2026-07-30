@@ -36,6 +36,7 @@ import { createInitialState } from '../../../../shared/games/hotel/engine/initia
 import { reducer } from '../../../../shared/games/hotel/engine/reducer';
 import {
   getFreeStaircaseCandidates,
+  getLot,
   getRemainingBidderIds,
   getStaircaseSpaceOptions,
   type FreeStaircaseCandidate,
@@ -100,24 +101,43 @@ function BoardBackground() {
  * of the scene (camera, controls, every purely-decorative local size) is
  * scaled up to match this instead of shrinking the real model's own data.
  */
+// How far above its final resting spot a "dropped in" object starts —
+// see `dropInAnimation` below. Scaled with the rest of the scene, same as
+// every other purely-decorative local size (HOTEL_SCENE_SCALE's own note).
+const DROP_IN_HEIGHT = 3 * HOTEL_SCENE_SCALE;
+
 function HotelModelObject({
   objectName,
   colorTint,
   fallback = null,
+  dropInAnimation = false,
 }: {
   objectName: string;
   colorTint?: string;
   fallback?: ReactNode;
+  /** Animates the real model sliding DOWN into its final position from above, as if just placed there — a real playtest request (2026-07-30): the real (non-placeholder) model previously just popped in at full position/scale with no placement animation at all. Only meaningful for objects that mount once and stay (buildings); staircases/gardens don't opt in. */
+  dropInAnimation?: boolean;
 }) {
   const scene = useGLTFScene(HOTEL_MODEL_URL);
   const prepared = useMemo(() => {
     const found = scene?.getObjectByName(objectName);
     return found ? cloneWithTint(found, colorTint) : null;
   }, [scene, objectName, colorTint]);
+  // Runs once, at the moment THIS component first mounts with a real model
+  // to show (react-spring's mount-time from->to) — since `prepared` is null
+  // (rendering `fallback` instead, see below) until the model resolves, the
+  // <a.group> itself doesn't exist in the tree until exactly that moment,
+  // so the spring's start always lines up with the real model's first
+  // appearance, not with some earlier/unrelated render.
+  const spring = useSpring({
+    from: { y: dropInAnimation ? DROP_IN_HEIGHT : 0 },
+    to: { y: 0 },
+    config: { tension: 170, friction: 20 },
+  });
 
   if (!prepared) return <>{fallback}</>;
   return (
-    <group rotation={HOTEL_UP_ROTATION}>
+    <a.group rotation={HOTEL_UP_ROTATION} position-y={dropInAnimation ? spring.y : 0}>
       {/* dispose={null}: `prepared`'s geometry is a SHARED reference into the
           cached `useGLTFScene` scene graph (three.js's own Mesh.copy never
           deep-clones geometry) — R3F's default auto-dispose-on-unmount would
@@ -126,7 +146,7 @@ function HotelModelObject({
           unmounts (confirmed root cause of "lépcső eltűnik lerakás után",
           see docs/hotel-0c-specifikacio.md §5.11.1). */}
       <primitive object={prepared} dispose={null} />
-    </group>
+    </a.group>
   );
 }
 
@@ -251,14 +271,26 @@ function HotelBuildingClusters({
                   fallback={
                     center ? <BuildingBox position={buildingFallbackPosition(center, buildingIndex)} /> : null
                   }
+                  dropInAnimation
                 />
               );
             })}
             {lot.hasGarden && (
-              <HotelModelObject
-                objectName={hotelGardenObjectName(assetName)}
-                fallback={center ? <GardenDecal lotId={lot.id} center={center} /> : null}
-              />
+              // Its OWN, separate Suspense boundary — NOT the shared one
+              // above. GardenDecal (this object's fallback, shown until the
+              // real model resolves) loads a texture via `useTexture`, which
+              // genuinely suspends (unlike useGLTFScene, a plain non-Suspense
+              // hook) — sharing one boundary with every other already-loaded
+              // building/staircase meant that suspension hid ALL of them
+              // (fallback=null) for a moment too, not just the garden — a
+              // real playtest report (2026-07-30): "a kert megépítésekor
+              // előfordul, hogy egy pillanatra az összes épület eltűnik."
+              <Suspense fallback={null}>
+                <HotelModelObject
+                  objectName={hotelGardenObjectName(assetName)}
+                  fallback={center ? <GardenDecal lotId={lot.id} center={center} /> : null}
+                />
+              </Suspense>
             )}
             {staircaseSpaceIndices.map((spaceIndex) => (
               // No fallback — the real model is confirmed reliably present
@@ -460,7 +492,13 @@ function cashNoteFor(amount: number): string {
   return `/assets/hotel/banknotes/${match?.[1] ?? 'banknote-50.jpg'}`;
 }
 
-/** Floating "+1200"/"−500" numbers rising and fading above the cash figure — see docs/hotel-animacio-specifikacio.md §4.2. */
+/**
+ * Floating "+1200"/"−500" numbers rising and fading above the cash figure —
+ * see docs/hotel-animacio-specifikacio.md §4.2. Each also carries a short
+ * label (e.g. "Bérleti díj", "Telek vásárlás") of WHAT the movement was —
+ * previously just the bare amount, a real playtest request (2026-07-30):
+ * "Fontos, hogy a játékos tudja, pontosan milyen pénzmozgás történt."
+ */
 function CashFlourishOverlay({ log, playerId }: { log: HotelState['log']; playerId: PlayerId }) {
   const flourishes = useCashFlourishes(log, playerId);
   if (flourishes.length === 0) return null;
@@ -473,8 +511,11 @@ function CashFlourishOverlay({ log, playerId }: { log: HotelState['log']; player
             ' ',
           )}
         >
-          {flourish.amount >= 0 ? '+' : '−'}
-          {Math.abs(flourish.amount).toLocaleString('hu-HU')}
+          <span className={styles.cashFlourishLabel}>{flourish.label}</span>
+          <span className={styles.cashFlourishAmount}>
+            {flourish.amount >= 0 ? '+' : '−'}
+            {Math.abs(flourish.amount).toLocaleString('hu-HU')}
+          </span>
         </span>
       ))}
     </div>
@@ -546,10 +587,12 @@ function PlayerInfoModal({
   state,
   playerId,
   onClose,
+  onInspectLot,
 }: {
   state: HotelState;
   playerId: PlayerId | null;
   onClose: () => void;
+  onInspectLot: (lotId: string) => void;
 }) {
   const playerIndex = playerId ? state.players.findIndex((p) => p.id === playerId) : -1;
   const player = playerIndex >= 0 ? state.players[playerIndex] : undefined;
@@ -572,12 +615,34 @@ function PlayerInfoModal({
             <ul className={styles.playerInfoLots}>
               {lots.map((lot) => (
                 <li key={lot.id}>
-                  <span className={styles.lotName}>{lot.name}</span>
+                  <button className={styles.lotNameButton} onClick={() => onInspectLot(lot.id)}>
+                    {lot.name}
+                  </button>
                   <span className={styles.lotDetail}>{describeLot(state, lot)}</span>
                 </li>
               ))}
             </ul>
           )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/**
+ * Full data sheet for one lot, opened by clicking its name inside
+ * `PlayerInfoModal` (an opponent's own lot list) — a real playtest request
+ * (2026-07-30). Split into its own component purely to stay under this
+ * codebase's eslint complexity limit, same established pattern as prior
+ * complexity fixes elsewhere (see project memory).
+ */
+function LotInspectModal({ state, lotId, onClose }: { state: HotelState; lotId: string | null; onClose: () => void }) {
+  return (
+    <Modal open={lotId !== null} onClose={onClose} className={modalTheme.hotelModal}>
+      {lotId && (
+        <div className={styles.cardPreview}>
+          <h3>{getLot(state, lotId).name}</h3>
+          <HotelLotFacts lot={getLot(state, lotId)} />
         </div>
       )}
     </Modal>
@@ -767,7 +832,6 @@ export function HotelGamePage({
   const loggedLocalTransport = useLocalGameLogger(localTransport, 'hotel');
   const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
-  useHotSeatAi(transport, hotSeatAiSlots ?? {});
   useReportFeedbackContext('hotel', state);
 
   const spaces: LoopTrackSpace<null>[] = useMemo(
@@ -809,10 +873,17 @@ export function HotelGamePage({
   // that hadn't caught up yet.
   const [isTokenAnimating, setIsTokenAnimating] = useState(false);
   const wheelInteractive = isWheelInteractive(state, myPlayer, hotSeatAiSlots ?? {}, currentPlayer) && !isTokenAnimating;
+  useHotSeatAi(transport, hotSeatAiSlots ?? {}, isTokenAnimating);
 
   // Which player's full detail is currently open (via PlayerRoster or a
   // board-token click) — see PlayerInfoModal's doc comment.
   const [inspectedPlayerId, setInspectedPlayerId] = useState<PlayerId | null>(null);
+  // Which lot's full data sheet is open, clicked from inside PlayerInfoModal
+  // (an opponent's own lot list) — a real playtest request (2026-07-30):
+  // previously only your OWN OwnedLotsPanel thumbnails opened this. Stacks
+  // on top of PlayerInfoModal (same z-index, later in DOM order wins) rather
+  // than replacing it, so going back doesn't lose your place.
+  const [inspectedLotId, setInspectedLotId] = useState<string | null>(null);
 
   // Which staircase-space picker is armed, if any — the actual space choice
   // happens by clicking a translucent preview on the board (see
@@ -908,7 +979,13 @@ export function HotelGamePage({
         />
         <StatusChip state={state} myPlayer={myPlayer} isCurrentPlayerAi={isCurrentPlayerAi} />
         <PlayerRoster state={state} onInspect={setInspectedPlayerId} />
-        <PlayerInfoModal state={state} playerId={inspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />
+        <PlayerInfoModal
+          state={state}
+          playerId={inspectedPlayerId}
+          onClose={() => setInspectedPlayerId(null)}
+          onInspectLot={setInspectedLotId}
+        />
+        <LotInspectModal state={state} lotId={inspectedLotId} onClose={() => setInspectedLotId(null)} />
         {isLocalMode && <LocalGameControls gameId="hotel" onRequestNewGame={onRequestNewGame} resumable />}
       </div>
     </div>

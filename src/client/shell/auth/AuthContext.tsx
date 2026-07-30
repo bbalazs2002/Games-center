@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { DEFAULT_SERVER_URL } from '../../core/serverUrl';
 
 export interface AuthUser {
   id: string;
@@ -17,7 +18,7 @@ interface AuthContextValue {
 }
 
 const STORAGE_KEY = 'games-center:auth';
-const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:2567';
+const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? DEFAULT_SERVER_URL;
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 

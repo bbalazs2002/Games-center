@@ -31,20 +31,22 @@ export function LoginPage() {
   }
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
-      <h1>Games Center</h1>
-      <label className={styles.field}>
-        Meghívó-kód
-        <input value={code} onChange={(event) => setCode(event.target.value)} required />
-      </label>
-      <label className={styles.field}>
-        Megjelenítendő név
-        <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required />
-      </label>
-      {error && <p className={styles.error}>{error}</p>}
-      <Button type="submit" disabled={submitting}>
-        {submitting ? 'Belépés…' : 'Belépés'}
-      </Button>
-    </form>
+    <div className={styles.page}>
+      <form className={styles.form} onSubmit={handleSubmit}>
+        <h1>Games Center</h1>
+        <label className={styles.field}>
+          Meghívó-kód
+          <input value={code} onChange={(event) => setCode(event.target.value)} required />
+        </label>
+        <label className={styles.field}>
+          Megjelenítendő név
+          <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required />
+        </label>
+        {error && <p className={styles.error}>{error}</p>}
+        <Button type="submit" disabled={submitting}>
+          {submitting ? 'Belépés…' : 'Belépés'}
+        </Button>
+      </form>
+    </div>
   );
 }

@@ -1,0 +1,65 @@
+@startuml deployment-architektura
+title Éles béta telepítés — deployment diagram (tervezés, 2026-07-29)
+
+node "GitHub" {
+  artifact "bbalazs2002/Games-center\n(master ág)" as repo
+  component "ci.yml\n(minden push-nál)\nlint + typecheck + vitest" as ci
+  component "deploy.yml\n(csak workflow_dispatch)\nSSH deploy" as deployWorkflow
+  repo --> ci : push
+  repo ..> deployWorkflow : kézi indítás
+}
+
+node "Felhasználó szervere" {
+
+  node "Apache2 2.4.54 (hoszton)" {
+    component "balazs.gyserver.domenet.info\nbalazs-le-ssl.conf\n(meglévő PHP-oldalak)" as apache
+    component "ProxyPass /game-center/\nupgrade=websocket\n(prefix levágva)" as proxy
+    apache --> proxy
+  }
+
+  node "Docker" {
+    node "games-center-app\n(ebből a repóból épül)" as appContainer {
+      component "Express\n/api/auth, /api/game-log,\n/api/feedback" as express
+      component "Colyseus\nlobby, dama, hotel\n(ramses KIKAPCSOLVA:\nENABLED_GAMES)" as colyseus
+      component "express.static\n(dist/ kliens build\n+ public/ assetek)" as staticFiles
+    }
+
+    node "shared-postgres\n(ÖNÁLLÓ compose, KÜLÖN mappa —\nNEM a games-center repo része)" as postgresContainer {
+      database "PostgreSQL\ngames_center DB\n+ saját DB-user" as postgres
+    }
+
+    cloud "shared-infra\n(docker network)" as sharedNet
+    appContainer -- sharedNet
+    postgresContainer -- sharedNet
+  }
+
+  component "systemd\nshared-postgres.service\ngames-center.service\n(boot-kori indulás, §7.1 —\nRequires=docker.service)" as systemdUnits
+  systemdUnits ..> postgresContainer : "docker compose up -d"
+  systemdUnits ..> appContainer : "docker compose up -d"
+
+  proxy --> appContainer : "127.0.0.1:2567"
+  appContainer --> postgres : "DATABASE_URL\npostgresql://games_center:***@postgres:5432/games_center\n(konténernév, nem host-port)"
+}
+
+actor Fejlesztő as dev
+dev --> deployWorkflow : "Run workflow" gomb
+deployWorkflow --> apache : SSH (privát kulcs)\ngit pull + docker compose\nbuild + up -d\n(csak games-center-app-ot érinti)
+
+note bottom of appContainer
+  Egy közös konténer minden játékkal —
+  nem játékonkénti külön konténer.
+  ENABLED_GAMES dönti el, melyik játék
+  jelenik meg kliens- ÉS szerver-oldalon is.
+end note
+
+note bottom of postgresContainer
+  Nincs kifelé publikált port — csak a
+  shared-infra hálózaton érhető el.
+  Később más (jövőbeli) projektek
+  konténerei is csatlakozhatnak ide,
+  saját külön DB-vel/userrel.
+  A games-center deploy/rollback
+  sosem érinti ezt a konténert.
+end note
+
+@enduml

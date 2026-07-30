@@ -1,6 +1,7 @@
+import { DEFAULT_SERVER_URL } from '../serverUrl';
 import type { GameTransport } from './GameTransport';
 
-const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:2567';
+const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? DEFAULT_SERVER_URL;
 
 /**
  * `crypto.randomUUID()` is spec-gated to secure contexts (HTTPS or

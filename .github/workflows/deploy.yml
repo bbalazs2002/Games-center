@@ -1,0 +1,40 @@
+name: Deploy
+
+# Kizárólag kézi indítás — lásd docs/deployment-specifikacio.md §2 ("Deploy
+# indítása: Kézi jóváhagyás") és §11. Béta fázisban tudatosan NINCS push-ra
+# induló automatikus deploy.
+on:
+  workflow_dispatch: {}
+
+env:
+  # Melyik játékok legyenek élesen elérhetők — lásd
+  # docs/deployment-specifikacio.md §4. Egy új játék készre válásakor csak
+  # ezt az egy sort kell bővíteni, nem kell kódot módosítani.
+  ENABLED_GAMES: dama,hotel
+  VITE_BASE_PATH: /game-center/
+  VITE_SERVER_URL: https://balazs.gyserver.domenet.info/game-center
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # A build a szerveren fut, nincs konténer-registry — lásd
+          # docs/deployment-specifikacio.md §2 ("CI/CD módszer"). A
+          # `prisma migrate deploy` a konténer saját ENTRYPOINT-jában fut
+          # (Dockerfile), nem itt — akkor is lefut, ha valaki a konténert a
+          # workflow-n kívül indítja újra.
+          script: |
+            set -e
+            cd /var/www/games-center
+            git pull
+            docker compose -f docker-compose.deploy.yml build \
+              --build-arg ENABLED_GAMES="${{ env.ENABLED_GAMES }}" \
+              --build-arg VITE_BASE_PATH="${{ env.VITE_BASE_PATH }}" \
+              --build-arg VITE_SERVER_URL="${{ env.VITE_SERVER_URL }}"
+            docker compose -f docker-compose.deploy.yml up -d

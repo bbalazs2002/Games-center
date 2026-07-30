@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DEFAULT_SERVER_URL } from '../core/serverUrl';
 import { useAuth } from '../shell/auth/AuthContext';
 import { useGameTheme } from '../shell/useGameTheme';
 import { Button } from './Button';
@@ -7,7 +8,7 @@ import { Modal } from './Modal';
 import styles from './FeedbackModal.module.css';
 import themedModal from './themedModalContent.module.css';
 
-const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? 'http://localhost:2567';
+const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? DEFAULT_SERVER_URL;
 
 type FeedbackType = 'BUG' | 'SUGGESTION';
 

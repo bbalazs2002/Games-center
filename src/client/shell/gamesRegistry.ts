@@ -34,7 +34,7 @@ export interface GameDescriptor {
  * Single source of truth for which games exist and how to code-split-load them.
  * Adding a new game means adding one entry here, nothing else in shell/.
  */
-export const GAMES_REGISTRY: GameDescriptor[] = [
+const ALL_GAMES: GameDescriptor[] = [
   {
     id: 'dama',
     label: 'Dáma',
@@ -63,3 +63,27 @@ export const GAMES_REGISTRY: GameDescriptor[] = [
     coverImage: '/assets/ramses/box.jpg',
   },
 ];
+
+/**
+ * Production deploys expose only the games that are actually beta-ready
+ * (e.g. `ENABLED_GAMES=dama,hotel` — see docs/deployment-specifikacio.md §4)
+ * via a comma-separated, build-time `VITE_ENABLED_GAMES` (bridged from the
+ * plain `ENABLED_GAMES` env var by `vite.config.ts`, so both the client and
+ * the server read the same single source of truth without duplicating the
+ * value under two different names). Unset/empty — the default for local dev
+ * and CI — means every game is enabled, so `npm run dev`/`vitest` behavior
+ * never changes unless a deploy explicitly opts into restricting it.
+ */
+function filterEnabledGames(games: GameDescriptor[]): GameDescriptor[] {
+  const raw: string = import.meta.env.VITE_ENABLED_GAMES;
+  if (!raw) return games;
+  const enabledIds = new Set(
+    raw
+      .split(',')
+      .map((id: string) => id.trim())
+      .filter(Boolean),
+  );
+  return games.filter((game) => enabledIds.has(game.id));
+}
+
+export const GAMES_REGISTRY: GameDescriptor[] = filterEnabledGames(ALL_GAMES);

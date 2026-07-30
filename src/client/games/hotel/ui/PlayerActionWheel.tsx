@@ -4,10 +4,11 @@ import {
   canBuildWithoutPermit,
   computeConstructionCost,
   computeLotPurchasePrice,
+  computeNightlyRent,
   getCurrentPlayer,
   getLot,
 } from '../../../../shared/games/hotel/engine/rules';
-import type { ConstructionPlanItem, HotelState } from '../../../../shared/games/hotel/engine/state';
+import type { ConstructionPlanItem, HotelLot, HotelState } from '../../../../shared/games/hotel/engine/state';
 import { Button } from '../../../ui-kit/Button';
 import { Modal } from '../../../ui-kit/Modal';
 import { WheelMenu, type WheelMenuSlice } from '../../../ui-kit/WheelMenu';
@@ -168,6 +169,56 @@ function WheelOrStaircaseHint({
 }
 
 /**
+ * Shown BEFORE rolling, so the player can gauge the risk (a fixed die means
+ * a fixed range, but which exact outcome charges what wasn't visible
+ * before) — a real playtest request (2026-07-30). The final charged amount,
+ * AFTER rolling, is covered by DiceHUD's own caption instead (it already
+ * shows the roll result itself). Split out of PlayerActionWheel purely to
+ * stay under this codebase's eslint complexity limit, same established
+ * pattern as prior complexity fixes elsewhere (see project memory).
+ */
+function NightsPreviewPanel({ lot }: { lot: HotelLot | null }) {
+  if (!lot) return null;
+  return (
+    <div className={styles.nightsPreview}>
+      <span className={styles.nightsPreviewTitle}>{lot.name}: hány éjszaka?</span>
+      <div className={styles.nightsPreviewRow}>
+        {[1, 2, 3, 4, 5, 6].map((nights) => (
+          <span key={nights}>
+            {nights}: {computeNightlyRent(lot, nights)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * What's actually up for auction was previously only ever named ("Alice:
+ * +100" bidding slices, nothing else) — a real playtest request
+ * (2026-07-30): the full property data (same as at purchase time), not
+ * just the hotel's name. Split out for the same complexity reason as
+ * NightsPreviewPanel above.
+ */
+function AuctionSubjectPanel({
+  lot,
+  auction,
+  onInspect,
+}: {
+  lot: HotelLot | null;
+  auction: HotelState['pendingAuction'];
+  onInspect: () => void;
+}) {
+  if (!lot || !auction) return null;
+  return (
+    <button className={styles.auctionSubject} onClick={onInspect}>
+      <span>Árverés: {lot.name}</span>
+      <span className={styles.auctionSubjectBid}>Legmagasabb: {auction.highestBid}</span>
+    </button>
+  );
+}
+
+/**
  * Floating, collapsible radial action menu for the active player — see
  * docs/hotel-0a-specifikacio.md §5/§9 and assets/Hotel/UI-menu.png for the
  * requested look. Owns its own navigation stack (for the Építkezés -> telek
@@ -188,6 +239,7 @@ export function PlayerActionWheel({
   const [pending, setPending] = useState<ConstructionPlanItem[]>([]);
   const [forfeitConfirmOpen, setForfeitConfirmOpen] = useState(false);
   const [pendingPurchaseLotId, setPendingPurchaseLotId] = useState<string | null>(null);
+  const [auctionFactsOpen, setAuctionFactsOpen] = useState(false);
 
   const currentPlayer = getCurrentPlayer(state);
 
@@ -293,11 +345,21 @@ export function PlayerActionWheel({
   // DOUBLE permit-die roll charges this amount twice (a RED roll charges nothing).
   const totalCost = pending.reduce((sum, item) => sum + computeConstructionCost(getLot(state, item.lotId), item), 0);
 
+  const auctionLot = state.pendingAuction ? getLot(state, state.pendingAuction.lotId) : null;
+  // Shown BEFORE rolling, so the player can gauge the risk (a fixed die
+  // means a fixed range, but which exact outcome charges what wasn't
+  // visible before) — a real playtest request (2026-07-30). The final
+  // charged amount, AFTER rolling, is covered by DiceHUD's own caption
+  // instead (it already shows the roll result itself).
+  const nightsPreviewLot = state.pendingNightsRollLotId ? getLot(state, state.pendingNightsRollLotId) : null;
+
   return (
     <>
       <div className={[styles.container, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
         <div className={styles.playerLabel}>{currentPlayer.name}</div>
-        <DiceHUD state={state} />
+        {/* Wheel above the dice, not below — a real playtest request
+            (2026-07-30): the menu is what's actually interacted with every
+            turn, the dice result is secondary reference info. */}
         <WheelOrStaircaseHint
           staircasePlacement={staircasePlacement}
           onCancelStaircasePlacement={onCancelStaircasePlacement}
@@ -305,6 +367,9 @@ export function PlayerActionWheel({
           onBack={stack.length > 1 ? back : undefined}
           onClose={() => setOpen(false)}
         />
+        <DiceHUD state={state} />
+        <NightsPreviewPanel lot={nightsPreviewLot} />
+        <AuctionSubjectPanel lot={auctionLot} auction={state.pendingAuction} onInspect={() => setAuctionFactsOpen(true)} />
       </div>
       {/* On the LEFT side, not stacked under the wheel — more room there, and
           the wheel's own column stays a predictable, fixed height. Capped to
@@ -362,6 +427,14 @@ export function PlayerActionWheel({
         onConfirm={confirmPurchase}
         onCancel={() => setPendingPurchaseLotId(null)}
       />
+      <Modal open={auctionFactsOpen && auctionLot !== null} onClose={() => setAuctionFactsOpen(false)} className={modalTheme.hotelModal}>
+        {auctionLot && (
+          <div className={styles.purchaseConfirm}>
+            <h2>{auctionLot.name}</h2>
+            <HotelLotFacts lot={auctionLot} />
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

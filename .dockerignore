@@ -1,0 +1,11 @@
+node_modules
+.git
+dist
+temp
+logs
+assets
+.env
+.env.*
+.playwright-mcp
+.claude
+*.md

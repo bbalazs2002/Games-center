@@ -7,6 +7,18 @@ const FLOURISH_LIFETIME_MS = 1200;
 export interface CashFlourish {
   id: number;
   amount: number;
+  /** Short (2-3 word) Hungarian label of WHAT the movement was — a real
+      playtest request (2026-07-30): the amount alone didn't say whether it
+      was rent, a purchase, a bonus, etc. Longer, full-sentence descriptions
+      already exist for the game-log panel (see formatLogEntry.ts), but
+      those are too long to float next to the cash figure — this is a
+      separate, deliberately short vocabulary. */
+  label: string;
+}
+
+interface CashDelta {
+  amount: number;
+  label: string;
 }
 
 /**
@@ -15,20 +27,29 @@ export interface CashFlourish {
  * owner isn't shown anywhere, so no flourish for them yet. See
  * docs/hotel-animacio-specifikacio.md §4.2.
  */
-function cashDeltaForNightsStay(entry: Extract<LogEntry, { type: 'NIGHTS_STAY' }>, playerId: PlayerId): number | null {
-  return entry.playerId === playerId && entry.toPlayerId ? -entry.rentAmount : null;
+function cashDeltaForNightsStay(entry: Extract<LogEntry, { type: 'NIGHTS_STAY' }>, playerId: PlayerId): CashDelta | null {
+  if (entry.playerId !== playerId || !entry.toPlayerId) return null;
+  return { amount: -entry.rentAmount, label: 'Bérleti díj' };
 }
 
+/** LOT_BOUGHT and STAIRCASE_RIGHT_BOUGHT share the exact same {playerId, price} shape — merged into one case below, keyed off this label lookup, purely to keep the switch's branch count (and therefore its eslint `complexity` score) the same as before this label feature was added. */
+const PRICE_PAID_LABELS: Partial<Record<LogEntry['type'], string>> = {
+  LOT_BOUGHT: 'Telek vásárlás',
+  STAIRCASE_RIGHT_BOUGHT: 'Lépcső vásárlás',
+};
+
 /** Entries where `playerId` (the actor) either always pays, or pays conditionally on the entry's own data. */
-function cashDeltaForActingPlayer(entry: LogEntry, playerId: PlayerId): number | null {
+function cashDeltaForActingPlayer(entry: LogEntry, playerId: PlayerId): CashDelta | null {
   switch (entry.type) {
     case 'LOT_BOUGHT':
     case 'STAIRCASE_RIGHT_BOUGHT':
-      return entry.playerId === playerId ? -entry.price : null;
+      return entry.playerId === playerId ? { amount: -entry.price, label: PRICE_PAID_LABELS[entry.type]! } : null;
     case 'CONSTRUCTION_PERMIT_ROLLED':
-      return entry.playerId === playerId && entry.totalCost > 0 ? -entry.totalCost : null;
+      return entry.playerId === playerId && entry.totalCost > 0
+        ? { amount: -entry.totalCost, label: 'Építkezés' }
+        : null;
     case 'GARDEN_BUILT_WITHOUT_PERMIT':
-      return entry.playerId === playerId ? -entry.totalCost : null;
+      return entry.playerId === playerId ? { amount: -entry.totalCost, label: 'Kert építése' } : null;
     case 'NIGHTS_STAY':
       return cashDeltaForNightsStay(entry, playerId);
     default:
@@ -36,23 +57,31 @@ function cashDeltaForActingPlayer(entry: LogEntry, playerId: PlayerId): number |
   }
 }
 
+/** FREE_STAIRCASE_GRANTED and FREE_BUILDING_GRANTED share the exact same {playerId, payoutReceived} shape — same merging reasoning as PRICE_PAID_LABELS above. */
+const FREE_PAYOUT_LABELS: Partial<Record<LogEntry['type'], string>> = {
+  FREE_STAIRCASE_GRANTED: 'Lépcső helyett készpénz',
+  FREE_BUILDING_GRANTED: 'Épület helyett készpénz',
+};
+
 /** Entries where `playerId` is a BENEFICIARY, not necessarily the entry's own "playerId" field (BONUS_2000/FREE_* still use playerId; AUCTION_RESOLVED uses winnerId instead). */
-function cashDeltaForBeneficiary(entry: LogEntry, playerId: PlayerId): number | null {
+function cashDeltaForBeneficiary(entry: LogEntry, playerId: PlayerId): CashDelta | null {
   switch (entry.type) {
     case 'BONUS_2000':
-      return entry.playerId === playerId ? 2000 : null;
+      return entry.playerId === playerId ? { amount: 2000, label: 'Sávbónusz' } : null;
     case 'FREE_STAIRCASE_GRANTED':
     case 'FREE_BUILDING_GRANTED':
-      return entry.playerId === playerId && entry.payoutReceived > 0 ? entry.payoutReceived : null;
+      return entry.playerId === playerId && entry.payoutReceived > 0
+        ? { amount: entry.payoutReceived, label: FREE_PAYOUT_LABELS[entry.type]! }
+        : null;
     case 'AUCTION_RESOLVED':
-      return entry.winnerId === playerId ? -entry.amount : null;
+      return entry.winnerId === playerId ? { amount: -entry.amount, label: 'Árverés' } : null;
     default:
       return null;
   }
 }
 
-/** The signed cash change a log entry causes for `playerId`, or null if the entry doesn't affect them (or causes no actual change — e.g. a RED permit roll). */
-function cashDeltaForPlayer(entry: LogEntry, playerId: PlayerId): number | null {
+/** The signed cash change (+ a short label of what caused it) a log entry causes for `playerId`, or null if the entry doesn't affect them (or causes no actual change — e.g. a RED permit roll). */
+function cashDeltaForPlayer(entry: LogEntry, playerId: PlayerId): CashDelta | null {
   return cashDeltaForActingPlayer(entry, playerId) ?? cashDeltaForBeneficiary(entry, playerId);
 }
 
@@ -63,10 +92,10 @@ export function useCashFlourishes(log: LogEntry[], playerId: PlayerId): CashFlou
   const nextIdRef = useRef(0);
 
   useEffect(() => {
-    const deltas = newEntries.map((entry) => cashDeltaForPlayer(entry, playerId)).filter((amount) => amount !== null);
+    const deltas = newEntries.map((entry) => cashDeltaForPlayer(entry, playerId)).filter((delta) => delta !== null);
     if (deltas.length === 0) return;
 
-    const added = deltas.map((amount) => ({ id: nextIdRef.current++, amount }));
+    const added = deltas.map((delta) => ({ id: nextIdRef.current++, amount: delta.amount, label: delta.label }));
     setFlourishes((prev) => [...prev, ...added]);
     const timeoutId = setTimeout(() => {
       setFlourishes((prev) => prev.filter((flourish) => !added.includes(flourish)));

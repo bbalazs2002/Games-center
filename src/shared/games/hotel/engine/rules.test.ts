@@ -261,7 +261,10 @@ describe('canBuyLot / canStartConstruction — action legality mirrors what the 
 describe('canBuyStaircaseRight — the player picks the space, not just the lot', () => {
   function stateWithRightActive(): HotelState {
     const state = updateLot(createInitialState(['Alice', 'Bob']), 'fujiyama', { ownerId: 'player-1' });
-    return { ...state, staircasePurchaseRightActive: true };
+    // Realistic phase — the right only ever activates from within
+    // applyRollMoveDice, which always leaves turnPhase at RESOLVING_SPACE (or
+    // a more specific awaiting-phase) by the time a player can act on it.
+    return { ...state, staircasePurchaseRightActive: true, turnPhase: 'RESOLVING_SPACE' };
   }
 
   it('is false when the right is not active, even on an owned lot', () => {
@@ -297,6 +300,11 @@ describe('canBuyStaircaseRight — the player picks the space, not just the lot'
 
   it("is false when the player can't afford the staircase price", () => {
     const state = updatePlayer(stateWithRightActive(), 'player-1', { cash: 0 });
+    expect(canBuyStaircaseRight(state, 'fujiyama', 'space-2')).toBe(false);
+  });
+
+  it('is false once an auction/debt-resolution interrupts the turn, even though staircasePurchaseRightActive itself stays true until finishTurn (real playtest bug, 2026-07-30)', () => {
+    const state = { ...stateWithRightActive(), turnPhase: 'AUCTION_IN_PROGRESS' as const };
     expect(canBuyStaircaseRight(state, 'fujiyama', 'space-2')).toBe(false);
   });
 });
