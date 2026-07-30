@@ -22,6 +22,22 @@ export interface PendingRequestView {
 
 export type PlayerConnectionStatus = 'connected' | 'disconnected' | 'left';
 
+/**
+ * colyseus.js throws its own, English, internal error text on a failed
+ * create/join/reconnect (e.g. `"room \"xyz\" not found"` for a deleted/expired
+ * room) — real playtest report (2026-07-30): this was shown to the player
+ * completely untranslated. Rather than trying to pattern-match every possible
+ * message this library could ever throw, only the specific, well-known "room
+ * not found" case gets its own translation; anything else falls back to the
+ * same generic Hungarian message the non-Error branch already used — so
+ * nothing raw/English ever reaches the screen either way.
+ */
+function translateConnectionError(err: unknown): string {
+  const message = err instanceof Error ? err.message : '';
+  if (/not found/i.test(message)) return 'A szoba már nem érhető el — lehet, hogy törölték, vagy lejárt.';
+  return 'Nem sikerült csatlakozni a szobához.';
+}
+
 export interface UseOnlineGameRoomArgs<TState, TColyseusState> {
   /** Colyseus room name AND the route/reconnection-storage key — e.g. 'dama', 'hotel'. */
   gameId: string;
@@ -148,7 +164,7 @@ export function useOnlineGameRoom<TState, TAction, TColyseusState extends GameRo
         setTransport(new ColyseusGameTransport<TState, TAction, TColyseusState>(joinedRoom, createInitialState(), decode));
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Nem sikerült csatlakozni a szobához.');
+        setError(translateConnectionError(err));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, token, navigate]);

@@ -8,6 +8,7 @@ import {
   type PlayerConnectionStatus,
 } from '../../../core/transport/useOnlineGameRoom';
 import { Button } from '../../../ui-kit/Button';
+import { MenuNav } from '../../../ui-kit/MenuNav';
 import { OnlineStatusScreen } from '../../../ui-kit/OnlineStatusScreen';
 import onlineStatusStyles from '../../../ui-kit/OnlineStatusScreen.module.css';
 import { useAuth } from '../../../shell/auth/AuthContext';
@@ -150,7 +151,14 @@ export function DamaOnlineGamePage() {
     }),
   });
 
-  if (error) return <OnlineStatusScreen gameId="dama"><p>{error}</p></OnlineStatusScreen>;
+  if (error) {
+    return (
+      <OnlineStatusScreen gameId="dama">
+        <MenuNav backTo="/games/dama/lobby" />
+        <p>{error}</p>
+      </OnlineStatusScreen>
+    );
+  }
   if (rejectedReason) {
     return (
       <OnlineStatusScreen gameId="dama">
