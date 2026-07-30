@@ -32,6 +32,7 @@ jobs:
           # workflow-n kívül indítja újra.
           script: |
             set -e
+            git config --global --get-all safe.directory | grep -qxF /var/www/games-center || git config --global --add safe.directory /var/www/games-center
             cd /var/www/games-center
             git pull
             docker compose -f docker-compose.deploy.yml build \

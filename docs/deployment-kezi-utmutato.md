@@ -15,6 +15,8 @@ Egyik usernek sincs sudo-ja — minden, ami valódi root-ot igényel (felhaszná
 
 **Fontos, korábbi hiba javítva:** mindkét user shellje `/bin/bash` (NEM `/usr/sbin/nologin`) — a `nologin` shell nemcsak az interaktív bejelentkezést tiltja, hanem SSH-n keresztüli TÁVOLI PARANCSVÉGREHAJTÁST is (`ssh user@host parancs`), ami mindkét user egyetlen valódi feladatát ellehetetlenítené.
 
+**Fontos, korábbi hiba javítva (2026-07-30):** az első éles `Deploy` workflow-futás elhasalt git "dubious ownership" hibával — a `/var/www/games-center` repót `claude-ops` klónozta (A.2), a `git pull`-t viszont a CI-ben a `deploy` user futtatja, más UID-vel, amit git 2.35+ biztonsági okból elutasít, amíg nincs explicit `safe.directory` kivétel. A `.github/workflows/deploy.yml` script-je ezért az első sorban (a `set -e` után, a `cd` előtt) mindig beállítja ezt a `deploy` user saját `~/.gitconfig`-jában, idempotens módon (nem duplázza a bejegyzést ismételt futtatásra sem). Ez NEM root-igényű lépés, csak a `deploy` user saját konfigját érinti.
+
 ---
 
 ## A) Egyszeri beállítások
