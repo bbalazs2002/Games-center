@@ -16,6 +16,11 @@
   --shell-accent: #d4af37;
   --shell-line: rgba(212, 175, 55, 0.4);
 
+  /* Always-dark regardless of OS preference — tells native form controls
+     (e.g. a <select>'s dropdown popup, which our own CSS can't reach) to use
+     matching dark UA colors instead of falling back to a light default that
+     made option text nearly invisible. Real playtest report (2026-07-30). */
+  color-scheme: dark;
   background: var(--shell-ground);
   color: var(--shell-ink);
 }

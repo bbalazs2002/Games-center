@@ -496,8 +496,8 @@ export function LobbyPage() {
       >
         <h2>🔒 Szoba {joinTarget?.roomId}</h2>
         <p>Ez a szoba jelszóval védett. Add meg a jelszót, vagy küldj csatlakozási kérelmet.</p>
-        <label>
-          Jelszó:{' '}
+        <label className={styles.joinPasswordField}>
+          Jelszó
           <input
             type="text"
             value={joinPassword}

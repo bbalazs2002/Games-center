@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
@@ -126,6 +127,7 @@ function RamsesWinnerScreen({
   showNewGameButton: boolean;
   onRequestNewGame?: () => void;
 }) {
+  const navigate = useNavigate();
   return (
     <div className={styles.page}>
       <h1>Vége a játéknak!</h1>
@@ -135,7 +137,12 @@ function RamsesWinnerScreen({
           : `Győztes: ${winners[0]?.name}`}
       </p>
       <ScoreboardList scoreboard={scoreboard} />
-      {showNewGameButton && onRequestNewGame && <Button onClick={onRequestNewGame}>Új játék</Button>}
+      <div className={styles.winnerActions}>
+        {showNewGameButton && onRequestNewGame && <Button onClick={onRequestNewGame}>Új játék</Button>}
+        <Button variant="secondary" onClick={() => navigate('/')}>
+          Főmenü
+        </Button>
+      </div>
     </div>
   );
 }

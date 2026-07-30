@@ -57,6 +57,12 @@
   --shell-accent: var(--accent);
   --shell-line: var(--line);
 
+  /* Adaptive, matching this theme's own prefers-color-scheme switch below —
+     lets native form controls (e.g. a <select>'s dropdown popup, which our
+     own CSS can't reach) pick UA colors consistent with whichever palette is
+     actually active, instead of one hardcoded default. See hotelTheme's
+     always-dark counterpart. */
+  color-scheme: light dark;
   background-color: var(--ground);
   color: var(--ink);
   font-family: var(--body-font);

@@ -16,6 +16,7 @@
   --shell-accent: #5b5fc7;
   --shell-line: rgba(26, 26, 31, 0.1);
 
+  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;

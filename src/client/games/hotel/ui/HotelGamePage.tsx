@@ -1,4 +1,5 @@
 import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTexture } from '@react-three/drei';
 import { a, useSpring } from '@react-spring/three';
 import { Vector3 } from 'three';
@@ -818,6 +819,7 @@ export function HotelGamePage({
   initialGameState,
   onRequestNewGame,
 }: HotelGamePageProps) {
+  const navigate = useNavigate();
   // Local mode only (providedTransport is always set in online mode) — see
   // the persistence effect and LocalGameControls below.
   const isLocalMode = providedTransport === undefined;
@@ -927,7 +929,12 @@ export function HotelGamePage({
       <div className={styles.page}>
         <h1>Vége a játéknak!</h1>
         <p>Győztes: {winner.name}</p>
-        {isLocalMode && onRequestNewGame && <Button onClick={onRequestNewGame}>Új játék</Button>}
+        <div className={styles.winnerActions}>
+          {isLocalMode && onRequestNewGame && <Button onClick={onRequestNewGame}>Új játék</Button>}
+          <Button variant="secondary" onClick={() => navigate('/')}>
+            Főmenü
+          </Button>
+        </div>
       </div>
     );
   }

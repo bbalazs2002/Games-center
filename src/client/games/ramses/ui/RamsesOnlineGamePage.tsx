@@ -12,6 +12,7 @@ import {
   type PlayerConnectionStatus,
 } from '../../../core/transport/useOnlineGameRoom';
 import { Button } from '../../../ui-kit/Button';
+import { OnlineStatusScreen } from '../../../ui-kit/OnlineStatusScreen';
 import { useAuth } from '../../../shell/auth/AuthContext';
 import { RamsesGamePage } from './RamsesGamePage';
 
@@ -133,18 +134,18 @@ export function RamsesOnlineGamePage() {
     }),
   });
 
-  if (error) return <p>{error}</p>;
+  if (error) return <OnlineStatusScreen gameId="ramses"><p>{error}</p></OnlineStatusScreen>;
   if (rejectedReason) {
     return (
-      <div>
+      <OnlineStatusScreen gameId="ramses">
         <p>A csatlakozási kérelmedet elutasították: {rejectedReason}</p>
         <Button onClick={() => navigate('/games/ramses/lobby')}>Vissza a lobbyba</Button>
-      </div>
+      </OnlineStatusScreen>
     );
   }
   if (awaitingApproval) {
     return (
-      <div>
+      <OnlineStatusScreen gameId="ramses">
         <p>Kérelem elküldve, várakozás a szoba tulajdonosának jóváhagyására…</p>
         <Button
           variant="secondary"
@@ -155,18 +156,20 @@ export function RamsesOnlineGamePage() {
         >
           Mégse
         </Button>
-      </div>
+      </OnlineStatusScreen>
     );
   }
-  if (!transport) return <p>Csatlakozás a szobához…</p>;
+  if (!transport) return <OnlineStatusScreen gameId="ramses"><p>Csatlakozás a szobához…</p></OnlineStatusScreen>;
   if (!ready) {
     return (
-      <WaitingForPlayersScreen
-        connectedRoomId={connectedRoomId}
-        displayPassword={displayPassword}
-        pendingRequests={pendingRequests}
-        onRespond={respondToJoinRequest}
-      />
+      <OnlineStatusScreen gameId="ramses">
+        <WaitingForPlayersScreen
+          connectedRoomId={connectedRoomId}
+          displayPassword={displayPassword}
+          pendingRequests={pendingRequests}
+          onRespond={respondToJoinRequest}
+        />
+      </OnlineStatusScreen>
     );
   }
 

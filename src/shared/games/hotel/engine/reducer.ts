@@ -37,6 +37,7 @@ import {
 import type {
   BuildingPermitResult,
   ConstructionPlanItem,
+  HotelLot,
   HotelState,
   PendingAuction,
   PlayerId,
@@ -282,7 +283,30 @@ function applyChooseFreeStaircaseSpace(state: HotelState, lotId: string, spaceId
   return { ...logged, turnPhase: 'RESOLVING_SPACE' };
 }
 
-/** Auto-picks the first eligible owned lot — see the "resolves automatically" note in applyRollMoveDice. */
+interface FreeBuildOption {
+  lotId: string;
+  price: number;
+  kind: 'building' | 'garden';
+}
+
+/** Every still-buildable option across ALL eligible owned lots — the next building tier's price on lots with room left, and/or the garden's price on lots without one yet (a lot can offer both at once). */
+function freeBuildOptionsOf(buildable: HotelLot[]): FreeBuildOption[] {
+  return buildable.flatMap((lot) => {
+    const options: FreeBuildOption[] = [];
+    if (lot.buildingsBuilt < lot.buildingPrices.length) {
+      options.push({ lotId: lot.id, price: lot.buildingPrices[lot.buildingsBuilt], kind: 'building' });
+    }
+    if (!lot.hasGarden) options.push({ lotId: lot.id, price: lot.gardenPrice, kind: 'garden' });
+    return options;
+  });
+}
+
+/**
+ * Picks the single most expensive buildable option across ALL of the
+ * player's lots — NOT just the first eligible lot's cheapest next step. Real
+ * playtest report (2026-07-30): "az összes saját telkén a legdrágább
+ * megépíthető épületet (vagy kertet) kapja meg a játékos."
+ */
 function resolveFreeBuilding(state: HotelState, playerId: PlayerId): HotelState {
   const owned = ownedLotsOf(state, playerId);
   // "Ha nincs telked, akkor nem történik semmi" — no fallback money, unlike staircase.
@@ -295,9 +319,11 @@ function resolveFreeBuilding(state: HotelState, playerId: PlayerId): HotelState 
     return appendLog(next, { type: 'FREE_BUILDING_GRANTED', playerId, lotId: null, payoutReceived: maxPrice });
   }
 
-  const target = buildable[0];
+  const options = freeBuildOptionsOf(buildable);
+  const best = options.reduce((a, b) => (b.price > a.price ? b : a));
+  const target = getLot(state, best.lotId);
   const next =
-    target.buildingsBuilt < target.buildingPrices.length
+    best.kind === 'building'
       ? updateLot(state, target.id, { buildingsBuilt: target.buildingsBuilt + 1 })
       : updateLot(state, target.id, { hasGarden: true });
   return appendLog(next, { type: 'FREE_BUILDING_GRANTED', playerId, lotId: target.id, payoutReceived: 0 });

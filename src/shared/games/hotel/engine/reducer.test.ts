@@ -282,6 +282,32 @@ describe('reducer — free spaces resolve automatically on landing (no repeatabl
     expect(getPlayer(next, 'player-1').cash).toBe(15000);
     expect(next.lots.every((lot) => lot.buildingsBuilt === 0)).toBe(true);
   });
+
+  it('FREE_BUILDING picks the single most expensive buildable option across ALL owned lots, not just the first eligible one', () => {
+    // president's next building tier (5000) beats fujiyama's (2200) — real
+    // playtest report (2026-07-30): the player used to always get whatever
+    // the FIRST owned lot happened to have next, regardless of price.
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 0, hasGarden: false });
+    state = updateLot(state, 'president', { ownerId: 'player-1', buildingsBuilt: 0, hasGarden: true });
+    state = updatePlayer(state, 'player-1', { position: 9 }); // one step from space-11 (index 10), FREE_BUILDING
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(getPlayer(next, 'player-1').position).toBe(10);
+    expect(getPlayer(next, 'player-1').cash).toBe(15000); // free — no charge
+    expect(getLot(next, 'president').buildingsBuilt).toBe(1);
+    expect(getLot(next, 'fujiyama').buildingsBuilt).toBe(0);
+  });
+
+  it('FREE_BUILDING pays the most expensive of ALL owned buildings/gardens once nothing is left to build', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 3, hasGarden: true }); // maxes out at 2200
+    state = updateLot(state, 'president', { ownerId: 'player-1', buildingsBuilt: 4, hasGarden: true }); // maxes out at 5000
+    state = updatePlayer(state, 'player-1', { position: 9 });
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(getPlayer(next, 'player-1').cash).toBe(15000 + 5000);
+  });
 });
 
 describe('reducer — staircase rent (nights)', () => {

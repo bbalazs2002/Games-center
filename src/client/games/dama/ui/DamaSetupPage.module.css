@@ -70,6 +70,7 @@
 }
 
 .fieldset select {
+  color-scheme: light dark;
   font-family: var(--body-font);
   font-size: 0.9rem;
   color: var(--ink);

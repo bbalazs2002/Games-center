@@ -12,6 +12,7 @@ import {
   type PlayerConnectionStatus,
 } from '../../../core/transport/useOnlineGameRoom';
 import { Button } from '../../../ui-kit/Button';
+import { OnlineStatusScreen } from '../../../ui-kit/OnlineStatusScreen';
 import { useAuth } from '../../../shell/auth/AuthContext';
 import { HotelGamePage } from './HotelGamePage';
 
@@ -132,18 +133,18 @@ export function HotelOnlineGamePage() {
     }),
   });
 
-  if (error) return <p>{error}</p>;
+  if (error) return <OnlineStatusScreen gameId="hotel"><p>{error}</p></OnlineStatusScreen>;
   if (rejectedReason) {
     return (
-      <div>
+      <OnlineStatusScreen gameId="hotel">
         <p>A csatlakozási kérelmedet elutasították: {rejectedReason}</p>
         <Button onClick={() => navigate('/games/hotel/lobby')}>Vissza a lobbyba</Button>
-      </div>
+      </OnlineStatusScreen>
     );
   }
   if (awaitingApproval) {
     return (
-      <div>
+      <OnlineStatusScreen gameId="hotel">
         <p>Kérelem elküldve, várakozás a szoba tulajdonosának jóváhagyására…</p>
         <Button
           variant="secondary"
@@ -154,18 +155,20 @@ export function HotelOnlineGamePage() {
         >
           Mégse
         </Button>
-      </div>
+      </OnlineStatusScreen>
     );
   }
-  if (!transport) return <p>Csatlakozás a szobához…</p>;
+  if (!transport) return <OnlineStatusScreen gameId="hotel"><p>Csatlakozás a szobához…</p></OnlineStatusScreen>;
   if (!ready) {
     return (
-      <WaitingForPlayersScreen
-        connectedRoomId={connectedRoomId}
-        displayPassword={displayPassword}
-        pendingRequests={pendingRequests}
-        onRespond={respondToJoinRequest}
-      />
+      <OnlineStatusScreen gameId="hotel">
+        <WaitingForPlayersScreen
+          connectedRoomId={connectedRoomId}
+          displayPassword={displayPassword}
+          pendingRequests={pendingRequests}
+          onRespond={respondToJoinRequest}
+        />
+      </OnlineStatusScreen>
     );
   }
 

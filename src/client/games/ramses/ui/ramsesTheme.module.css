@@ -17,6 +17,9 @@
   --shell-accent: #5a9b8e;
   --shell-line: rgba(90, 155, 142, 0.4);
 
+  /* See hotelTheme.module.css's identical comment — makes native <select>
+     popups readable against this always-dark theme. */
+  color-scheme: dark;
   background: var(--shell-ground);
   color: var(--shell-ink);
 }

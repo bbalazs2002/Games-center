@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../../ui-kit/Button';
+import { MenuNav } from '../../ui-kit/MenuNav';
 import { useAuth } from './AuthContext';
 import styles from './LoginPage.module.css';
 
@@ -13,6 +14,14 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // RequireAuth redirects here with `from` set to wherever login was actually
+  // required (e.g. "/games/hotel/lobby") — "Vissza" should return to that
+  // game's own mode-select page, not always the same hardcoded route. Falls
+  // back to the home page when reached without that context (e.g. a direct
+  // link to /login).
+  const from = (location.state as { from?: string } | null)?.from;
+  const backTo = from?.match(/^\/games\/([^/]+)/)?.[0] ?? '/';
+
   async function handleSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
     setError(null);
@@ -21,8 +30,7 @@ export function LoginPage() {
       await login(code.trim(), displayName.trim());
       // Send the player back to whichever page RequireAuth redirected them from
       // (e.g. a specific game's lobby), falling back to the home page.
-      const from = (location.state as { from?: string } | null)?.from ?? '/';
-      navigate(from, { replace: true });
+      navigate(from ?? '/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ismeretlen hiba történt.');
     } finally {
@@ -32,6 +40,7 @@ export function LoginPage() {
 
   return (
     <div className={styles.page}>
+      <MenuNav backTo={backTo} />
       <form className={styles.form} onSubmit={handleSubmit}>
         <h1>Games Center</h1>
         <label className={styles.field}>

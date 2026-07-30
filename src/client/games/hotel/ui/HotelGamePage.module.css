@@ -12,6 +12,12 @@
   min-height: 24rem;
 }
 
+.winnerActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
 /** Floating glass status pill, bottom-center — see docs/hotel-0c-specifikacio.md, "organize around the wheel" round. */
 .statusChip {
   position: absolute;

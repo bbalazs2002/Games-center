@@ -8,6 +8,7 @@ import {
   type PlayerConnectionStatus,
 } from '../../../core/transport/useOnlineGameRoom';
 import { Button } from '../../../ui-kit/Button';
+import { OnlineStatusScreen } from '../../../ui-kit/OnlineStatusScreen';
 import { useAuth } from '../../../shell/auth/AuthContext';
 import type { DamaAction } from '../../../../shared/games/dama/engine/actions';
 import { createInitialState } from '../../../../shared/games/dama/engine/initialState';
@@ -144,18 +145,18 @@ export function DamaOnlineGamePage() {
     }),
   });
 
-  if (error) return <p>{error}</p>;
+  if (error) return <OnlineStatusScreen gameId="dama"><p>{error}</p></OnlineStatusScreen>;
   if (rejectedReason) {
     return (
-      <div>
+      <OnlineStatusScreen gameId="dama">
         <p>A csatlakozási kérelmedet elutasították: {rejectedReason}</p>
         <Button onClick={() => navigate('/games/dama/lobby')}>Vissza a lobbyba</Button>
-      </div>
+      </OnlineStatusScreen>
     );
   }
   if (awaitingApproval) {
     return (
-      <div>
+      <OnlineStatusScreen gameId="dama">
         <p>Kérelem elküldve, várakozás a szoba tulajdonosának jóváhagyására…</p>
         <Button
           variant="secondary"
@@ -166,18 +167,20 @@ export function DamaOnlineGamePage() {
         >
           Mégse
         </Button>
-      </div>
+      </OnlineStatusScreen>
     );
   }
-  if (!transport) return <p>Csatlakozás a szobához…</p>;
+  if (!transport) return <OnlineStatusScreen gameId="dama"><p>Csatlakozás a szobához…</p></OnlineStatusScreen>;
   if (!ready) {
     return (
-      <WaitingForOpponentScreen
-        connectedRoomId={connectedRoomId}
-        displayPassword={displayPassword}
-        pendingRequests={pendingRequests}
-        onRespond={respondToJoinRequest}
-      />
+      <OnlineStatusScreen gameId="dama">
+        <WaitingForOpponentScreen
+          connectedRoomId={connectedRoomId}
+          displayPassword={displayPassword}
+          pendingRequests={pendingRequests}
+          onRespond={respondToJoinRequest}
+        />
+      </OnlineStatusScreen>
     );
   }
 

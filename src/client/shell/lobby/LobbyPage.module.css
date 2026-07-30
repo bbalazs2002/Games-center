@@ -63,6 +63,12 @@
 }
 
 .fieldset select {
+  /* `color-scheme` (dark, or light dark for Dáma's adaptive theme) is set
+     on each game's own theme root (hotelTheme/ramsesTheme/clusterBTheme),
+     not here — this file is shared across all three games' "Új szoba"
+     modals, and Dáma's theme is light/dark-adaptive while Hotel/Ramses are
+     always dark, so a single hardcoded value here would be wrong for one of
+     them. Inherits down into this select's native popup regardless. */
   font: inherit;
   font-size: 0.95rem;
   color: inherit;
@@ -70,6 +76,24 @@
   border: 1px solid var(--shell-line, #cbd5e0);
   border-radius: 0.375rem;
   padding: 0.35rem 0.5rem;
+}
+
+.joinPasswordField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: var(--shell-ink-soft, inherit);
+}
+
+.joinPasswordField input {
+  padding: 0.55rem 0.7rem;
+  font-size: 1rem;
+  color: var(--shell-ink, inherit);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--shell-line, #cbd5e0);
+  border-radius: 0.5rem;
 }
 
 .modalActions {
