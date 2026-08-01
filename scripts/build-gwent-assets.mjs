@@ -66,6 +66,15 @@ const ROW_SCORCH_BY_NAME = {
   Villentretenmerth: { targetRow: 'Melee', threshold: 10 },
 };
 
+// Kártya-egyedi mechanikák (0a-spec §4.4), amikhez nincs strukturált mező — a
+// kutatási JSON `notes`-ja tartalmazza a forrás-szöveget, ez itt a magyar,
+// játékos-barát megfogalmazás (a UI-nak, lásd CardDef.specialText).
+const SPECIAL_TEXT_BY_NAME = {
+  Dandelion:
+    "Amíg a táblán van, a saját sorában lévő MINDEN MÁS kártya ereje duplázva marad (Kürt-szerű, tartós hatás — nem duplázza önmagát, soronként legfeljebb 1 ilyen hatás, egy valódi Kürt kártyával együtt is érvényesül).",
+  Cow: 'Ha bármilyen módon lekerül a tábláról (pl. Scorch), automatikusan megjelenik helyette a Bovine Defense Force (8 erejű Melee egység).',
+};
+
 // Csoportos Muster kivételek (0a-spec §4.2, felhasználó által megerősítve) — a
 // reducer futásidőben KIZÁRÓLAG ezt az adatot olvassa (mustersWithIds), nem nevet
 // hasonlít; a névlista itt csak ennek a statikus adatnak az egyszeri felépítéséhez kell.
@@ -169,6 +178,8 @@ function formatCardDef(def) {
     mustersWithIds: [${def.mustersWithIds.map(tsString).join(', ')}],
     rowScorch: ${def.rowScorch ? `{ targetRow: ${tsString(def.rowScorch.targetRow)}, threshold: ${def.rowScorch.threshold} }` : 'null'},
     weatherRow: ${def.weatherRow === null ? 'null' : tsString(def.weatherRow)},
+    specialText: ${def.specialText === null ? 'null' : tsString(def.specialText)},
+    cardText: ${def.cardText === null ? 'null' : tsString(def.cardText)},
     copies: ${def.copies},
     imagePaths: [${def.imagePaths.map(tsString).join(', ')}],
   },`;
@@ -181,6 +192,7 @@ function formatLeaderDef(def) {
     faction: ${tsString(def.faction)},
     abilityId: ${tsString(def.abilityId)},
     abilityDescription: ${tsString(def.abilityDescription)},
+    cardText: ${def.cardText === null ? 'null' : tsString(def.cardText)},
     imagePaths: [${def.imagePaths.map(tsString).join(', ')}],
   },`;
 }
@@ -240,7 +252,7 @@ async function main() {
       const abilityDescription = LEADER_ABILITY_DESCRIPTIONS_HU[card.name];
       if (!abilityDescription) throw new Error(`Missing Hungarian ability description for leader "${card.name}"`);
       const imagePaths = uniqueFiles.map((_, i) => `/assets/gwent/leaders/${id}-${i + 1}.jpg`);
-      leaderDefs.push({ id, name: card.name, faction, abilityId: id, abilityDescription, imagePaths });
+      leaderDefs.push({ id, name: card.name, faction, abilityId: id, abilityDescription, cardText: card.cardText ?? null, imagePaths });
       for (const [i, file] of uniqueFiles.entries()) {
         await processImage(file, join(PUBLIC_LEADERS_DIR, `${id}-${i + 1}.jpg`));
       }
@@ -263,6 +275,8 @@ async function main() {
       mustersWithIds: [],
       rowScorch: ROW_SCORCH_BY_NAME[card.name] ?? null,
       weatherRow: classification.kind === 'Weather' ? WEATHER_ROW_BY_NAME[card.name] : null,
+      specialText: SPECIAL_TEXT_BY_NAME[card.name] ?? null,
+      cardText: card.cardText ?? null,
       copies: card.copies,
       imagePaths,
     });

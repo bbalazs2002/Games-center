@@ -53,6 +53,25 @@ describe('CARD_DEFS', () => {
     expect(withRowScorch.sort()).toEqual(['Schirrú', 'Toad', 'Villentretenmerth']);
   });
 
+  it('specialText is set on exactly Cow and Dandelion (see 0a-spec §4.4)', () => {
+    const withSpecialText = CARD_DEFS.filter((c) => c.specialText !== null).map((c) => c.name);
+    expect(withSpecialText.sort()).toEqual(['Cow', 'Dandelion']);
+  });
+
+  it('Ice Giant has power 6 (corrected 2026-08-01, confirmed against the physical card)', () => {
+    expect(CARD_DEFS.find((c) => c.name === 'Ice Giant')?.basePower).toBe(6);
+  });
+
+  it('Villentretenmerth is NOT a Hero (corrected 2026-08-01, confirmed against the physical card)', () => {
+    const def = CARD_DEFS.find((c) => c.name === 'Villentretenmerth');
+    expect(def?.abilities).not.toContain('Hero');
+    expect(def?.rowScorch).not.toBeNull();
+  });
+
+  it('every card has non-null cardText (2026-08-01 research round, see 0a-spec §9.7)', () => {
+    for (const def of CARD_DEFS) expect(def.cardText, def.name).not.toBeNull();
+  });
+
   it('mustersWithIds is symmetric within a group (Crone/Vampire/Gaunter O\'Dimm — see 0a-spec §4.2)', () => {
     for (const def of CARD_DEFS) {
       for (const otherId of def.mustersWithIds) {

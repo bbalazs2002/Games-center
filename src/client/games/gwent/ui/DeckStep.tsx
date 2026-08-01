@@ -9,8 +9,10 @@ import {
   type DeckCardCounts,
 } from '../../../../shared/games/gwent/engine/deckRules';
 import { saveGwentDeck } from './gwentDeckPersistence';
-import { factionLabel } from './factionDisplay';
+import { FACTION_OPTIONS } from './factionDisplay';
+import { CARD_SORT_OPTIONS, sortCards, type CardSortKey } from './cardDisplay';
 import { CardCountGrid } from './CardCountGrid';
+import { CardDetailModal } from './CardDetailModal';
 import styles from './GwentSetupPage.module.css';
 
 export interface DeckStepProps {
@@ -18,16 +20,26 @@ export interface DeckStepProps {
   leaderId: string;
   cardCounts: DeckCardCounts;
   onCardCountsChange: (next: DeckCardCounts) => void;
-  onBack: () => void;
+  onFactionChange: (next: Faction) => void;
+  onLeaderChange: (next: string) => void;
 }
 
-export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, onBack }: DeckStepProps) {
+export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, onFactionChange, onLeaderChange }: DeckStepProps) {
   const [savedMessage, setSavedMessage] = useState(false);
+  const [sortKey, setSortKey] = useState<CardSortKey>('name');
+  const [detailCard, setDetailCard] = useState<CardDef | null>(null);
 
   const availableCards = cardsForFaction(faction);
-  const units = availableCards.filter((c) => c.kind === 'Unit');
-  const specials = availableCards.filter((c) => c.kind !== 'Unit');
+  const units = sortCards(
+    availableCards.filter((c) => c.kind === 'Unit'),
+    sortKey,
+  );
+  const specials = sortCards(
+    availableCards.filter((c) => c.kind !== 'Unit'),
+    sortKey,
+  );
   const validation = validateDeckDraft({ faction, leaderId, cardCounts });
+  const leadersForFaction = LEADER_DEFS.filter((l) => l.faction === faction);
 
   function changeCount(def: CardDef, delta: number): void {
     const current = cardCounts[def.id] ?? 0;
@@ -45,12 +57,26 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, on
   return (
     <>
       <div className={styles.stepHeader}>
-        <Button variant="secondary" onClick={onBack}>
-          ← Vezér
-        </Button>
-        <p>
-          {factionLabel(faction)} — vezér: {LEADER_DEFS.find((l) => l.id === leaderId)?.name}
-        </p>
+        <label className={styles.switcher}>
+          Frakció
+          <select value={faction} onChange={(event) => onFactionChange(event.target.value as Faction)}>
+            {FACTION_OPTIONS.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.switcher}>
+          Vezér
+          <select value={leaderId} onChange={(event) => onLeaderChange(event.target.value)}>
+            {leadersForFaction.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className={styles.summary}>
@@ -67,8 +93,31 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, on
         </ul>
       )}
 
-      <CardCountGrid title="Egységkártyák" cards={units} cardCounts={cardCounts} onChangeCount={changeCount} />
-      <CardCountGrid title="Speciális kártyák" cards={specials} cardCounts={cardCounts} onChangeCount={changeCount} />
+      <div className={styles.switcher}>
+        Rendezés
+        <select value={sortKey} onChange={(event) => setSortKey(event.target.value as CardSortKey)}>
+          {CARD_SORT_OPTIONS.map((option) => (
+            <option key={option.key} value={option.key}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <CardCountGrid
+        title="Egységkártyák"
+        cards={units}
+        cardCounts={cardCounts}
+        onChangeCount={changeCount}
+        onShowDetail={setDetailCard}
+      />
+      <CardCountGrid
+        title="Speciális kártyák"
+        cards={specials}
+        cardCounts={cardCounts}
+        onChangeCount={changeCount}
+        onShowDetail={setDetailCard}
+      />
 
       <div className={styles.saveRow}>
         <Button onClick={handleSave} disabled={!validation.valid}>
@@ -76,6 +125,8 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, on
         </Button>
         {savedMessage && <span className={styles.savedMessage}>Elmentve.</span>}
       </div>
+
+      <CardDetailModal card={detailCard} onClose={() => setDetailCard(null)} />
     </>
   );
 }

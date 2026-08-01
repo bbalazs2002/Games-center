@@ -67,3 +67,10 @@
   right: 0.35rem;
   z-index: 1;
 }
+
+.corner {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  z-index: 1;
+}

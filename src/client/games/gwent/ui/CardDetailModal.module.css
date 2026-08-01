@@ -1,0 +1,68 @@
+.detail {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.image {
+  width: 14rem;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.info {
+  flex: 1;
+  min-width: 14rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.name {
+  margin: 0;
+}
+
+.factsList {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+}
+
+.fact {
+  display: contents;
+}
+
+.fact dt {
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.fact dd {
+  margin: 0;
+}
+
+.mechanicText {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cardTextLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.6;
+  margin-bottom: 0.15rem;
+}
+
+.cardText {
+  margin: 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid currentColor;
+  opacity: 0.85;
+  font-style: italic;
+  line-height: 1.4;
+}

@@ -23,7 +23,21 @@
 .stepHeader {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.switcher select {
+  font: inherit;
+  padding: 0.25rem 0.5rem;
 }
 
 .summary {
@@ -62,6 +76,22 @@
   font-weight: 700;
   min-width: 1ch;
   text-align: center;
+}
+
+.mechanicTag {
+  color: #d4af37;
+  font-weight: 600;
+}
+
+.magnifierButton {
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: pointer;
 }
 
 .saveRow {

@@ -29,7 +29,7 @@ Fizikailag meglévő, kedvelt társasjátékok digitalizálása egy közös plat
 
 ## Játéklista (kiindulás)
 
-Hotel, Gazdálkodj okosan, Bang, Hanabi, Sakk, Malom, Dáma, Connect 4 (4 in a row), Színözön (Mastermind), Catan telepesei (kiegészítőkkel), Gwent (Witcher 3 verzió), Monopoly, Cluedo, Aqua Romana, Activity, Tabu, King Arthur, Jungle Speed, Dobble, Snapszer, Römi, Mocsár, Holland kocsma, Star Trek Fleet Captains, Ramses, Torpedó, Aranyásók, 2 lapos póker, 5 lapos póker, Himalája, Ladders and snakes, Kertvárosi kémek, Mars terraformálása (bővíthető lista)
+Hotel, Gazdálkodj okosan, Bang, Hanabi, Sakk, Malom, Dáma, Connect 4 (4 in a row), Színözön (Mastermind), Catan telepesei (kiegészítőkkel), Gwent (Witcher 3 verzió), Monopoly, Cluedo, Aqua Romana, Activity, Tabu, King Arthur, Jungle Speed, Dobble, Snapszer, Römi, Mocsár, Holland kocsma, Star Trek Fleet Captains, Ramses, Torpedó, Aranyásók, 2 lapos póker, 5 lapos póker, Himalája, Ladders and snakes, Kertvárosi kémek, Mars terraformálása, Vigyázz 6! (bővíthető lista)
 
 ---
 

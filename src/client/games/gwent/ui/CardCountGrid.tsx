@@ -1,14 +1,18 @@
 import { CardGrid } from '../../../ui-kit/CardGrid';
 import type { CardDef } from '../../../../shared/games/gwent/engine/types';
 import type { DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
+import { cardMechanicTag, cardRowLine, cardSummaryLine } from './cardDisplay';
 import styles from './GwentSetupPage.module.css';
 
-function abilityLabel(def: CardDef): string {
-  const parts: string[] = [];
-  if (def.basePower !== null) parts.push(String(def.basePower));
-  if (def.abilities.length > 0) parts.push(def.abilities.join(', '));
-  if (def.kind !== 'Unit') parts.push(def.kind);
-  return parts.join(' · ');
+function subtitle(def: CardDef) {
+  const mechanic = cardMechanicTag(def);
+  return (
+    <>
+      <div>{cardSummaryLine(def)}</div>
+      {cardRowLine(def) && <div>{cardRowLine(def)}</div>}
+      {mechanic && <div className={styles.mechanicTag}>{mechanic}</div>}
+    </>
+  );
 }
 
 export interface CardCountGridProps {
@@ -16,10 +20,11 @@ export interface CardCountGridProps {
   cards: CardDef[];
   cardCounts: DeckCardCounts;
   onChangeCount: (def: CardDef, delta: number) => void;
+  onShowDetail: (def: CardDef) => void;
 }
 
-/** A titled CardGrid of deck-builder cards with a per-tile +/- quantity stepper — shared by the unit- and special-card sections of DeckStep. */
-export function CardCountGrid({ title, cards, cardCounts, onChangeCount }: CardCountGridProps) {
+/** A titled CardGrid of deck-builder cards with a per-tile +/- quantity stepper and a magnifier detail button — shared by the unit- and special-card sections of DeckStep. */
+export function CardCountGrid({ title, cards, cardCounts, onChangeCount, onShowDetail }: CardCountGridProps) {
   return (
     <>
       <h2>{title}</h2>
@@ -28,24 +33,40 @@ export function CardCountGrid({ title, cards, cardCounts, onChangeCount }: CardC
         getKey={(c) => c.id}
         getImageUrl={(c) => c.imagePaths[0]}
         getLabel={(c) => c.name}
-        getSubtitle={abilityLabel}
+        getSubtitle={subtitle}
         onSelect={(c) => onChangeCount(c, 1)}
+        renderCorner={(def) => (
+          <button
+            type="button"
+            className={styles.magnifierButton}
+            aria-label={`${def.name} nagyítása`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onShowDetail(def);
+            }}
+          >
+            🔍
+          </button>
+        )}
         renderBadge={(def) => {
           const count = cardCounts[def.id] ?? 0;
-          if (count === 0) return null;
           return (
             <div className={styles.stepper}>
-              <button
-                type="button"
-                className={styles.stepperButton}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onChangeCount(def, -1);
-                }}
-              >
-                −
-              </button>
-              <span className={styles.stepperCount}>{count}</span>
+              {count > 0 && (
+                <button
+                  type="button"
+                  className={styles.stepperButton}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onChangeCount(def, -1);
+                  }}
+                >
+                  −
+                </button>
+              )}
+              <span className={styles.stepperCount}>
+                {count} / {def.copies}
+              </span>
             </div>
           );
         }}

@@ -31,4 +31,8 @@ describe('LEADER_DEFS', () => {
       expect(def.imagePaths.length).toBeGreaterThan(0);
     }
   });
+
+  it('every leader has non-null cardText (2026-08-01 research round, see 0a-spec §9.7)', () => {
+    for (const def of LEADER_DEFS) expect(def.cardText, def.name).not.toBeNull();
+  });
 });
