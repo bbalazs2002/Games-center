@@ -104,27 +104,52 @@
   pointer-events: auto;
 }
 
+/*
+ * Both hub buttons previously had `border: none; background: transparent`,
+ * sitting directly on the hub's own dark fill with nothing to tell them
+ * apart from each other or from the hub itself — real playtest report
+ * (2026-07-31: "a tárcsa menü közepén a gombok kapjanak valamilyen
+ * hátteret és keretet, hogy egyértelműen elválaszthatók legyenek"). Both
+ * now get their own subtle background + gold-accent border, matching the
+ * palette already used by `.slice`/`.hub`.
+ */
 .backButton {
-  border: none;
-  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(10, 16, 26, 0.6);
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
   font-size: 0.8rem;
   color: rgba(243, 236, 217, 0.75);
   cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .backButton:hover {
   color: #d4af37;
+  border-color: rgba(212, 175, 55, 0.75);
 }
 
 .closeButton {
-  border: none;
-  background: transparent;
-  font-size: 1.5rem;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(10, 16, 26, 0.6);
+  border-radius: 50%;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
   line-height: 1;
   color: #f3ecd9;
   cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .closeButton:hover {
   color: #d4af37;
+  border-color: rgba(212, 175, 55, 0.75);
 }

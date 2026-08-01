@@ -133,7 +133,9 @@ function formatAuctionEvent(entry: LogEntry, state: HotelState): string | undefi
 function formatMetaEvent(entry: LogEntry, state: HotelState): string | undefined {
   switch (entry.type) {
     case 'FORFEITED':
-      return `${playerName(state, entry.playerId)}: feladta a játékot`;
+      return entry.reason === 'INSOLVENT'
+        ? `${playerName(state, entry.playerId)}: csődbe ment (nem tudta fizetni az adósságát, és nem volt mit elárvereznie)`
+        : `${playerName(state, entry.playerId)}: feladta a játékot`;
     case 'GAME_WON':
       return `${playerName(state, entry.playerId)} megnyerte a játékot!`;
     default:

@@ -149,7 +149,16 @@ export type LogEntry =
   | { type: 'BID_PLACED'; playerId: PlayerId; lotId: string; amount: number }
   | { type: 'BID_PASSED'; playerId: PlayerId; lotId: string }
   | { type: 'AUCTION_RESOLVED'; lotId: string; winnerId: PlayerId | null; amount: number }
-  | { type: 'FORFEITED'; playerId: PlayerId }
+  /**
+   * `reason` distinguishes a player's own deliberate "Feladás" click
+   * (VOLUNTARY) from an automatic bankruptcy the engine forces because a
+   * debt is unpayable AND the player owns no lot to auction (INSOLVENT) — no
+   * other outcome is possible in that case, so the reducer skips the
+   * dead-end AWAITING_DEBT_RESOLUTION phase entirely (real playtest report,
+   * 2026-07-31: an "Árverés" option with nothing in it to auction). The
+   * client renders a different, clearer message per reason.
+   */
+  | { type: 'FORFEITED'; playerId: PlayerId; reason: 'VOLUNTARY' | 'INSOLVENT' }
   | { type: 'GAME_WON'; playerId: PlayerId };
 
 export interface HotelState {

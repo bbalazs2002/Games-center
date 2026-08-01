@@ -299,14 +299,38 @@ describe('reducer — free spaces resolve automatically on landing (no repeatabl
     expect(getLot(next, 'fujiyama').buildingsBuilt).toBe(0);
   });
 
-  it('FREE_BUILDING pays the most expensive of ALL owned buildings/gardens once nothing is left to build', () => {
+  it(
+    "FREE_BUILDING never offers the garden before every building on that lot is up — real playtest bug (2026-07-31): " +
+      "an unbuilt L'etoile (garden 4000 > its own first building 3300) used to always win the \"most expensive option\" pick",
+    () => {
+      let state = twoPlayerState();
+      state = updateLot(state, 'letoile', { ownerId: 'player-1', buildingsBuilt: 0, hasGarden: false });
+      state = updatePlayer(state, 'player-1', { position: 9 }); // one step from space-11 (index 10), FREE_BUILDING
+
+      const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+      expect(getLot(next, 'letoile').buildingsBuilt).toBe(1); // the (cheaper) first building
+      expect(getLot(next, 'letoile').hasGarden).toBe(false); // NOT the garden
+    },
+  );
+
+  it('FREE_BUILDING offers the garden once every building on that lot is already up', () => {
     let state = twoPlayerState();
-    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 3, hasGarden: true }); // maxes out at 2200
-    state = updateLot(state, 'president', { ownerId: 'player-1', buildingsBuilt: 4, hasGarden: true }); // maxes out at 5000
+    state = updateLot(state, 'letoile', { ownerId: 'player-1', buildingsBuilt: 5, hasGarden: false }); // fully built, garden still missing
     state = updatePlayer(state, 'player-1', { position: 9 });
 
     const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
-    expect(getPlayer(next, 'player-1').cash).toBe(15000 + 5000);
+    expect(getLot(next, 'letoile').hasGarden).toBe(true);
+  });
+
+  it('FREE_BUILDING pays the most expensive MAIN (first) building among owned lots once nothing is left to build — never a garden price', () => {
+    let state = twoPlayerState();
+    // Both fully built (buildings + garden) — nothing left, the cash fallback kicks in.
+    state = updateLot(state, 'letoile', { ownerId: 'player-1', buildingsBuilt: 5, hasGarden: true }); // first building 3300, garden 4000 (would win under the old, buggy rule)
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 3, hasGarden: true }); // first building 2200
+    state = updatePlayer(state, 'player-1', { position: 9 });
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(getPlayer(next, 'player-1').cash).toBe(15000 + 3300); // letoile's first-building price, NOT its 4000 garden price
   });
 });
 
@@ -381,9 +405,11 @@ describe('reducer — staircase rent (nights)', () => {
     expect(getPlayer(next, 'player-1').cash).toBe(15000);
   });
 
-  it('a shortfall parks the turn in AWAITING_DEBT_RESOLUTION instead of going negative', () => {
+  it('a shortfall parks the turn in AWAITING_DEBT_RESOLUTION instead of going negative, if there is a lot to auction', () => {
     let state = twoPlayerState();
     state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 2 });
+    // player-1 owns something else (royal) — there IS a lot to auction, so debt resolution is reachable.
+    state = updateLot(state, 'royal', { ownerId: 'player-1' });
     state = updatePlayer(state, 'player-1', { position: 2, cash: 100 });
     state = { ...state, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: 'fujiyama' };
 
@@ -391,6 +417,24 @@ describe('reducer — staircase rent (nights)', () => {
     expect(next.turnPhase).toBe('AWAITING_DEBT_RESOLUTION');
     expect(next.pendingDebt).toEqual({ amount: 300, creditorId: 'player-2' });
     expect(getPlayer(next, 'player-1').cash).toBe(100); // untouched until the debt is actually resolved
+  });
+
+  it('a shortfall with NO lot to auction bankrupts the player immediately (INSOLVENT), skipping AWAITING_DEBT_RESOLUTION entirely', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 2 });
+    state = updatePlayer(state, 'player-1', { position: 2, cash: 100 }); // owns nothing at all
+    state = { ...state, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: 'fujiyama' };
+
+    const next = reducer(state, { type: 'ROLL_NIGHTS', value: 3 }); // owes 300, only has 100, nothing to sell
+    expect(next.turnPhase).not.toBe('AWAITING_DEBT_RESOLUTION');
+    expect(next.pendingDebt).toBeNull();
+    const player1 = getPlayer(next, 'player-1');
+    expect(player1.bankrupt).toBe(true);
+    expect(player1.cash).toBe(0);
+    expect(next.log).toContainEqual({ type: 'FORFEITED', playerId: 'player-1', reason: 'INSOLVENT' });
+    // Only player-2 remains active in a 2-player game — the game ends immediately.
+    expect(next.status).toBe('FINISHED');
+    expect(next.winnerId).toBe('player-2');
   });
 });
 
@@ -607,7 +651,7 @@ describe('reducer — game log', () => {
     let state = twoPlayerState();
     state = { ...state, turnPhase: 'AWAITING_DEBT_RESOLUTION', pendingDebt: { amount: 99999, creditorId: null } };
     const next = reducer(state, { type: 'FORFEIT' });
-    expect(next.log).toContainEqual({ type: 'FORFEITED', playerId: 'player-1' });
+    expect(next.log).toContainEqual({ type: 'FORFEITED', playerId: 'player-1', reason: 'VOLUNTARY' });
     expect(next.log).toContainEqual({ type: 'GAME_WON', playerId: 'player-2' });
   });
 });

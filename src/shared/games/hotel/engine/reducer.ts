@@ -25,6 +25,7 @@ import {
   getCurrentPlayer,
   getFreeStaircaseCandidates,
   getLot,
+  getNextConstructionStep,
   getPlayer,
   isValidConstructionPlan,
   nextActivePlayerIndex,
@@ -48,7 +49,33 @@ function payFromBank(state: HotelState, playerId: PlayerId, amount: number): Hot
   return updatePlayer(state, playerId, { cash: player.cash + amount });
 }
 
-/** Deducts `amount` if affordable; otherwise parks the turn in AWAITING_DEBT_RESOLUTION. */
+/**
+ * Shared bankruptcy body — sends every owned lot back to the bank, zeroes
+ * cash, clears all pending debt/auction/construction state, and ends the
+ * turn. Used both for a player's own voluntary "Feladás" (VOLUNTARY) and for
+ * an automatic bankruptcy the engine forces when a debt is unpayable and the
+ * player owns no lot left to auction (INSOLVENT — see chargePlayer/
+ * afterDebtRaisingAction below), so there genuinely is no other outcome.
+ */
+function forfeitPlayer(state: HotelState, playerId: PlayerId, reason: 'VOLUNTARY' | 'INSOLVENT'): HotelState {
+  let next = state;
+  for (const lot of ownedLotsOf(state, playerId)) {
+    next = updateLot(next, lot.id, { ownerId: null, bankBuybackPrice: computeAuctionOpeningBid(lot) });
+  }
+  next = updatePlayer(next, playerId, { bankrupt: true, cash: 0 });
+  next = { ...next, pendingDebt: null, pendingAuction: null, pendingConstructionPlan: null };
+  next = appendLog(next, { type: 'FORFEITED', playerId, reason });
+  return finishTurn(next);
+}
+
+/**
+ * Deducts `amount` if affordable; otherwise parks the turn in
+ * AWAITING_DEBT_RESOLUTION so the player can auction a lot to raise cash —
+ * UNLESS they own no lot at all, in which case there is no possible way to
+ * raise the shortfall, so the dead-end debt-resolution phase (an "Árverés"
+ * option with nothing to auction) is skipped entirely and the player is
+ * bankrupted immediately instead (real playtest report, 2026-07-31).
+ */
 function chargePlayer(
   state: HotelState,
   playerId: PlayerId,
@@ -62,6 +89,7 @@ function chargePlayer(
     if (creditorId) next = payFromBank(next, creditorId, amount);
     return next;
   }
+  if (ownedLotsOf(state, playerId).length === 0) return forfeitPlayer(state, playerId, 'INSOLVENT');
   return { ...state, turnPhase: 'AWAITING_DEBT_RESOLUTION', pendingDebt: { amount, creditorId } };
 }
 
@@ -90,11 +118,17 @@ function finishTurn(state: HotelState): HotelState {
   };
 }
 
-/** After a debt-raising action (auction proceeds), pays off the debt if now affordable. */
+/**
+ * After a debt-raising action (auction proceeds), pays off the debt if now
+ * affordable — otherwise re-parks in AWAITING_DEBT_RESOLUTION to auction
+ * another lot, UNLESS the one just auctioned was the player's last (see
+ * chargePlayer's own note — same INSOLVENT bankruptcy, same reasoning).
+ */
 function afterDebtRaisingAction(state: HotelState, playerId: PlayerId): HotelState {
   if (!state.pendingDebt) return { ...state, turnPhase: 'RESOLVING_SPACE' };
   const player = getPlayer(state, playerId);
   if (player.cash < state.pendingDebt.amount) {
+    if (ownedLotsOf(state, playerId).length === 0) return forfeitPlayer(state, playerId, 'INSOLVENT');
     return { ...state, turnPhase: 'AWAITING_DEBT_RESOLUTION' };
   }
   let next = updatePlayer(state, playerId, { cash: player.cash - state.pendingDebt.amount });
@@ -289,15 +323,23 @@ interface FreeBuildOption {
   kind: 'building' | 'garden';
 }
 
-/** Every still-buildable option across ALL eligible owned lots — the next building tier's price on lots with room left, and/or the garden's price on lots without one yet (a lot can offer both at once). */
+/**
+ * The single next legal build step per eligible owned lot — reuses
+ * `getNextConstructionStep`, the ONE place the fixed build order (every
+ * building before the garden) is encoded, instead of re-deriving eligibility
+ * here. Real playtest bug (2026-07-31): the previous version offered a lot's
+ * garden whenever `!hasGarden`, regardless of `buildingsBuilt`, so an
+ * untouched L'etoile lot (garden 4000 > any single building tier) always won
+ * the "most expensive option" pick below — the reported "ingyen épület mező
+ * kertet adott, pedig még egy épület sem állt a telken" bug.
+ */
 function freeBuildOptionsOf(buildable: HotelLot[]): FreeBuildOption[] {
-  return buildable.flatMap((lot) => {
-    const options: FreeBuildOption[] = [];
-    if (lot.buildingsBuilt < lot.buildingPrices.length) {
-      options.push({ lotId: lot.id, price: lot.buildingPrices[lot.buildingsBuilt], kind: 'building' });
-    }
-    if (!lot.hasGarden) options.push({ lotId: lot.id, price: lot.gardenPrice, kind: 'garden' });
-    return options;
+  return buildable.flatMap((lot): FreeBuildOption[] => {
+    const step = getNextConstructionStep(lot, 0, false);
+    if (!step) return [];
+    return step.buildGarden
+      ? [{ lotId: lot.id, price: lot.gardenPrice, kind: 'garden' }]
+      : [{ lotId: lot.id, price: lot.buildingPrices[lot.buildingsBuilt], kind: 'building' }];
   });
 }
 
@@ -314,7 +356,13 @@ function resolveFreeBuilding(state: HotelState, playerId: PlayerId): HotelState 
 
   const buildable = getConstructionEligibleLots(state, playerId);
   if (buildable.length === 0) {
-    const maxPrice = Math.max(...owned.flatMap((lot) => [...lot.buildingPrices, lot.gardenPrice]));
+    // Every owned lot is already fully built (buildings + garden) — pay the
+    // most expensive MAIN building (first building tier) among the player's
+    // own lots, per the user's explicit rule (2026-07-31 playtest report),
+    // NOT the max across every tier/garden (that overpaid — e.g. a fully
+    // built L'etoile's 4000 garden price used to win over a fully built,
+    // cheaper lot's main building).
+    const maxPrice = Math.max(...owned.map((lot) => lot.buildingPrices[0]));
     const next = payFromBank(state, playerId, maxPrice);
     return appendLog(next, { type: 'FREE_BUILDING_GRANTED', playerId, lotId: null, payoutReceived: maxPrice });
   }
@@ -350,6 +398,10 @@ function applyRollNights(state: HotelState, value: number): HotelState {
   if (!isOwnHotel) {
     next = chargePlayer(next, player.id, rentAmount, lot.ownerId);
   }
+  // chargePlayer may have already bankrupted+finished the turn (INSOLVENT,
+  // no lot to auction) — that state must be returned as-is, never
+  // overwritten by the RESOLVING_SPACE fallback below.
+  if (getPlayer(next, player.id).bankrupt) return next;
   if (next.turnPhase === 'AWAITING_DEBT_RESOLUTION') return next;
 
   const space = next.board[player.position];
@@ -437,16 +489,7 @@ function applyPassBid(state: HotelState, bidderId: PlayerId): HotelState {
 
 function applyForfeit(state: HotelState): HotelState {
   if (!canForfeit(state)) return state;
-  const player = getCurrentPlayer(state);
-
-  let next = state;
-  for (const lot of ownedLotsOf(state, player.id)) {
-    next = updateLot(next, lot.id, { ownerId: null, bankBuybackPrice: computeAuctionOpeningBid(lot) });
-  }
-  next = updatePlayer(next, player.id, { bankrupt: true, cash: 0 });
-  next = { ...next, pendingDebt: null, pendingAuction: null, pendingConstructionPlan: null };
-  next = appendLog(next, { type: 'FORFEITED', playerId: player.id });
-  return finishTurn(next);
+  return forfeitPlayer(state, getCurrentPlayer(state).id, 'VOLUNTARY');
 }
 
 function applyEndTurn(state: HotelState): HotelState {

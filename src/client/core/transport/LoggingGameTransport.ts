@@ -1,5 +1,6 @@
 import { DEFAULT_SERVER_URL } from '../serverUrl';
 import type { GameTransport } from './GameTransport';
+import { enqueueLogEntry, flushPendingLogEntries, type QueuedLogEntry } from './gameLogQueue';
 
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? DEFAULT_SERVER_URL;
 
@@ -30,10 +31,19 @@ function generateSessionId(): string {
  * no room-creation step to pass one to) — the point is that every playtest
  * is inspectable afterward, not just deliberately-launched AI analysis runs.
  *
- * Fire-and-forget by design: local/hot-seat play has no server dependency
- * today, and logging must never introduce one — a request failure (server
- * not running, offline, whatever) is silently swallowed, never surfaced to
- * the player or allowed to block `dispatch`.
+ * Never blocks/breaks gameplay over logging: entries are persisted to a
+ * localStorage backlog (`gameLogQueue.ts`) BEFORE any network attempt, and
+ * only removed once the server actually confirms receipt. This is a fix for
+ * a real gap (2026-07-31 playtest): local hot-seat play has no server
+ * dependency by design, so a whole session played with only `npm run dev`
+ * running (no `server:dev`) previously vanished with zero trace the instant
+ * the fire-and-forget POST failed — silently, since that's also exactly what
+ * a normal transient network hiccup should do. The backlog fixes the "gone
+ * forever" part without giving up the "never blocks the game" part: a failed
+ * send just leaves the entry queued for the NEXT flush attempt (every
+ * subsequent dispatch, and once more when a new `LoggingGameTransport` is
+ * constructed — e.g. the next time any local game is opened, picking up
+ * yesterday's still-queued backlog once the server happens to be up again).
  *
  * Deliberately doesn't log `actorSlot`/`isAi` the way the server logger does
  * — hot-seat has no per-client "slot" concept (every dispatch is local), and
@@ -49,7 +59,9 @@ export class LoggingGameTransport<TState, TAction> implements GameTransport<TSta
     private readonly inner: GameTransport<TState, TAction>,
     private readonly gameType: string,
     private readonly authToken: string | null,
-  ) {}
+  ) {
+    void flushPendingLogEntries((item) => this.send(item));
+  }
 
   getState(): TState {
     return this.inner.getState();
@@ -66,14 +78,20 @@ export class LoggingGameTransport<TState, TAction> implements GameTransport<TSta
 
   private logEntry(action: TAction): void {
     const entry = { seq: this.seq++, timestamp: new Date().toISOString(), action, state: this.inner.getState() };
+    const item: QueuedLogEntry = { gameType: this.gameType, sessionId: this.sessionId, entry };
+    enqueueLogEntry(item);
+    void flushPendingLogEntries((queued) => this.send(queued));
+  }
+
+  /** Resolves `true` only once the server has actually confirmed the write — never throws. */
+  private async send(item: QueuedLogEntry): Promise<boolean> {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (this.authToken) headers.Authorization = `Bearer ${this.authToken}`;
-    fetch(`${API_BASE_URL}/api/game-log`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ gameType: this.gameType, sessionId: this.sessionId, entry }),
-    }).catch(() => {
-      // Best-effort — see class doc comment.
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/game-log`, { method: 'POST', headers, body: JSON.stringify(item) });
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 }
