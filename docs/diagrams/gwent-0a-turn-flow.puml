@@ -1,0 +1,71 @@
+@startuml gwent-0a-turn-flow
+title Gwent-0a — egy kör lefolyása és a parti-vége feltétel
+
+start
+
+:mindkét játékos húz 10 lapot\na saját paklijából;
+:legfeljebb 2 lap lecserélhető\n(mulligan, MULLIGAN fázis);
+note right
+  A frakció-bónusz itt még nem hat —
+  Scoia'tael a KÖRÖK elején dönt arról,
+  ki kezd (lásd lent), nem a parti elején.
+end note
+
+:phase = ROUND_IN_PROGRESS;
+
+repeat
+  if (mindkét játékos passzolt?) then (igen)
+    break
+  else (nem)
+  endif
+
+  if (a soron lévő játékos passzolt már?) then (igen — a másik lép)
+    :currentPlayerIndex = a MÁSIK játékos;
+  else (nem)
+  endif
+
+  :a soron lévő játékos vagy\nlejátszik egy lapot, vagy passzol;
+
+  if (lapot játszott?) then (igen)
+    :a kártya erejét/képességét a motor\nazonnal feloldja (Spy/Muster/Medic\nazonnali, TightBond/MoraleBoost/Horn\naz erő-számításba épül, lásd 0a-spec 3.2);
+    :currentPlayerIndex = a MÁSIK játékos\n(ha az még nem passzolt);
+  else (passzolt)
+    :players[i].passed = true;
+  endif
+repeat while (kör még tart)
+
+:a 2 játékos táblájának\nÖSSZ ereje összehasonlítva;
+if (döntetlen?) then (igen)
+  if (valamelyik játékos Nilfgaard\nbónusszal rendelkezik?) then (igen)
+    :az a játékos nyeri a kört\n(Nilfgaard bónusz) — a MÁSIK\nfél veszít 1 életet;
+  else (nem)
+    :MINDKÉT játékos veszít 1 életet\n(megerősítve 2026-07-30: a döntetlen\nkör IS elvesztett kör mindkét oldalra);
+  endif
+else (nem — van egyértelmű vezető)
+  :a gyengébb oldal 1 életet veszít;
+  :a győztes oldal, ha Northern Realms,\n+1 lapot húz a paklijából;
+endif
+
+:a táblák kiürülnek (a lapok discard-ba\nkerülnek) — KIVÉVE a Monsters bónusz:\n1 véletlenszerű egység a táblán marad;
+:round += 1;
+
+if (valamelyik játékos élete 0?) then (igen)
+  :phase = FINISHED;
+  :a MÁSIK játékos a győztes;
+  stop
+elseif (valamelyik játékos 2 kört nyert?) then (igen)
+  :phase = FINISHED;
+  :winnerIds = az a játékos;
+  stop
+else (a parti folytatódik)
+  :phase = ROUND_IN_PROGRESS;
+  note right
+    Ki kezd a következő körben?
+    - Scoia'tael bónusz esetén az a
+      játékos oldala dönt;
+    - egyébként az előző kört
+      VESZTETT fél kezd.
+  end note
+endif
+
+@enduml

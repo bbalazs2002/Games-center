@@ -1,0 +1,179 @@
+@startuml gwent-0a-engine-class-diagram
+title Gwent-0a — adatmodell (motor)
+
+enum Faction {
+  NorthernRealms
+  Nilfgaard
+  Monsters
+  Scoiatael
+}
+note right of Faction
+  "Neutral" NEM tagja ennek az enumnak —
+  CardDef.faction egy külön Faction | 'Neutral'
+  unió, mert egy Neutral kártya bármelyik
+  frakció deckjébe kerülhet.
+end note
+
+enum Row {
+  Melee
+  Ranged
+  Siege
+}
+
+enum CardKind {
+  Unit
+  Weather
+  Decoy
+  Horn
+  Scorch
+}
+
+enum UnitAbility {
+  Hero
+  Spy
+  TightBond
+  Muster
+  MoraleBoost
+  Medic
+  Agile
+}
+
+class RowScorchEffect {
+  targetRow: Row
+  threshold: number
+}
+note right of RowScorchEffect
+  Kártya-egyedi, a hivatalos "Card
+  Abilities" listán KÍVÜLI mechanika —
+  csak Schirrú/Toad/Villentretenmerth-nél
+  nem null. Lásd 0a-spec 4.3.
+end note
+
+class CardDef {
+  id: string
+  name: string
+  faction: Faction | 'Neutral'
+  kind: CardKind
+  row: Row | null
+  basePower: number | null
+  abilities: UnitAbility[]
+  mustersWithIds: string[]
+  weatherRow: Row | 'AllRows' | null
+  copies: number
+  imagePaths: string[]
+}
+note right of CardDef
+  Statikus katalógus, NEM játékállapot —
+  a Ramses treasureConfigs.ts mintájára.
+  copies a HIVATALOS szabálykönyv szerinti
+  darabszám, nem a fizikai kártyakép-fájlok
+  száma (lásd 0a-spec 5.1).
+  Muster feloldás KIZÁRÓLAG defId +
+  mustersWithIds alapján — SOSEM name
+  szerint (megerősítve 2026-07-30).
+end note
+
+class CardInstance {
+  instanceId: string
+  defId: string
+  chosenRow: Row | null
+}
+note right of CardInstance
+  Egy konkrét fizikai lap EBBEN a partiban —
+  defId önmagában nem elég egyedi
+  azonosítónak, mert egy CardDef-ből
+  `copies` példány is lehet a pakliban.
+  chosenRow csak Agile kártyáknál
+  értelmes (lejátszáskori sor-választás).
+end note
+
+class BoardRowState {
+  cards: CardInstance[]
+  hornActive: boolean
+  dandelionActive: boolean
+}
+note right of BoardRowState
+  dandelionActive: TARTÓS sor-flag,
+  nem egyszeri hatás (pontosítva
+  2026-07-30) — amíg Dandelion a
+  sorban van, minden MÁS kártya
+  (a később beérkezők is) duplázva.
+  Törlődik, ha a Dandelion elhagyja
+  a sort (Decoy/Scorch/RowScorch).
+end note
+
+class LeaderDef {
+  id: string
+  name: string
+  faction: Faction
+  abilityId: string
+  abilityDescription: string
+  imagePaths: string[]
+}
+note right of LeaderDef
+  ÚJ (2026-07-30, a Foltest: Son of
+  Medell kártyaszöveg tisztázása
+  kapcsán felszínre került hiány) —
+  KÜLÖN katalógus CardDef-től: a
+  vezér NINCS a húzópakliban, nincs
+  copies mezője (parti előtt választott,
+  pontosan 1). 20 bejegyzés (5-5 per
+  Northern Realms/Nilfgaard/Monsters/
+  Scoiatael), heterogén (egyszeri vs.
+  passzív egész-partis) képességekkel —
+  lásd 0a-spec 4.5.
+end note
+
+class PlayerState {
+  id: PlayerId
+  name: string
+  faction: Faction
+  leaderId: string
+  leaderAbilityUsed: boolean
+  deck: CardInstance[]
+  hand: CardInstance[]
+  discard: CardInstance[]
+  lives: number
+  roundsWon: number
+  passed: boolean
+  mulligansLeft: number
+}
+note right of PlayerState
+  Ez a TELJES, leplezetlen szerver-oldali
+  igazság (megerősítve 2026-07-30) — SOSEM
+  megy a hálózaton keresztül ebben a formában.
+  `deck`/`hand` játékosonként ELTÉRŐEN rejtett
+  (a sajátját mindenki látja, a másikét csak
+  darabszámként) — kliensenkénti Colyseus
+  StateView-val kényszerítve ki a Gwent-0b
+  szinkron-rétegben, sosem a kliensben.
+  `leaderId`/`discard` NYILVÁNOS, nem maszkolt.
+  Lásd 0a-spec 3.3.
+end note
+
+enum GwentPhase {
+  MULLIGAN
+  ROUND_IN_PROGRESS
+  ROUND_RESOLVED
+  FINISHED
+}
+
+class GwentState {
+  currentPlayerIndex: number
+  round: number
+  activeWeatherRows: Row[]
+  phase: GwentPhase
+  winnerIds: PlayerId[]
+}
+
+CardDef "0..1" -- "0..1" RowScorchEffect : rowScorch
+PlayerState "1" --> "1" LeaderDef : leaderId
+GwentState "1" *-- "2" PlayerState : players
+PlayerState "1" *-- "3" BoardRowState : board (per Row)
+BoardRowState "1" o-- "0..*" CardInstance : cards
+PlayerState "1" *-- "0..*" CardInstance : deck / hand / discard
+CardInstance "0..*" --> "1" CardDef : defId
+GwentState -- GwentPhase
+GwentState "1" o-- "0..3" Row : activeWeatherRows
+
+@enduml

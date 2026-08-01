@@ -65,6 +65,15 @@ const ALL_GAMES: GameDescriptor[] = [
     rules: () => import('../games/ramses/ui/RamsesRules'),
     coverImage: assetUrl('/assets/ramses/box.jpg'),
   },
+  {
+    id: 'gwent',
+    label: 'Gwent',
+    load: () => import('../games/gwent'),
+    // No `online`/`rules`/`theme`/`coverImage` yet — Gwent-0a.1 is deck-building
+    // only (no match engine, no multiplayer room), see docs/gwent-0a-specifikacio.md
+    // §1. GameModeSelectPage hides "Multiplayer" automatically when `online` is
+    // omitted; RulesModal/HomePage fall back gracefully without `rules`/`coverImage`.
+  },
 ];
 
 /**

@@ -11,6 +11,7 @@
     "test:dama": "vitest run src/shared/games/dama src/server/games/dama",
     "test:hotel": "vitest run src/shared/games/hotel src/server/games/hotel",
     "test:ramses": "vitest run src/shared/games/ramses",
+    "test:gwent": "vitest run src/shared/games/gwent src/server/games/gwent",
     "lint": "eslint .",
     "format": "prettier --write .",
     "server:dev": "tsx watch src/server/index.ts",
@@ -23,6 +24,7 @@
     "assets:resize-ramses-images": "node scripts/resize-ramses-images.mjs",
     "assets:box-covers": "node scripts/resize-box-covers.mjs",
     "assets:compress-hotel-glb": "node scripts/compress-hotel-glb.mjs",
+    "assets:build-gwent": "node scripts/build-gwent-assets.mjs",
     "ai:simulate-hotel": "tsx scripts/simulate-hotel-ai-games.ts",
     "ai:simulate-ramses": "tsx scripts/simulate-ramses-ai-games.ts",
     "ai:simulate-dama": "tsx scripts/simulate-dama-ai-games.ts"
