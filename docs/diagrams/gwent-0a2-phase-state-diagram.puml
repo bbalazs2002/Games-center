@@ -1,0 +1,43 @@
+@startuml gwent-0a2-phase-state-diagram
+title Gwent-0a.2 — a GwentPhase állapotgép
+
+[*] --> MULLIGAN : createInitialState
+
+state MULLIGAN {
+  MULLIGAN : mindkét játékos legfeljebb 2 lapot cserélhet
+  MULLIGAN : (a lecserélt lap ideiglenesen mulliganSetAside-ban,
+  MULLIGAN : csak CONFIRM_MULLIGAN-kor keveredik vissza a paklijba)
+}
+
+MULLIGAN --> AWAITING_START_CHOICE : mindkét játékos CONFIRM_MULLIGAN-ja megtörtént
+
+state AWAITING_START_CHOICE {
+  AWAITING_START_CHOICE : pontosan 1 Scoia'tael játékos esetén
+  AWAITING_START_CHOICE : -> CHOOSE_STARTING_PLAYER (az ő döntése)
+  AWAITING_START_CHOICE : egyébként (csak az 1. körben lehetséges,
+  AWAITING_START_CHOICE : mert 2+. körnél már van "vesztes")
+  AWAITING_START_CHOICE : -> FLIP_STARTING_COIN (pénzfeldobás)
+}
+
+AWAITING_START_CHOICE --> ROUND_IN_PROGRESS : FLIP_STARTING_COIN / CHOOSE_STARTING_PLAYER
+
+state ROUND_IN_PROGRESS {
+  ROUND_IN_PROGRESS : PLAY_CARD / PASS / ACTIVATE_LEADER_ABILITY
+  ROUND_IN_PROGRESS : (mindhárom egyformán elfogyasztja a kört —
+  ROUND_IN_PROGRESS : a vezér-képesség aktiválása NEM ingyenes extra)
+  ROUND_IN_PROGRESS --> ROUND_IN_PROGRESS : ha az ellenfél még nem passzolt,\na kör átvált; ha már passzolt,\na lépő játékos marad soron
+}
+
+ROUND_IN_PROGRESS --> ROUND_RESOLVED : mindkét játékos passzolt\n(a kör kimenete már kiszámolva,\naz eredmény naplózva)
+
+state ROUND_RESOLVED {
+  ROUND_RESOLVED : SOSEM automatikus tovább --\n  a kör-összegzés modal explicit\n  CONTINUE_AFTER_ROUND-ra vár
+}
+
+ROUND_RESOLVED --> FINISHED : CONTINUE_AFTER_ROUND,\nha valakinek 0 élete VAGY 2 megnyert köre van
+ROUND_RESOLVED --> AWAITING_START_CHOICE : CONTINUE_AFTER_ROUND,\nha a Scoia'tael-bónusz döntő\n(MINDEN körre, nem csak az 1.-re)
+ROUND_RESOLVED --> ROUND_IN_PROGRESS : CONTINUE_AFTER_ROUND,\negyébként a kör VESZTESE\nkezdi a következő kört
+
+FINISHED --> [*]
+
+@enduml

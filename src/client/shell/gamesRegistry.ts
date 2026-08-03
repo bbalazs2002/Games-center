@@ -69,10 +69,12 @@ const ALL_GAMES: GameDescriptor[] = [
     id: 'gwent',
     label: 'Gwent',
     load: () => import('../games/gwent'),
-    // No `online`/`rules`/`theme`/`coverImage` yet — Gwent-0a.1 is deck-building
-    // only (no match engine, no multiplayer room), see docs/gwent-0a-specifikacio.md
-    // §1. GameModeSelectPage hides "Multiplayer" automatically when `online` is
-    // omitted; RulesModal/HomePage fall back gracefully without `rules`/`coverImage`.
+    // Fixed 2-player, no AI opponent yet (Gwent-0b, 2026-08-03) — so `online`
+    // deliberately sets none of the AI/player-count flags; "Új szoba" shows
+    // only the password fieldset every game gets, same as if no flag existed.
+    online: {},
+    // Still no `theme`/`rules` — RulesModal/GameModeSelectPage fall back gracefully.
+    coverImage: assetUrl('/assets/gwent/icons/box.png'),
   },
 ];
 

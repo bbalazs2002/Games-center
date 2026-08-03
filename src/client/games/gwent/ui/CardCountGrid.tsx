@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../core/assetUrl';
 import { CardGrid } from '../../../ui-kit/CardGrid';
 import type { CardDef } from '../../../../shared/games/gwent/engine/types';
 import type { DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
@@ -31,7 +32,7 @@ export function CardCountGrid({ title, cards, cardCounts, onChangeCount, onShowD
       <CardGrid
         items={cards}
         getKey={(c) => c.id}
-        getImageUrl={(c) => c.imagePaths[0]}
+        getImageUrl={(c) => assetUrl(c.imagePaths[0])}
         getLabel={(c) => c.name}
         getSubtitle={subtitle}
         onSelect={(c) => onChangeCount(c, 1)}

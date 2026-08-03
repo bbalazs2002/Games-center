@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../core/assetUrl';
 import { Button } from '../../../ui-kit/Button';
 import { CardGrid } from '../../../ui-kit/CardGrid';
 import type { Faction, LeaderDef } from '../../../../shared/games/gwent/engine/types';
@@ -24,7 +25,7 @@ export function LeaderStep({ faction, leaders, selectedLeaderId, onBack, onSelec
       <CardGrid
         items={leaders}
         getKey={(l) => l.id}
-        getImageUrl={(l) => l.imagePaths[0]}
+        getImageUrl={(l) => assetUrl(l.imagePaths[0])}
         getLabel={(l) => l.name}
         getSubtitle={(l) => l.abilityDescription}
         isSelected={(l) => l.id === selectedLeaderId}

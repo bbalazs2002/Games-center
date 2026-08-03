@@ -1,0 +1,186 @@
+import { useState } from 'react';
+import { assetUrl } from '../../../../core/assetUrl';
+import { Button } from '../../../../ui-kit/Button';
+import { getLeaderDef } from '../../../../../shared/games/gwent/engine/leaderDefs';
+import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
+import { canActivateLeaderAbility } from '../../../../../shared/games/gwent/engine/leaderAbilities';
+import { getOpponent, getPlayer } from '../../../../../shared/games/gwent/engine/rules';
+import {
+  EMHYR_THE_RELENTLESS,
+  EREDIN_BRINGER_OF_DEATH,
+  EREDIN_COMMANDER_OF_THE_RED_RIDERS,
+  EREDIN_DESTROYER_OF_WORLDS,
+} from '../../../../../shared/games/gwent/engine/leaderConstants';
+import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
+import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
+import styles from './matchBoard.module.css';
+
+export interface LeaderAbilityPanelProps {
+  state: GwentState;
+  playerId: PlayerId;
+  dispatch: (action: GwentAction) => void;
+  /**
+   * The deck is masked for everyone, including its own owner (see
+   * toPublicGwentState) — EXCEPT for a momentary, request-scoped reveal when
+   * a player is legitimately about to use one of the 2 deck-searching leader
+   * abilities below. Local hot-seat resolves this synchronously in-process
+   * (no real secret to protect from yourself); online it's a real
+   * server round-trip (GwentRoom's 'requestDeckReveal'/'deckRevealed').
+   */
+  requestDeckReveal: (playerId: PlayerId) => Promise<CardInstance[]>;
+}
+
+/** Leader abilities whose target must be picked from the player's own DECK (chosen weather card, or Bringer of Death's draw). */
+const DECK_TARGET_ABILITIES = new Set([EREDIN_COMMANDER_OF_THE_RED_RIDERS, EREDIN_BRINGER_OF_DEATH]);
+/** Leader abilities whose target is a specific discard pile — own (Destroyer of Worlds) or the opponent's (The Relentless). */
+const OWN_DISCARD_TARGET_ABILITIES = new Set([EREDIN_DESTROYER_OF_WORLDS]);
+const OPPONENT_DISCARD_TARGET_ABILITIES = new Set([EMHYR_THE_RELENTLESS]);
+
+/**
+ * A single, ability-agnostic activation panel for the 13 one-shot leader
+ * abilities (category A) — most need no target at all (a plain "Aktiválás"
+ * button); a handful need a card picked from a specific pile. Eredin Bringer
+ * of Death is the one 2-step case (2 hand cards to discard + 1 deck card to
+ * draw). See docs/gwent-0a-specifikacio.md §"Gwent-0a.2" for the category list.
+ */
+export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckReveal }: LeaderAbilityPanelProps) {
+  const [pickingTarget, setPickingTarget] = useState(false);
+  const [selectedDiscards, setSelectedDiscards] = useState<string[]>([]);
+  const [revealedDeck, setRevealedDeck] = useState<CardInstance[] | null>(null);
+
+  const player = getPlayer(state, playerId);
+  const leaderDef = getLeaderDef(player.leaderId);
+  const canActivate = canActivateLeaderAbility(state, playerId);
+  if (player.leaderAbilityUsed) {
+    return (
+      <div className={styles.leaderPanel}>
+        <img className={styles.leaderImage} src={assetUrl(leaderDef.imagePaths[0])} alt={leaderDef.name} />
+        <span className={styles.leaderUsed}>Vezér-képesség elhasználva</span>
+      </div>
+    );
+  }
+
+  function activate(targetInstanceId?: string, secondaryInstanceIds?: string[]): void {
+    dispatch({ type: 'ACTIVATE_LEADER_ABILITY', playerId, targetInstanceId, secondaryInstanceIds });
+    closePicker();
+  }
+
+  function closePicker(): void {
+    setPickingTarget(false);
+    setSelectedDiscards([]);
+    setRevealedDeck(null);
+  }
+
+  const needsDeckTarget = DECK_TARGET_ABILITIES.has(player.leaderId);
+  const needsOwnDiscardTarget = OWN_DISCARD_TARGET_ABILITIES.has(player.leaderId);
+  const needsOpponentDiscardTarget = OPPONENT_DISCARD_TARGET_ABILITIES.has(player.leaderId);
+  const isBringerOfDeath = player.leaderId === EREDIN_BRINGER_OF_DEATH;
+
+  async function openPicker(): Promise<void> {
+    // A deck-target ability needs a momentary, request-scoped reveal of the
+    // real deck (masked otherwise, even from its own owner) — see this
+    // component's requestDeckReveal doc comment.
+    if (needsDeckTarget) setRevealedDeck(await requestDeckReveal(playerId));
+    setPickingTarget(true);
+  }
+
+  return (
+    <div className={styles.leaderPanel}>
+      <img className={styles.leaderImage} src={assetUrl(leaderDef.imagePaths[0])} alt={leaderDef.name} />
+      <p className={styles.leaderDescription}>{leaderDef.abilityDescription}</p>
+
+      {!pickingTarget && (
+        <Button
+          disabled={!canActivate}
+          onClick={() => (needsDeckTarget || needsOwnDiscardTarget || needsOpponentDiscardTarget ? void openPicker() : activate())}
+        >
+          Vezér-képesség aktiválása
+        </Button>
+      )}
+
+      {pickingTarget && needsDeckTarget && !isBringerOfDeath && (
+        <div className={styles.targetPicker}>
+          <p>Válassz egy időjárás-kártyát a paklidból:</p>
+          {revealedDeck === null && <p>Pakli lekérése…</p>}
+          {revealedDeck !== null && revealedDeck.filter((c) => getCardDef(c.defId).kind === 'Weather').length === 0 && (
+            <p>Nincs időjárás-kártya a paklidban.</p>
+          )}
+          {(revealedDeck ?? [])
+            .filter((c) => getCardDef(c.defId).kind === 'Weather')
+            .map((c) => (
+              <Button key={c.instanceId} variant="secondary" onClick={() => activate(c.instanceId)}>
+                {getCardDef(c.defId).name}
+              </Button>
+            ))}
+          <Button variant="secondary" onClick={closePicker}>
+            Mégse
+          </Button>
+        </div>
+      )}
+
+      {pickingTarget && isBringerOfDeath && (
+        <div className={styles.targetPicker}>
+          <p>Válassz 2 lapot a kezedből, amit eldobsz ({selectedDiscards.length}/2):</p>
+          {player.hand.map((c) => (
+            <Button
+              key={c.instanceId}
+              variant={selectedDiscards.includes(c.instanceId) ? 'primary' : 'secondary'}
+              disabled={selectedDiscards.length >= 2 && !selectedDiscards.includes(c.instanceId)}
+              onClick={() =>
+                setSelectedDiscards((prev) =>
+                  prev.includes(c.instanceId) ? prev.filter((id) => id !== c.instanceId) : [...prev, c.instanceId],
+                )
+              }
+            >
+              {getCardDef(c.defId).name}
+            </Button>
+          ))}
+          {selectedDiscards.length === 2 && (
+            <>
+              <p>Válassz 1 lapot a pakliból, amit felhúzol:</p>
+              {revealedDeck === null && <p>Pakli lekérése…</p>}
+              {(revealedDeck ?? []).map((c) => (
+                <Button key={c.instanceId} variant="secondary" onClick={() => activate(c.instanceId, selectedDiscards)}>
+                  {getCardDef(c.defId).name}
+                </Button>
+              ))}
+            </>
+          )}
+          <Button variant="secondary" onClick={closePicker}>
+            Mégse
+          </Button>
+        </div>
+      )}
+
+      {pickingTarget && needsOwnDiscardTarget && (
+        <div className={styles.targetPicker}>
+          <p>Válassz egy lapot a dobott lapjaid közül:</p>
+          {player.discard.length === 0 && <p>Üres a dobott lapok kupaca.</p>}
+          {player.discard.map((c) => (
+            <Button key={c.instanceId} variant="secondary" onClick={() => activate(c.instanceId)}>
+              {getCardDef(c.defId).name}
+            </Button>
+          ))}
+          <Button variant="secondary" onClick={() => setPickingTarget(false)}>
+            Mégse
+          </Button>
+        </div>
+      )}
+
+      {pickingTarget && needsOpponentDiscardTarget && (
+        <div className={styles.targetPicker}>
+          <p>Válassz egy lapot az ellenfél dobott lapjai közül:</p>
+          {getOpponent(state, playerId).discard.length === 0 && <p>Üres az ellenfél dobott lapok kupaca.</p>}
+          {getOpponent(state, playerId).discard.map((c) => (
+            <Button key={c.instanceId} variant="secondary" onClick={() => activate(c.instanceId)}>
+              {getCardDef(c.defId).name}
+            </Button>
+          ))}
+          <Button variant="secondary" onClick={() => setPickingTarget(false)}>
+            Mégse
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}

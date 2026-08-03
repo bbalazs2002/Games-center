@@ -1,0 +1,151 @@
+@startuml gwent-0b-multiplayer-class-diagram
+title Gwent-0b — GwentRoom + privát kéz-csatorna + helyi "add tovább a gépet" (2026-08-03, implementálva)
+
+abstract class "GameRoom<TState, TAction, TPlayerSlot, TColyseusState>" as GameRoom {
+  {abstract} isActionAllowed(state, slot, action): boolean
+  {abstract} syncState(): void
+  buildFullSyncPayload(): TState
+  #afterSync(): void
+  --
+  onCreate(options)
+  -applyAction(action)
+}
+note right of GameRoom
+  ÚJ: afterSync() — no-op default, hívva
+  syncState() után minden alkalommal
+  (onCreate, admitPlayer, applyAction).
+  Dáma/Hotel/Ramses nem override-olja
+  (nulla viselkedésváltozás). Gwent ezt
+  használja a privát kéz-csatorna
+  szétküldésére, a nyilvános Schema-n
+  KÍVÜL. buildFullSyncPayload() aláírása
+  nem változik — Gwent visszatérése
+  viewer-független (semleges nézet).
+end note
+
+class GwentRoom {
+  maxClients = 2
+  gameType = "gwent"
+  isActionAllowed(state, slot, action): boolean
+  syncState(): void
+  buildFullSyncPayload(): GwentState
+  #afterSync(): void
+  --
+  +onMessage('requestPrivateSync', ...)
+  +onMessage('submitDeck', ...)
+  +onMessage('requestDeckReveal', ...)
+}
+note left of GwentRoom
+  isActionAllowed a Dáma/Ramses-mintától
+  eltérően NEM egyszerűsödik "currentPlayer
+  == slot"-ra: MULLIGAN_SWAP/CONFIRM_MULLIGAN/
+  CHOOSE_STARTING_PLAYER nem currentPlayerIndex-
+  hez kötött (mindkét fél egymástól függetlenül
+  mulligan-ozhat). Helyette:
+  action.playerId === playerSlot minden
+  variánsnál, kivéve FLIP_STARTING_COIN/
+  CONTINUE_AFTER_ROUND (nincs egy tulajdonosuk,
+  bármelyik fél kiválthatja).
+end note
+GwentRoom --|> GameRoom
+note bottom of GwentRoom
+  TColyseusState = OpaqueGameStateSchema
+  (NEM mezőnkénti Schema — a parti rövid/
+  véges, a teljes-JSON-újraküldés olcsó,
+  lásd spec §4.1).
+
+  syncState() {
+    this.state.stateJson =
+      JSON.stringify(toPublicGwentState(this.gameState, null));
+  }
+  afterSync() {
+    for (client of this.clients)
+      client.send('privateHand', ownHandOf(client));
+  }
+end note
+
+class "toPublicGwentState(state, viewerId)" as Mask <<pure function>>
+note right of Mask
+  rules.ts — EGYETLEN maszkoló függvény,
+  KÉT fogyasztóval:
+  1) GwentRoom (szerver, viewerId=null
+     a megosztott Schema-hoz, vagy a
+     kliens saját slotja a privát
+     csatornához)
+  2) GwentGamePage helyi hot-seat módban
+     (activeViewerId, ld. lent) — UGYANEZ
+     a függvény, nincs duplikált logika.
+
+  hand/mulliganSetAside: valódi ha
+  player.id === viewerId, egyébként
+  placeholder (defId = HIDDEN_CARD_DEF_ID).
+  deck: MINDIG placeholder, a tulajdonosnak
+  is (a felhasználó explicit megerősítése,
+  2026-08-03) — mint Ramses drawPile-ja.
+  leaderId/leaderAbilityUsed/discard: SOSEM
+  maszkolt, mindig valódi mindkét oldalon.
+end note
+
+class "requestDeckReveal(playerId)" as DeckReveal <<eseti, NEM a Mask része>>
+note right of DeckReveal
+  A 2 pakli-kereső vezér-képességhez
+  (Eredin Commander of the Red Riders,
+  Bringer of Death) — a deck fenti
+  szabálya alóli EGYETLEN kivétel: csak
+  az aktiválás pillanatában, csak a
+  jogosult játékosnak. Online: valódi
+  'requestDeckReveal'/'deckRevealed'
+  hálózati körút, GwentRoom validálja
+  (DECK_SEARCH_ABILITIES + canActivate-
+  LeaderAbility). Helyi hot-seat: szinkron,
+  a valódi (maszkolatlan) helyi state-ből
+  — nincs valódi titok saját magunktól.
+  LeaderAbilityPanel egy ideiglenes
+  revealedDeck state-be teszi, sosem
+  a GwentState-be.
+end note
+GwentRoom ..> DeckReveal : onMessage('requestDeckReveal')
+GwentRoom ..> Mask : syncState() / buildFullSyncPayload()
+
+class "GwentOnlineTransport" as OnlineTransport {
+  -inner: GameTransport<GwentState, GwentAction>
+  -myPlayer: PlayerId
+  -cachedPrivateHand
+  +updatePrivateHand(payload)
+  +getState(): GwentState
+  +dispatch(action)
+  +subscribe(listener)
+}
+note right of OnlineTransport
+  MaskedRamsesTransport FORDÍTOTTJA:
+  nem kivesz infót, hanem BEfésüli a
+  'privateHand' üzeneten érkező valódi
+  kezet a nyilvánosan szinkronizált
+  (mindkét oldalon maszkolt) állapotba,
+  a saját játékos helyén. Azonosság-
+  alapú memoizálás (useSyncExternalStore
+  kompatibilitás), mint MaskedRamsesTransport.
+}
+OnlineTransport ..> Mask : (inner állapota már maszkolt a szerver felől)
+
+class "GwentGamePage (helyi hot-seat)" as LocalGamePage {
+  -activeViewerId: PlayerId?
+  +expectedViewerId(state): PlayerId
+}
+note right of LocalGamePage
+  Helyi módban NINCS hálózat — a teljes,
+  valódi GwentState a böngésző memóriájában
+  van (LocalGameTransport). A rejtés itt
+  tisztán UX-kapu, nem biztonsági határ:
+  toPublicGwentState(state, activeViewerId)
+  megy a renderbe, de a dispatch mindig a
+  valódi state-re épülő reducert hívja.
+
+  Eltérésnél (expectedViewerId !== activeViewerId)
+  PassDeviceScreen jelenik meg a tartalom helyett.
+  Online módban (myPlayer prop jelen van) ez a
+  gate teljesen kikapcsolva marad.
+end note
+LocalGamePage ..> Mask : render előtt
+
+@enduml

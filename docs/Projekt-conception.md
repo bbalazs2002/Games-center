@@ -1,7 +1,7 @@
 # Társasjáték Digitalizáló Platform — Projekt Koncepció
 
-**Státusz:** Dáma (0a/0b/0c/0d/0d.2), Hotel (0a/0b/0c.1/0d) és Ramses (0a/0b/0c/speciális kártyák/0d) élesben fut a `balazs.gyserver.domenet.info/game-center` alatt; Gwent-0a.1 (deck-építés) is kész. A teljes, kronologikus fejlesztési napló → lásd **"Fejlesztés menete"** lent. Hátralévő: Hotel-0c.2 (valódi 3D modellek, a felhasználó oldalán), Hotel-0d.2 (jövőbeli fázis), valós dobozfotók a játékválasztóhoz, Gwent-0a.2 (parti-motor). Alacsony prioritású, játék-független backlog: hangok/audio a játékokhoz.
-**Utolsó frissítés:** 2026-08-01
+**Státusz:** Dáma (0a/0b/0c/0d/0d.2), Hotel (0a/0b/0c.1/0d) és Ramses (0a/0b/0c/speciális kártyák/0d) élesben fut a `balazs.gyserver.domenet.info/game-center` alatt; Gwent-0a.1 (deck-építés), Gwent-0a.2 (parti-motor + 2D hot-seat UI) ÉS Gwent-0b (multiplayer + játékos-specifikus rejtett infó, mindkét módban kikényszerítve) is kész, csak lokálisan (még nincs deploy-olva/élesítve az `ENABLED_GAMES` build-argon keresztül). A teljes, kronologikus fejlesztési napló → lásd **"Fejlesztés menete"** lent. Hátralévő: Hotel-0c.2 (valódi 3D modellek, a felhasználó oldalán), Hotel-0d.2 (jövőbeli fázis), valós dobozfotók a játékválasztóhoz, Gwent-0c (AI ellenfél, jövőbeli fázis). Alacsony prioritású, játék-független backlog: hangok/audio a játékokhoz.
+**Utolsó frissítés:** 2026-08-04
 
 ## Projekt célja
 
@@ -130,7 +130,8 @@ Nyitott végű, kronologikus napló — **új lépés hozzáadásakor egyszerűe
 - **Gwent** (G klaszter egyetlen tagja, oldal-ág — a Witcher 3 beépített mini-játéka, NEM az önálló CDPR kártyajáték, Skellige egyelőre nélkül):
   - Gwent-0a tervezés (motor-adatmodell, kártya-/vezér-katalógus terve). LEZÁRVA (2026-07-30). → [gwent-0a-specifikacio.md](./gwent-0a-specifikacio.md)
   - Gwent-0a.1 (deck-építés — kártya-adatbázis pipeline 134 kártya+20 vezérre, `CardGrid`/`deckRules.ts`, playtest-javítási kör, majd egy teljes kártyaszöveg-kutatási kör az összes kártyára/vezérre). IMPLEMENTÁLVA (2026-07-31, kiegészítve 2026-08-01). → [gwent-0a-specifikacio.md §9](./gwent-0a-specifikacio.md)
-  - Gwent-0a.2 (a tényleges parti-motor). MÉG NEM kezdődött el.
+  - Gwent-0a.2 (a tényleges parti-motor: state/reducer/action-ok, mind a 20 vezér-képesség, 2D hot-seat board UI). IMPLEMENTÁLVA (2026-08-04). → [gwent-0a-specifikacio.md §10](./gwent-0a-specifikacio.md)
+  - Gwent-0b (online multiplayer + játékos-specifikus rejtett kéz/pakli kikényszerítése — szerver-oldalon online módban, "add tovább a gépet" kapuval helyi hot-seat módban). IMPLEMENTÁLVA (2026-08-03), élő 2-kliens smoke teszttel ellenőrizve. → [gwent-0b-multiplayer-specifikacio.md](./gwent-0b-multiplayer-specifikacio.md)
 - **Hátrasorolt, még nem kezdett fázisok** (a sorrend nem végleges, playtest-tapasztalat alapján bármikor módosulhat):
   - B) klaszter bővítés (Sakk, Malom) vagy A) klaszter (Snapszer, Römi, Mocsár, Holland kocsma, Bang, Aranyásók, 2/5 lapos póker, Himalája, Vigyázz 6!)
   - Hanabi (rejtett infó teszt, E klaszter)

@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../core/assetUrl';
 import { Modal } from '../../../ui-kit/Modal';
 import type { CardDef } from '../../../../shared/games/gwent/engine/types';
 import { cardMechanicLine, rowLabel } from './cardDisplay';
@@ -14,7 +15,7 @@ export function CardDetailModal({ card, onClose }: CardDetailModalProps) {
     <Modal open={card !== null} onClose={onClose}>
       {card && (
         <div className={styles.detail}>
-          <img className={styles.image} src={card.imagePaths[0]} alt={card.name} />
+          <img className={styles.image} src={assetUrl(card.imagePaths[0])} alt={card.name} />
           <div className={styles.info}>
             <h2 className={styles.name}>{card.name}</h2>
             <dl className={styles.factsList}>

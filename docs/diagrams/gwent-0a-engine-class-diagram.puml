@@ -137,6 +137,8 @@ class PlayerState {
   roundsWon: number
   passed: boolean
   mulligansLeft: number
+  mulliganSetAside: CardInstance[]
+  mulliganConfirmed: boolean
 }
 note right of PlayerState
   Ez a TELJES, leplezetlen szerver-oldali
@@ -149,14 +151,26 @@ note right of PlayerState
   szinkron-rétegben, sosem a kliensben.
   `leaderId`/`discard` NYILVÁNOS, nem maszkolt.
   Lásd 0a-spec 3.3.
+  `mulliganSetAside` (Gwent-0a.2, 2026-08-04):
+  a lecserélt lapok ideiglenes tartója a saját
+  mulligan-fázis alatt, hogy ugyanaz a lap sose
+  legyen visszahúzható — csak CONFIRM_MULLIGAN
+  keveri vissza a deck-be.
 end note
 
 enum GwentPhase {
   MULLIGAN
+  AWAITING_START_CHOICE
   ROUND_IN_PROGRESS
   ROUND_RESOLVED
   FINISHED
 }
+note right of GwentPhase
+  AWAITING_START_CHOICE és ROUND_RESOLVED
+  Gwent-0a.2-ben (2026-08-04) kerültek be —
+  lásd diagrams/gwent-0a2-phase-state-diagram.puml
+  a teljes átmenet-gépért.
+end note
 
 class GwentState {
   currentPlayerIndex: number
@@ -164,7 +178,43 @@ class GwentState {
   activeWeatherRows: Row[]
   phase: GwentPhase
   winnerIds: PlayerId[]
+  log: GwentLogEntry[]
 }
+
+class GwentAction <<discriminated union>> {
+  MULLIGAN_SWAP
+  CONFIRM_MULLIGAN
+  FLIP_STARTING_COIN
+  CHOOSE_STARTING_PLAYER
+  PLAY_CARD
+  PASS
+  ACTIVATE_LEADER_ABILITY
+  CONTINUE_AFTER_ROUND
+}
+note right of GwentAction
+  Gwent-0a.2 (2026-08-04) — a Hotel-motor
+  action-konvencióját követi. PLAY_CARD
+  `chosenRow` mezője kettős szerepű (Agile
+  egységnél hova kerüljön, Horn kártyánál
+  melyik sort erősítse). ACTIVATE_LEADER_ABILITY
+  egy generikus targetInstanceId/
+  secondaryInstanceIds borítékot hordoz a 13
+  heterogén one-shot vezér-képességhez.
+end note
+
+class "LeaderAbilityHandler" as LeaderAbilityHandler <<function type>> {
+  (state, playerId, targetInstanceId?, secondaryInstanceIds?) => GwentState
+}
+note right of LeaderAbilityHandler
+  LEADER_ABILITIES: Record<string, LeaderAbilityHandler>
+  (leaderAbilities.ts) — csak a 13 one-shot (A
+  kategóriás) vezér-képességet tartalmazza. A 6
+  passzív (B) képesség leaderPassives.ts-ben,
+  a rules.ts computeCardPower-jébe/PLAY_CARD
+  feloldásába építve; az 1 parti-kezdési (C)
+  képesség (Daisy of the Valley) initialState.ts-ben.
+  Lásd 0a-spec 10.3.
+end note
 
 CardDef "0..1" -- "0..1" RowScorchEffect : rowScorch
 PlayerState "1" --> "1" LeaderDef : leaderId
@@ -175,5 +225,7 @@ PlayerState "1" *-- "0..*" CardInstance : deck / hand / discard
 CardInstance "0..*" --> "1" CardDef : defId
 GwentState -- GwentPhase
 GwentState "1" o-- "0..3" Row : activeWeatherRows
+GwentAction ..> GwentState : reducer(state, action) -> GwentState
+LeaderAbilityHandler ..> LeaderDef : keyed by LeaderDef.abilityId
 
 @enduml

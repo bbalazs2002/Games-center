@@ -1,1 +1,1 @@
-export { GwentSetupPage as default } from './ui/GwentSetupPage';
+export { GwentMatchSetupPage as default } from './ui/GwentMatchSetupPage';

@@ -11,6 +11,7 @@ import { authRouter } from './auth/authRoutes';
 import { feedbackRouter } from './core/feedbackRoutes';
 import { localGameLogRouter } from './core/localGameLogRoutes';
 import { DamaRoom } from './games/dama/DamaRoom';
+import { GwentRoom } from './games/gwent/GwentRoom';
 import { HotelRoom } from './games/hotel/HotelRoom';
 import { RamsesRoom } from './games/ramses/RamsesRoom';
 
@@ -73,6 +74,7 @@ gameServer.define('lobby', LobbyRoom);
 if (isGameEnabled('dama')) gameServer.define('dama', DamaRoom).enableRealtimeListing();
 if (isGameEnabled('hotel')) gameServer.define('hotel', HotelRoom).enableRealtimeListing();
 if (isGameEnabled('ramses')) gameServer.define('ramses', RamsesRoom).enableRealtimeListing();
+if (isGameEnabled('gwent')) gameServer.define('gwent', GwentRoom).enableRealtimeListing();
 
 const port = Number(process.env.PORT ?? 2567);
 

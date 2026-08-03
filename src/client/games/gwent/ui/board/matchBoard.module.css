@@ -1,0 +1,240 @@
+.matchBoard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  min-height: 100vh;
+  background: var(--shell-ground, #0d2b1f);
+  color: var(--shell-ink, #f5f0e0);
+}
+
+.weatherBar {
+  display: flex;
+  gap: 1rem;
+  font-weight: 600;
+  justify-content: center;
+}
+
+.weatherActive {
+  color: #6fc3ff;
+}
+
+.boardZone {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.boardZoneHeader {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.playerName {
+  color: var(--shell-accent, #d4af37);
+}
+
+.boardRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 4.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.25rem 0;
+}
+
+.rowLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 5rem;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.rowTotal {
+  font-size: 1.1rem;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.rowFlags {
+  font-size: 0.9rem;
+}
+
+.rowCards {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.cardTile {
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 0.35rem;
+  padding: 0;
+  background: none;
+  cursor: default;
+  overflow: hidden;
+}
+
+.cardClickable {
+  cursor: pointer;
+}
+
+.cardClickable:not(:disabled):hover {
+  border-color: var(--shell-accent, #d4af37);
+}
+
+.cardSelected {
+  border-color: var(--shell-accent, #d4af37);
+}
+
+.cardDisabled {
+  opacity: 0.45;
+}
+
+.cardImage {
+  display: block;
+}
+
+.small .cardImage {
+  width: 3rem;
+  height: 4.2rem;
+  object-fit: cover;
+}
+
+.medium .cardImage {
+  width: 4.5rem;
+  height: 6.3rem;
+  object-fit: cover;
+}
+
+.cardBack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(45deg, #3a2a10, #3a2a10 6px, #2a1d0a 6px, #2a1d0a 12px);
+  border-radius: 0.35rem;
+}
+
+.small .cardBack {
+  width: 3rem;
+  height: 4.2rem;
+}
+
+.medium .cardBack {
+  width: 4.5rem;
+  height: 6.3rem;
+}
+
+.cardBackMark {
+  color: var(--shell-accent, #d4af37);
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.cardPower {
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  border-radius: 0.25rem;
+  padding: 0 0.25rem;
+}
+
+.actionBar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 0.5rem;
+}
+
+.handSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.turnLabel {
+  font-weight: 700;
+  color: var(--shell-accent, #d4af37);
+  margin: 0;
+}
+
+.handArea {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.targetPicker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+.leaderPanel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.leaderImage {
+  width: 3.5rem;
+  height: 4.9rem;
+  object-fit: cover;
+  border-radius: 0.35rem;
+}
+
+.leaderDescription {
+  max-width: 24rem;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.leaderUsed {
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.mulliganScreen,
+.startingChoiceScreen,
+.passDeviceScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem 1rem;
+  min-height: 100vh;
+  background: var(--shell-ground, #0d2b1f);
+  color: var(--shell-ink, #f5f0e0);
+}
+
+.coinRow {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.coinImage {
+  width: 6rem;
+  height: 6rem;
+  object-fit: contain;
+}
+
+.roundSummaryList {
+  list-style: none;
+  padding: 0;
+}

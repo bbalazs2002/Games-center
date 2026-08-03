@@ -161,6 +161,20 @@ export abstract class GameRoom<
   }
 
   /**
+   * Optional hook, called right after every `syncState()` call (onCreate,
+   * admitPlayer, applyAction) — default no-op. For a game whose hidden
+   * information is player-SPECIFIC (not symmetric like Ramses's covered
+   * treasures), the shared `TColyseusState` broadcast can only ever carry a
+   * single, neutral view — this is where a game sends each connected client
+   * their OWN private data over a separate per-client message, outside the
+   * Schema entirely (Gwent: each player's real hand — see
+   * docs/gwent-0b-multiplayer-specifikacio.md §4.2/4.3).
+   */
+  protected afterSync(): void {
+    // Intentionally empty default — most games have no player-specific private data to push.
+  }
+
+  /**
    * Optional artificial "AI is thinking…" delay (ms) between consecutive
    * AI-applied actions — default 0 (no delay), matching Dáma's confirmed
    * choice. Hotel overrides this because a single AI turn is many small
@@ -177,7 +191,10 @@ export abstract class GameRoom<
   private dbSessionId!: string;
   private dirty = false;
   private flushInterval?: ReturnType<typeof setInterval>;
-  private readonly clientSlots = new Map<string, TPlayerSlot>();
+  // protected, not private — a subclass with its own per-slot custom message
+  // handler (Gwent's 'submitDeck'/'requestPrivateSync', see afterSync() doc
+  // comment) needs to resolve a client's slot the same way the base class does.
+  protected readonly clientSlots = new Map<string, TPlayerSlot>();
   private joinCount = 0;
   private readonly aiSlots = new Set<TPlayerSlot>();
   private aiOpponentCountRequested = 0;
@@ -200,6 +217,7 @@ export abstract class GameRoom<
     this.state.pendingRequests = new ArraySchema<PendingJoinRequest>();
     this.gameState = this.createInitialState();
     this.syncState();
+    this.afterSync();
 
     // Clamped so a room can never end up with zero real players — see
     // GameRoomCreateOptions.aiOpponentCount.
@@ -301,6 +319,7 @@ export abstract class GameRoom<
     client.send('yourSlot', slot);
     this.onPlayerAdmitted(slot, auth);
     this.syncState();
+    this.afterSync();
 
     await prisma.gameSessionPlayer.create({
       data: { gameSessionId: this.dbSessionId, userId: auth.userId, playerSlot: slot },
@@ -363,6 +382,7 @@ export abstract class GameRoom<
   private applyAction(action: TAction, actorSlot: TPlayerSlot | null = null): void {
     this.gameState = this.reducer(this.gameState, action);
     this.syncState();
+    this.afterSync();
     this.dirty = true;
     this.logAction(actorSlot, action);
   }

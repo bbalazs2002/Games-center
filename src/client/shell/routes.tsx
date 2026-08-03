@@ -14,6 +14,7 @@ import { RootLayout } from './RootLayout';
 // engine/UI into the main bundle, losing GameLoader's dynamic code-splitting
 // benefit (see docs/dama-0a-specifikacio.md, "moduláris letöltéskezelés").
 const DamaOnlineGamePage = lazy(() => import('../games/dama/ui/DamaOnlineGamePage'));
+const GwentOnlineGamePage = lazy(() => import('../games/gwent/ui/GwentOnlineGamePage'));
 const HotelOnlineGamePage = lazy(() => import('../games/hotel/ui/HotelOnlineGamePage'));
 const RamsesOnlineGamePage = lazy(() => import('../games/ramses/ui/RamsesOnlineGamePage'));
 // Debug-only raw .glb inspector — see docs/hotel-0c-specifikacio.md §5.7.
@@ -86,6 +87,16 @@ export const router = createBrowserRouter([
           <RequireAuth>
             <Suspense fallback={<LoadingScreen gameId="ramses" />}>
               <RamsesOnlineGamePage />
+            </Suspense>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: '/games/gwent/online/:roomId',
+        element: (
+          <RequireAuth>
+            <Suspense fallback={<LoadingScreen gameId="gwent" />}>
+              <GwentOnlineGamePage />
             </Suspense>
           </RequireAuth>
         ),

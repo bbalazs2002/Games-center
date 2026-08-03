@@ -33,6 +33,14 @@ const ENGINE_DIR = join(repoRoot, 'src', 'shared', 'games', 'gwent', 'engine');
 const MAX_DIMENSION = 1024;
 const JPEG_QUALITY = 82;
 
+// UI chrome (row icons, board texture, coin-flip faces — see Gwent-0a.2 spec) — a flat
+// copy-and-compress pass, distinct from the card/leader pipeline above: these are small,
+// often-transparent PNGs (icon glyphs, coin faces), so they stay PNG (no JPEG flatten,
+// which would fill transparency with a background color and ruin the overlay use case).
+const ASSET_ICONS_DIR = join(repoRoot, 'assets', 'Gwent', 'icons');
+const PUBLIC_ICONS_DIR = join(repoRoot, 'public', 'assets', 'gwent', 'icons');
+const ICON_MAX_DIMENSION = 512;
+
 const FACTION_JSON_TO_ENUM = {
   'Northern Realms': 'NorthernRealms',
   'Nilfgaardian Empire': 'Nilfgaard',
@@ -146,6 +154,19 @@ async function processImage(sourcePath, outputPath) {
     .flatten({ background: '#ffffff' }) // card scans are opaque — same reasoning as resize-ramses-images.mjs
     .jpeg({ quality: JPEG_QUALITY })
     .toFile(outputPath);
+}
+
+async function processIcons() {
+  const files = readdirSync(ASSET_ICONS_DIR).filter((name) => name.toLowerCase().endsWith('.png'));
+  for (const file of files) {
+    const outputPath = join(PUBLIC_ICONS_DIR, file);
+    mkdirSync(dirname(outputPath), { recursive: true });
+    await sharp(join(ASSET_ICONS_DIR, file))
+      .resize(ICON_MAX_DIMENSION, ICON_MAX_DIMENSION, { fit: 'inside', withoutEnlargement: true })
+      .png({ compressionLevel: 9 })
+      .toFile(outputPath);
+  }
+  return files.length;
 }
 
 function classifyRow(card) {
@@ -339,8 +360,12 @@ export function getLeaderDef(id: string): LeaderDef {
   writeFileSync(join(ENGINE_DIR, 'cardDefs.ts'), cardDefsSource);
   writeFileSync(join(ENGINE_DIR, 'leaderDefs.ts'), leaderDefsSource);
 
+  const iconCount = await processIcons();
+
   const totalImages = cardDefs.reduce((n, c) => n + c.imagePaths.length, 0) + leaderDefs.reduce((n, l) => n + l.imagePaths.length, 0);
-  console.log(`Done: ${cardDefs.length} CardDefs + ${leaderDefs.length} LeaderDefs, ${totalImages} images written to public/assets/gwent/.`);
+  console.log(
+    `Done: ${cardDefs.length} CardDefs + ${leaderDefs.length} LeaderDefs, ${totalImages} images + ${iconCount} icons written to public/assets/gwent/.`,
+  );
 }
 
 await main();

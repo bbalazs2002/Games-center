@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../core/assetUrl';
 import { CardGrid } from '../../../ui-kit/CardGrid';
 import { LEADER_DEFS } from '../../../../shared/games/gwent/engine/leaderDefs';
 import type { Faction } from '../../../../shared/games/gwent/engine/types';
@@ -5,7 +6,8 @@ import { FACTION_OPTIONS } from './factionDisplay';
 
 function representativeImage(faction: Faction): string | undefined {
   // A faction has no image of its own — its first leader's art stands in for it.
-  return LEADER_DEFS.find((l) => l.faction === faction)?.imagePaths[0];
+  const path = LEADER_DEFS.find((l) => l.faction === faction)?.imagePaths[0];
+  return path ? assetUrl(path) : undefined;
 }
 
 export interface FactionStepProps {

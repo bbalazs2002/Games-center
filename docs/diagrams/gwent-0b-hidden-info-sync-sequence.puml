@@ -1,0 +1,89 @@
+@startuml gwent-0b-hidden-info-sync-sequence
+title Gwent-0b — játékos-specifikus kézrejtés: online + helyi hot-seat (2026-08-03, implementálva)
+
+actor "Játékos A\n(kliens)" as ClientA
+actor "Játékos B\n(kliens)" as ClientB
+participant "GwentRoom" as Room
+participant "reducer()\n(igazi, maszkolatlan state-en)" as Reducer
+participant "toPublicGwentState()\n(az EGYETLEN maszkoló függvény)" as Mask
+participant "this.state\n(OpaqueGameStateSchema, drótra megy)" as Schema
+
+== Online: egy lapjátszás szinkronja ==
+
+ClientA -> Room : send('action', {PLAY_CARD, instanceId})
+Room -> Room : isValidAction? isActionAllowed?\n(a VALÓDI this.gameState alapján)
+Room -> Reducer : reducer(this.gameState, action)
+Reducer --> Room : new GwentState\n(this.gameState frissül, VALÓDI kezekkel)
+
+Room -> Mask : toPublicGwentState(this.gameState, null)
+Mask --> Room : semleges nézet\n(MINDKÉT kéz/pakli placeholder)
+Room -> Schema : this.state.stateJson = JSON.stringify(semleges nézet)
+Schema -> ClientA : Colyseus broadcast (nyilvános rész)
+Schema -> ClientB : Colyseus broadcast (nyilvános rész)
+
+Room -> Room : afterSync()
+Room -> Mask : (nincs újra hívva —\naz eredeti this.gameState.players[i]\n{hand, mulliganSetAside} (NEM deck!)\nközvetlenül megy a privát csatornára)
+Room -> ClientA : send('privateHand', {hand, mulliganSetAside: A valódi adatai})
+Room -> ClientB : send('privateHand', {hand, mulliganSetAside: B valódi adatai})
+
+== Eseti kivétel: pakli-kereső vezér-képesség (Eredin Commander of the Red Riders / Bringer of Death) ==
+
+ClientA -> Room : send('requestDeckReveal')
+Room -> Room : A vezére a 2 közül való?\ncanActivateLeaderAbility(state, A)?
+Room -> ClientA : send('deckRevealed', {deck: A VALÓDI paklija})
+note right of Room
+  Ez az EGYETLEN pont, ahol a pakli valaha
+  is valódi formában elhagyja a szervert —
+  kizárólag ennek a 2 képességnek az
+  aktiválási pillanatában, kizárólag a
+  jogosult játékosnak. B kérése (más
+  vezérrel) csendben válasz nélkül marad.
+  A kliens ezt SOSEM teszi a GwentState-be,
+  csak egy ideiglenes UI-state-be
+  (LeaderAbilityPanel revealedDeck).
+end note
+
+note right of Schema
+  A és B UGYANAZT a semleges (mindkét kéz
+  placeholder) nyilvános nézetet kapja a
+  Schema-n — ez a Colyseus normál, mindenkinek
+  egyforma broadcast-ja, NEM tartalmaz valódi
+  kéz-adatot egyik oldalról sem.
+end note
+
+note left of ClientA
+  A kliens GwentOnlineTransport-ja a
+  'privateHand' üzenetből befésüli a
+  SAJÁT valódi kezét a semleges nézetbe
+  — az ellenfél keze A oldalán is
+  placeholder marad.
+end note
+
+== Helyi hot-seat: ugyanaz a maszkoló függvény, hálózat nélkül ==
+
+ClientA -> ClientA : dispatch(PLAY_CARD)\n(LocalGameTransport, TELJES, valódi state)
+ClientA -> ClientA : expectedViewerId(state) !== activeViewerId?
+ClientA -> ClientA : PassDeviceScreen\n("Add tovább a gépet — B következik")
+ClientA -> Mask : toPublicGwentState(state, activeViewerId=B)
+Mask --> ClientA : B szemszögéből maszkolt nézet\n(A keze placeholder, B keze valódi)
+ClientA -> ClientA : MatchBoard render\n(csak B kártyahátjai helyett a valódiak, A-é rejtve)
+
+note right of ClientA
+  Helyi módban NINCS valódi biztonsági
+  határ (a teljes state a böngésző
+  memóriájában van) — ez tisztán UX-kapu,
+  hogy pass-and-play közben ne látsszon
+  véletlenül az ellenfél keze. Online
+  módban ez a gate ki van kapcsolva
+  (myPlayer prop jelen van).
+
+  A pakli (deck) helyi módban is MINDIG
+  placeholder a toPublicGwentState render-
+  nézetben, akár a saját aktív játékosnak
+  is — a requestDeckReveal helyi alap-
+  értelmezése szinkron olvassa ki a
+  VALÓDI helyi state-ből (nincs hálózat,
+  nincs valódi titok saját magunktól).
+end note
+
+@enduml
