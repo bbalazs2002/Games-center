@@ -66,6 +66,7 @@ export class AuctionSchema extends Schema {
   declare highestBid: number;
   declare highestBidderId?: string;
   declare passedPlayerIds: ArraySchema<string>;
+  declare currentBidderId: string;
 }
 defineTypes(AuctionSchema, {
   lotId: 'string',
@@ -73,6 +74,7 @@ defineTypes(AuctionSchema, {
   highestBid: 'number',
   highestBidderId: 'string',
   passedPlayerIds: ['string'],
+  currentBidderId: 'string',
 });
 
 export class DebtSchema extends Schema {

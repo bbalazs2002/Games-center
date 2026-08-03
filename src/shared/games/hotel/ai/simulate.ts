@@ -1,6 +1,6 @@
 import { createInitialState } from '../engine/initialState';
 import { reducer } from '../engine/reducer';
-import { computeHotelValue, getCurrentPlayer, getPlayer, getRemainingBidderIds, ownedLotsOf } from '../engine/rules';
+import { computeHotelValue, getCurrentPlayer, getPlayer, ownedLotsOf } from '../engine/rules';
 import type { HotelState, PlayerId } from '../engine/state';
 import { chooseHotelAiAction, type HotelAiDifficulty } from './index';
 
@@ -36,8 +36,8 @@ function netWorth(state: HotelState, playerId: PlayerId): number {
 
 /**
  * One step forward: whoever can legally act right now (the current
- * turn-holder, or — during an auction — the first remaining bidder) takes
- * their AI-chosen action. Mirrors GameRoom's tryApplyOneAiMove/
+ * turn-holder, or — during an auction — whoever's turn it is to bid, see
+ * pendingAuction.currentBidderId) takes their AI-chosen action. Mirrors GameRoom's tryApplyOneAiMove/
  * maybeTriggerAiMove, but pure, synchronous, and — per your request — with
  * NO artificial "AI gondolkodik" delay: this drives the engine directly
  * (createInitialState + chooseHotelAiAction + reducer), the same way
@@ -47,7 +47,7 @@ function netWorth(state: HotelState, playerId: PlayerId): number {
  * by a human — it doesn't exist on this path, so there's nothing to disable.
  */
 function driveOneStep(state: HotelState, difficultyOf: (id: PlayerId) => HotelAiDifficulty): HotelState {
-  const actorId = state.turnPhase === 'AUCTION_IN_PROGRESS' ? getRemainingBidderIds(state)[0] : getCurrentPlayer(state).id;
+  const actorId = state.turnPhase === 'AUCTION_IN_PROGRESS' ? state.pendingAuction?.currentBidderId : getCurrentPlayer(state).id;
   const action = actorId ? chooseHotelAiAction(state, actorId, difficultyOf(actorId)) : null;
   // Shouldn't happen structurally (every reachable phase has at least one
   // legal action for whoever can act) — but a simulation runner must never

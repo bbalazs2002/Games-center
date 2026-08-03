@@ -1,8 +1,8 @@
 # Hotel — tesztek
 
-Futtatás: `npm run test:hotel` (122 teszt, 4 fájl). Lásd [README.md](./README.md) az általános konvenciókért.
+Futtatás: `npm run test:hotel` (129 teszt, 4 fájl). Lásd [README.md](./README.md) az általános konvenciókért.
 
-## `src/shared/games/hotel/engine/rules.test.ts` (48 teszt)
+## `src/shared/games/hotel/engine/rules.test.ts` (50 teszt)
 
 A tiszta predikátumok/segédfüggvények — a reducer és a `getValidActions` selector (és később a Hotel-0d AI) is ezekre épül, egyik sem duplikálja a szabály-logikát.
 
@@ -18,15 +18,15 @@ A tiszta predikátumok/segédfüggvények — a reducer és a `getValidActions` 
 - **`canBuyLot` / `canStartConstruction`** (2) — hamis Vásárlás-mezőn kívül, igaz egy vehető telekkel álló Vásárlás-mezőn; hamis, ha az adott körre már le van zárva az építkezés, még eligible telek esetén is.
 - **`canBuyStaircaseRight`** (7) — a mező-választásos lépcsővásárlás minden szabálya: jog nem aktív → hamis még saját telken is; aktív jog → igaz bármely, a telekkel szomszédos mezőre; hamis nem-szomszédos mezőre; hamis már-foglalt mezőre; hamis nem saját telekre; hamis, ha az adott telekre ebben a körben már vásároltunk; hamis, ha nincs elég pénz.
 - **`getFreeStaircaseCandidates` / `canChooseFreeStaircaseSpace`** (5) — az összes (telek, mező) jelölt-pár listázása minden saját telekhez; üres lista telek nélküli játékosnál; kizár egy telket, aminek nincs több szabad szomszédos mezője; a választás csak `AWAITING_FREE_STAIRCASE_CHOICE` fázisban engedélyezett; elutasítja nem saját telekre.
-- **`canPlaceBid` / `canPassBid`** (11 — a fájl végén, számozatlan összesítésben) — licit csak magasabb és megfizethető összegre; az árverező nem licitálhat sajátjára; már passzolt licitáló nem léphet újra; stb. (részletek az árverés-fejezet reducer-tesztjeinél is, lásd lent).
+- **`canPlaceBid` / `canPassBid`** (13 — a fájl végén, számozatlan összesítésben) — licit csak magasabb és megfizethető összegre; az árverező nem licitálhat sajátjára; már passzolt licitáló nem léphet újra; **a licitálás szigorúan sorban áll (2026-08-04): egy jogosult, de még soron nem lévő licitáló akciója elutasítva, akkor is, ha még nem passzolt** (részletek az árverés-fejezet reducer-tesztjeinél is, lásd lent).
 
-## `src/shared/games/hotel/engine/selectors.test.ts` (6 teszt)
+## `src/shared/games/hotel/engine/selectors.test.ts` (8 teszt)
 
 `getValidActions(state)` — az egyetlen hely, amiből a UI (és később az AI) megtudja, mi engedélyezett éppen most; minden mező egy-egy fenti `rules.ts` predikátumra épül.
 
-- Lefedi a dobható kockát, vehető telkeket, építkezési opciókat (áraikkal), lépcső-jogosultságot, árverés/licit állapotot, feladás/kör-vég lehetőségét — összesen 6 teszt a kombinációkra.
+- Lefedi a dobható kockát, vehető telkeket, építkezési opciókat (áraikkal), lépcső-jogosultságot, árverés/licit állapotot (beleértve az önkéntes, `RESOLVING_SPACE`-ből induló árverést és a telek nélküli játékos zsákutca-védelmét, 2026-08-04), feladás/kör-vég lehetőségét.
 
-## `src/shared/games/hotel/engine/reducer.test.ts` (62 teszt)
+## `src/shared/games/hotel/engine/reducer.test.ts` (67 teszt)
 
 A `(state, action) → newState` reducer maga — minden action-típushoz legalább egy happy-path és a releváns elutasítási esetek.
 
@@ -38,8 +38,9 @@ A `(state, action) → newState` reducer maga — minden action-típushoz legal�
 - **Ingyen mezők** (8) — INGYEN LÉPCSŐ: 100 fix kifizetés telek nélkül; jogosult telekkel `AWAITING_FREE_STAIRCASE_CHOICE`-ra vár, nem automatizál; kifizeti a legmagasabb lépcsőárat, ha nincs több hely; `CHOOSE_FREE_STAIRCASE_SPACE` lezárja a választást / elutasít nem-szomszédos mezőt / no-op fázison kívül; a jutalom nem vehető fel újra ismételt dobással; INGYEN ÉPÜLET nem csinál semmit telek nélküli játékosnál.
 - **Lépcső-bérleti díj (éjszakák)** (3) — vendég fizet, tulajdonos kap; saját szállodában nincs bérleti díj; fedezethiány `AWAITING_DEBT_RESOLUTION`-t indít, nem megy negatívba.
 - **`BUY_STAIRCASE_RIGHT`** (6) — a kiválasztott mezőre helyezi a lépcsőt, felszámítja az árat; no-op ha a jog nem aktív / nem saját telek / már vásárolt ebben a körben / nincs elég pénz / a mező nem szomszédos.
-- **Adósság-rendezés árveréssel** (2) — az árverési bevétel automatikusan törleszti az adósságot; magasabb licit új tulajdonoshoz viszi a telket.
+- **Adósság-rendezés árveréssel** (2) — az árverési bevétel automatikusan törleszti az adósságot; magasabb licit új tulajdonoshoz viszi a telket (2 fős játékban egyetlen licit AZONNAL lezár, felesleges follow-up `PASS_BID` nélkül).
 - **Árverés-szélsőértékek** (6, kifejezetten 4 fős játékkal — 2 főnél egyetlen passz mindig lezárná az árverést, ez a blokk pont az ez-alatti ágakat fedi) — nyitva marad, amíg 1-nél több jogosult licitáló van hátra; lezárul az utolsó előtti passznál; az árverező nem licitálhat sajátjára; a licitnek meg kell haladnia a jelenlegi legmagasabbat; licitáló nem léphet a pénzénél nagyobbat; már passzolt licitáló nem léphet újra.
+- **Önkéntes árverés** (5, új, 2026-08-04) — indítható `RESOLVING_SPACE`-ből pendingDebt nélkül is; elutasítva nem saját telekre; az árverező a SAJÁT körében marad a lezárás után (nem adja át a kört); bármilyen, a legmagasabb licitet szigorúan meghaladó összeg elfogadott (nincs fix lépésköz); regressziós teszt a székrend-hibára — a licitálás a VALÓDI ülésrend szerint az árverező utáni székkel kezdődik, nem mindig "az 1. játékossal, ha ő nem az árverező".
 - **Feladás és győzelem** (1) — feladáskor minden telek a bankhoz kerül, a játékos csődbe megy, és ha csak 1 nem-csődbe-ment játékos marad, vége a játéknak.
 - **`END_TURN`** (1) — a következő nem-csődbe-ment játékosra lép, a köri mezőket visszaállítja.
 - **Napló** (6) — üresen indul, `MOVED` az első dobásnál; `BONUS_2000` a `MOVED` mellett sáv-átlépéskor; elutasított/no-op action nem naplóz; `LOT_BOUGHT` a tényleges árral; `CONSTRUCTION_PERMIT_ROLLED` a feloldott (duplázott) összköltséggel; `GAME_WON` a játék végén.

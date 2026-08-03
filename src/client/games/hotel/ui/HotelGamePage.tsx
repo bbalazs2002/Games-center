@@ -41,7 +41,6 @@ import { reducer } from '../../../../shared/games/hotel/engine/reducer';
 import {
   getFreeStaircaseCandidates,
   getLot,
-  getRemainingBidderIds,
   getStaircaseSpaceOptions,
   type FreeStaircaseCandidate,
 } from '../../../../shared/games/hotel/engine/rules';
@@ -767,17 +766,18 @@ function buildRecentPurchaseColors(purchases: RecentLotPurchase[], players: Play
 }
 
 /**
- * Whether the wheel should currently accept input. Normally just "is it MY
- * turn (online) and is the current player not AI-controlled (hot-seat)" —
- * but `currentPlayerIndex` stays pointed at whoever STARTED an auction (the
- * auctioneer) for its ENTIRE duration, while `PLACE_BID`/`PASS_BID` are
- * scoped to individual bidders, not the current player (see rules.ts's
- * canPlaceBid/canPassBid — any non-auctioneer may act, not just whoever's
- * turn it nominally is). Gating on `currentPlayer` alone during an auction
- * wrongly hides the wheel from a human bidder whenever the auctioneer
- * happens to be AI-controlled (hot-seat) or isn't `myPlayer` (online) —
- * confirmed as a real, game-softlocking bug (playtest 2026-07-29): an
- * AI-started auction left a human bidder with no way to bid or pass at all.
+ * Whether the wheel (or, during an auction, the AuctionBidPanel that
+ * replaces it) should currently accept input. Normally just "is it MY turn
+ * (online) and is the current player not AI-controlled (hot-seat)" — but
+ * `currentPlayerIndex` stays pointed at whoever STARTED an auction (the
+ * auctioneer) for its ENTIRE duration, while bidding is a separate, strictly
+ * sequential rotation among the OTHER players (see rules.ts's canPlaceBid/
+ * canPassBid, `pendingAuction.currentBidderId` — 2026-08-04 redesign).
+ * Gating on `currentPlayer` alone during an auction wrongly hides the
+ * controls from the actual bidder whenever the auctioneer happens to be
+ * AI-controlled (hot-seat) or isn't `myPlayer` (online) — confirmed as a
+ * real, game-softlocking bug (playtest 2026-07-29): an AI-started auction
+ * left a human bidder with no way to bid or pass at all.
  */
 function isWheelInteractive(
   state: HotelState,
@@ -786,10 +786,11 @@ function isWheelInteractive(
   currentPlayer: Player,
 ): boolean {
   if (state.turnPhase === 'AUCTION_IN_PROGRESS') {
-    const remainingBidderIds = getRemainingBidderIds(state);
-    const isMineOrHotSeat = !myPlayer || remainingBidderIds.includes(myPlayer);
-    const awaitingAHuman = remainingBidderIds.some((id) => hotSeatAiSlots[id] === undefined);
-    return isMineOrHotSeat && awaitingAHuman;
+    const currentBidderId = state.pendingAuction?.currentBidderId;
+    if (!currentBidderId) return false;
+    const isMineOrHotSeat = !myPlayer || myPlayer === currentBidderId;
+    const isHuman = hotSeatAiSlots[currentBidderId] === undefined;
+    return isMineOrHotSeat && isHuman;
   }
   const isCurrentPlayerAi = hotSeatAiSlots[currentPlayer.id] !== undefined;
   return (!myPlayer || myPlayer === currentPlayer.id) && !isCurrentPlayerAi;

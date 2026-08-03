@@ -137,6 +137,55 @@
   font-size: 0.9rem;
 }
 
+/** Replaces the wheel while AUCTION_IN_PROGRESS — see PlayerActionWheel.tsx's AuctionBidPanel. */
+.auctionBid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: 14rem;
+  background: rgba(15, 23, 32, 0.55);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-radius: 1rem;
+  padding: 1rem 1.2rem;
+  color: #f3ecd9;
+  text-align: center;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(5, 10, 20, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.auctionBidTurn {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.auctionBidRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.auctionBidInput {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f3ecd9;
+}
+
+.auctionBidInput:focus-visible {
+  outline: 2px solid rgba(212, 175, 55, 0.75);
+  outline-offset: 1px;
+}
+
 .purchaseConfirm {
   min-width: 22rem;
   max-width: 32rem;

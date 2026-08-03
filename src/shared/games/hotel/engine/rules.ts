@@ -327,25 +327,34 @@ export function canChooseFreeStaircaseSpace(state: HotelState, lotId: string, sp
   return getStaircaseSpaceOptions(state, lotId).some((space) => space.id === spaceId);
 }
 
+/**
+ * A lot's owner may put it up for auction either voluntarily, any time
+ * during the free part of their own turn (2026-08-04 redesign — previously
+ * only reachable when a debt was unpayable), or as the forced debt-raising
+ * path (unchanged — see chargePlayer/afterDebtRaisingAction).
+ */
 export function canStartAuction(state: HotelState, lotId: string): boolean {
-  if (state.turnPhase !== 'AWAITING_DEBT_RESOLUTION' || !state.pendingDebt) return false;
-  return getLot(state, lotId).ownerId === getCurrentPlayer(state).id;
+  if (getLot(state, lotId).ownerId !== getCurrentPlayer(state).id) return false;
+  if (state.turnPhase === 'AWAITING_DEBT_RESOLUTION') return state.pendingDebt !== null;
+  return state.turnPhase === 'RESOLVING_SPACE';
 }
 
-/** Lots the current player could put up for auction to raise cash toward a pending debt. */
+/** Lots the current player could put up for auction right now — either voluntarily (own turn) or to raise cash toward a pending debt. */
 export function getAuctionableLots(state: HotelState): HotelLot[] {
-  if (state.turnPhase !== 'AWAITING_DEBT_RESOLUTION' || !state.pendingDebt) return [];
+  const isDebtPhase = state.turnPhase === 'AWAITING_DEBT_RESOLUTION' && state.pendingDebt !== null;
+  if (!isDebtPhase && state.turnPhase !== 'RESOLVING_SPACE') return [];
   return ownedLotsOf(state, getCurrentPlayer(state).id);
 }
-
-/** Fixed bid step — kept as an engine constant (not a UI concern) since it affects what counts as a legal bid. */
-const BID_INCREMENT = 100;
 
 export function canPlaceBid(state: HotelState, bidderId: PlayerId, amount: number): boolean {
   if (state.turnPhase !== 'AUCTION_IN_PROGRESS' || !state.pendingAuction) return false;
   const auction = state.pendingAuction;
-  if (!eligibleBidderIds(state, auction.auctioneerId).includes(bidderId)) return false;
-  if (auction.passedPlayerIds.includes(bidderId)) return false;
+  // currentBidderId is the primary gate (bidding is strictly sequential); the
+  // passedPlayerIds check is defense-in-depth — a correctly-driven auction
+  // never lets currentBidderId land back on someone who already passed (see
+  // reducer.ts's nextBidderInRotation), but this keeps the rule correct on
+  // its own even if some future caller hand-builds a HotelState directly.
+  if (auction.currentBidderId !== bidderId || auction.passedPlayerIds.includes(bidderId)) return false;
   if (amount <= auction.highestBid) return false;
   return getPlayer(state, bidderId).cash >= amount;
 }
@@ -353,18 +362,17 @@ export function canPlaceBid(state: HotelState, bidderId: PlayerId, amount: numbe
 export function canPassBid(state: HotelState, bidderId: PlayerId): boolean {
   if (state.turnPhase !== 'AUCTION_IN_PROGRESS' || !state.pendingAuction) return false;
   const auction = state.pendingAuction;
-  if (!eligibleBidderIds(state, auction.auctioneerId).includes(bidderId)) return false;
-  return !auction.passedPlayerIds.includes(bidderId);
+  return auction.currentBidderId === bidderId && !auction.passedPlayerIds.includes(bidderId);
 }
 
-/** Bidders who haven't passed yet — the ones still able to act in the current auction. */
+/** Bidders who haven't passed yet — the ones still able to act in the current auction (currentBidderId is the very next one, in seat order). */
 export function getRemainingBidderIds(state: HotelState): PlayerId[] {
   if (!state.pendingAuction) return [];
   const auction = state.pendingAuction;
   return eligibleBidderIds(state, auction.auctioneerId).filter((id) => !auction.passedPlayerIds.includes(id));
 }
 
-/** The minimum amount a next PLACE_BID must exceed — null when there's no auction in progress. */
-export function getNextBidAmount(state: HotelState): number | null {
-  return state.pendingAuction ? state.pendingAuction.highestBid + BID_INCREMENT : null;
+/** The minimum amount a next PLACE_BID must strictly exceed — free-form otherwise, no fixed increment (2026-08-04 redesign). Null when there's no auction in progress. */
+export function getMinimumBidAmount(state: HotelState): number | null {
+  return state.pendingAuction ? state.pendingAuction.highestBid + 1 : null;
 }

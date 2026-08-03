@@ -359,6 +359,7 @@ describe('canPlaceBid / canPassBid', () => {
         highestBid: 1000,
         highestBidderId: null,
         passedPlayerIds: [],
+        currentBidderId: 'player-2',
       },
     };
   }
@@ -389,13 +390,19 @@ describe('canPlaceBid / canPassBid', () => {
         highestBid: 1000,
         highestBidderId: null,
         passedPlayerIds: ['player-2'],
+        currentBidderId: 'player-3',
       },
     };
     expect(canPlaceBid(state, 'player-2', 1100)).toBe(false);
     expect(canPassBid(state, 'player-2')).toBe(false);
   });
 
-  it('allows a not-yet-acted eligible bidder to pass', () => {
-    expect(canPassBid(auctionState(), 'player-3')).toBe(true);
+  it('allows the current bidder (first in seat-order rotation) to pass', () => {
+    expect(canPassBid(auctionState(), 'player-2')).toBe(true);
+  });
+
+  it("rejects an eligible bidder acting out of turn, before it's their turn in the rotation (2026-08-04 redesign — bidding is strictly sequential)", () => {
+    expect(canPassBid(auctionState(), 'player-3')).toBe(false);
+    expect(canPlaceBid(auctionState(), 'player-3', 1100)).toBe(false);
   });
 });

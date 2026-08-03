@@ -1,5 +1,5 @@
 import type { HotelAction } from '../engine/actions';
-import { getCurrentPlayer, getRemainingBidderIds } from '../engine/rules';
+import { getCurrentPlayer } from '../engine/rules';
 import type { HotelState, PlayerId } from '../engine/state';
 import { rollBuildingPermit, rollD6 } from '../dice';
 import { isChanceNodePhase } from './actionEnumerator';
@@ -28,7 +28,7 @@ export function isHotelAiDifficulty(value: unknown): value is HotelAiDifficulty 
 }
 
 function canActRightNow(state: HotelState, slot: PlayerId): boolean {
-  if (state.turnPhase === 'AUCTION_IN_PROGRESS') return getRemainingBidderIds(state).includes(slot);
+  if (state.turnPhase === 'AUCTION_IN_PROGRESS') return state.pendingAuction?.currentBidderId === slot;
   return getCurrentPlayer(state).id === slot;
 }
 
@@ -55,7 +55,7 @@ function realRollAction(state: HotelState): HotelAction {
  * HotelRoom.computeAiMove (online rooms) and useHotSeatAi.ts (local hot-seat
  * games), so the decision logic itself is never duplicated between the two
  * transports. Null if `slot` has nothing to legally do right now (not the
- * current turn-holder, and not a remaining auction bidder), otherwise the
+ * current turn-holder, and not the player whose turn it is to bid), otherwise the
  * action for the configured difficulty: a real dice/permit roll when that's
  * the only legal move, or the expectimax-chosen action otherwise (see
  * expectimax.ts).

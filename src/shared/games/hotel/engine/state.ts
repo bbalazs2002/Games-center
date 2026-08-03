@@ -95,11 +95,19 @@ export interface ConstructionPlanItem {
 
 export interface PendingAuction {
   lotId: string;
-  /** The player whose debt/forfeit triggered this auction — excluded from bidding. */
+  /** The player who put the lot up for auction (voluntarily, anytime on their own turn, or forced by an unpayable debt) — excluded from bidding. */
   auctioneerId: PlayerId;
   highestBid: number;
   highestBidderId: PlayerId | null;
   passedPlayerIds: PlayerId[];
+  /**
+   * Whose turn it is to bid or pass RIGHT NOW — bidding is strictly
+   * sequential, seat-order rotation among eligible (non-auctioneer,
+   * non-bankrupt, not-yet-passed) players (2026-08-04 redesign, see
+   * docs/hotel-0a-specifikacio.md §9). Only this player's PLACE_BID/PASS_BID
+   * is accepted at any given moment.
+   */
+  currentBidderId: PlayerId;
 }
 
 /** Debt owed after a payment (rent, double-price construction) exceeded the payer's cash. */

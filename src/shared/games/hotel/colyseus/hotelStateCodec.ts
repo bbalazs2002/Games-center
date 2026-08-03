@@ -131,6 +131,7 @@ function syncAuction(schema: HotelStateSchema, auction: PendingAuction | null): 
   schema.pendingAuction.highestBid = auction.highestBid;
   schema.pendingAuction.highestBidderId = auction.highestBidderId ?? undefined;
   replaceStringArray(schema.pendingAuction.passedPlayerIds, auction.passedPlayerIds);
+  schema.pendingAuction.currentBidderId = auction.currentBidderId;
 }
 
 /** Push-only — never cleared, so only newly-added entries are ever sent over the wire. This is the actual fix for the unbounded-log-resend problem. */
@@ -207,6 +208,7 @@ function decodeAuction(schema: HotelStateSchema): PendingAuction | null {
     highestBid: schema.pendingAuction.highestBid,
     highestBidderId: schema.pendingAuction.highestBidderId ?? null,
     passedPlayerIds: [...schema.pendingAuction.passedPlayerIds],
+    currentBidderId: schema.pendingAuction.currentBidderId,
   };
 }
 

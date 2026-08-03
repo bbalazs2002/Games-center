@@ -51,7 +51,23 @@ describe('getValidActions', () => {
     expect(valid.canBid).toBe(false);
   });
 
-  it('exposes the remaining bidders and the next legal bid amount during an auction', () => {
+  it('also enables canStartAuction voluntarily, mid-turn with no debt at all (2026-08-04 redesign)', () => {
+    let state = createInitialState(['Alice', 'Bob']);
+    state = updateLot(state, 'boomerang', { ownerId: 'player-1' });
+    state = { ...state, turnPhase: 'RESOLVING_SPACE' };
+    const valid = getValidActions(state);
+    expect(valid.canStartAuction).toBe(true);
+    expect(valid.auctionableLots.map((lot) => lot.id)).toEqual(['boomerang']);
+  });
+
+  it('keeps canStartAuction false for an owner-less player, even in RESOLVING_SPACE — never an enabled-but-dead-end option (same reasoning as the 2026-07-31 debt-auction fix)', () => {
+    const state = { ...createInitialState(['Alice', 'Bob']), turnPhase: 'RESOLVING_SPACE' as const };
+    const valid = getValidActions(state);
+    expect(valid.canStartAuction).toBe(false);
+    expect(valid.auctionableLots).toEqual([]);
+  });
+
+  it('exposes the remaining bidders, whose turn it is, and the minimum legal bid amount during an auction', () => {
     let state = createInitialState(['Alice', 'Bob', 'Carol']);
     state = {
       ...state,
@@ -62,11 +78,13 @@ describe('getValidActions', () => {
         highestBid: 500,
         highestBidderId: null,
         passedPlayerIds: ['player-2'],
+        currentBidderId: 'player-3',
       },
     };
     const valid = getValidActions(state);
     expect(valid.canBid).toBe(true);
     expect(valid.remainingBidderIds).toEqual(['player-3']);
-    expect(valid.nextBidAmount).toBe(600);
+    expect(valid.currentBidderId).toBe('player-3');
+    expect(valid.minimumBidAmount).toBe(501);
   });
 });

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
 import {
   canBuildWithoutPermit,
+  canPassBid,
+  canPlaceBid,
   computeConstructionCost,
   computeLotPurchasePrice,
   computeNightlyRent,
@@ -16,9 +18,8 @@ import { DiceHUD } from './DiceHUD';
 import { HotelLotFacts } from './HotelLotFacts';
 import modalTheme from './hotelModalTheme.module.css';
 import {
-  auctionBiddingSlices,
+  auctionLotSlices,
   constructionLotSlices,
-  debtAuctionLotSlices,
   purchaseLotSlices,
   rollPermitDie,
   rootSlices,
@@ -75,10 +76,8 @@ function computeSlices(
       return constructionLotSlices(state, pending, addToPending);
     case 'staircase-right-lots':
       return staircaseRightLotSlices(state, onStartStaircasePlacement);
-    case 'debt-auction-lots':
-      return debtAuctionLotSlices(state, dispatch);
-    case 'auction-bidding':
-      return auctionBiddingSlices(state, dispatch);
+    case 'auction-lots':
+      return auctionLotSlices(state, dispatch);
     default:
       return [];
   }
@@ -142,30 +141,48 @@ function resolveSlices(
 }
 
 /** Replaces the wheel itself while a staircase placement is armed — the actual space choice happens by clicking a translucent preview on the 3D board (`HotelGamePage.tsx`'s `StaircaseCandidateOverlay`), not through a menu. */
-function WheelOrStaircaseHint({
+/**
+ * Swaps the wheel out for whichever OTHER interaction currently takes
+ * precedence — a staircase-space picker armed on the board, or (2026-08-04)
+ * an in-progress auction's free-typed bid panel — falling back to the normal
+ * wheel otherwise. The two never legitimately overlap (arming a staircase
+ * placement doesn't survive into a different turnPhase), but staircase
+ * placement wins if they somehow did, since it's the more actively-armed
+ * one-shot interaction.
+ */
+function WheelOrOverlay({
   staircasePlacement,
   onCancelStaircasePlacement,
+  state,
+  dispatch,
+  interactive,
   slices,
   onBack,
   onClose,
 }: {
   staircasePlacement: StaircasePlacementMode | null;
   onCancelStaircasePlacement: () => void;
+  state: HotelState;
+  dispatch: (action: HotelAction) => void;
+  interactive: boolean;
   slices: WheelMenuSlice[];
   onBack?: () => void;
   onClose: () => void;
 }) {
-  if (!staircasePlacement) {
-    return <WheelMenu slices={slices} onBack={onBack} onClose={onClose} />;
+  if (staircasePlacement) {
+    return (
+      <div className={styles.staircaseHint}>
+        <p>Válassz egy mezőt a táblán a lépcsőnek</p>
+        <Button variant="secondary" onClick={onCancelStaircasePlacement}>
+          Mégse
+        </Button>
+      </div>
+    );
   }
-  return (
-    <div className={styles.staircaseHint}>
-      <p>Válassz egy mezőt a táblán a lépcsőnek</p>
-      <Button variant="secondary" onClick={onCancelStaircasePlacement}>
-        Mégse
-      </Button>
-    </div>
-  );
+  if (state.turnPhase === 'AUCTION_IN_PROGRESS') {
+    return <AuctionBidPanel state={state} dispatch={dispatch} interactive={interactive} />;
+  }
+  return <WheelMenu slices={slices} onBack={onBack} onClose={onClose} />;
 }
 
 /**
@@ -215,6 +232,77 @@ function AuctionSubjectPanel({
       <span>Árverés: {lot.name}</span>
       <span className={styles.auctionSubjectBid}>Legmagasabb: {auction.highestBid}</span>
     </button>
+  );
+}
+
+/**
+ * Replaces the wheel entirely while AUCTION_IN_PROGRESS (2026-08-04 redesign
+ * — bidding is now strictly sequential, one bidder at a time, per
+ * `pendingAuction.currentBidderId`, with a freely-typed amount instead of a
+ * fixed +100-per-click wheel slice). `interactive` mirrors the wheel's own
+ * online-mode gating (not this client's turn to bid = every control disabled).
+ */
+function AuctionBidPanel({
+  state,
+  dispatch,
+  interactive,
+}: {
+  state: HotelState;
+  dispatch: (action: HotelAction) => void;
+  interactive: boolean;
+}) {
+  const auction = state.pendingAuction;
+  const [amountText, setAmountText] = useState('');
+
+  // A fresh typing slate every time it becomes a (possibly different)
+  // player's turn to act, or the price moves — the previous bidder's typed
+  // number is meaningless once it's someone else's turn.
+  useEffect(() => {
+    setAmountText('');
+  }, [auction?.currentBidderId, auction?.highestBid]);
+
+  if (!auction) return null;
+  const bidder = state.players.find((p) => p.id === auction.currentBidderId);
+  if (!bidder) return null;
+  const bidderId = bidder.id;
+
+  const minimumBid = auction.highestBid + 1;
+  const parsedAmount = Number(amountText);
+  const isValidNumber = amountText.trim() !== '' && Number.isInteger(parsedAmount);
+  const canBid = interactive && isValidNumber && canPlaceBid(state, bidderId, parsedAmount);
+  const canPass = interactive && canPassBid(state, bidderId);
+
+  function placeBid(): void {
+    if (canBid) dispatch({ type: 'PLACE_BID', bidderId, amount: parsedAmount });
+  }
+
+  function pass(): void {
+    if (canPass) dispatch({ type: 'PASS_BID', bidderId });
+  }
+
+  return (
+    <div className={[styles.auctionBid, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
+      <p className={styles.auctionBidTurn}>{bidder.name} köre: licitálj vagy passzolj</p>
+      <div className={styles.auctionBidRow}>
+        <input
+          type="number"
+          className={styles.auctionBidInput}
+          min={minimumBid}
+          step={1}
+          value={amountText}
+          placeholder={String(minimumBid)}
+          disabled={!interactive}
+          onChange={(event) => setAmountText(event.target.value)}
+          onKeyDown={(event) => event.key === 'Enter' && placeBid()}
+        />
+        <Button onClick={placeBid} disabled={!canBid}>
+          Licitál
+        </Button>
+      </div>
+      <Button variant="secondary" onClick={pass} disabled={!canPass}>
+        Passzol
+      </Button>
+    </div>
   );
 }
 
@@ -360,9 +448,12 @@ export function PlayerActionWheel({
         {/* Wheel above the dice, not below — a real playtest request
             (2026-07-30): the menu is what's actually interacted with every
             turn, the dice result is secondary reference info. */}
-        <WheelOrStaircaseHint
+        <WheelOrOverlay
           staircasePlacement={staircasePlacement}
           onCancelStaircasePlacement={onCancelStaircasePlacement}
+          state={state}
+          dispatch={dispatch}
+          interactive={interactive}
           slices={slices}
           onBack={stack.length > 1 ? back : undefined}
           onClose={() => setOpen(false)}

@@ -429,17 +429,22 @@ function applyStartAuction(state: HotelState, lotId: string): HotelState {
   const player = getCurrentPlayer(state);
   const lot = getLot(state, lotId);
   const openingBid = computeAuctionOpeningBid(lot);
-
+  const auctionSeed: PendingAuction = {
+    lotId,
+    auctioneerId: player.id,
+    highestBid: openingBid,
+    highestBidderId: null,
+    passedPlayerIds: [],
+    // Placeholder — canStartAuction already guarantees >=2 non-bankrupt
+    // players, so nextBidderInRotation always replaces this with a real
+    // bidder (whoever sits immediately after the auctioneer), never falls
+    // through to this fallback for real.
+    currentBidderId: player.id,
+  };
   const next: HotelState = {
     ...state,
     turnPhase: 'AUCTION_IN_PROGRESS',
-    pendingAuction: {
-      lotId,
-      auctioneerId: player.id,
-      highestBid: openingBid,
-      highestBidderId: null,
-      passedPlayerIds: [],
-    },
+    pendingAuction: { ...auctionSeed, currentBidderId: nextBidderInRotation(state, auctionSeed, player.id) },
   };
   return appendLog(next, { type: 'AUCTION_STARTED', playerId: player.id, lotId, openingBid });
 }
@@ -469,26 +474,49 @@ function resolveAuction(state: HotelState, auction: PendingAuction): HotelState 
   return afterDebtRaisingAction(next, auction.auctioneerId);
 }
 
-/** Resolves once at most one eligible bidder still hasn't passed. */
-function maybeResolveAuction(state: HotelState, auction: PendingAuction): HotelState {
-  const eligible = eligibleBidderIds(state, auction.auctioneerId);
-  const remaining = eligible.filter((id) => !auction.passedPlayerIds.includes(id));
-  if (remaining.length > 1) return { ...state, pendingAuction: auction };
-  return resolveAuction(state, auction);
+/**
+ * Who bids/passes next, walking the REAL board seat order (not just
+ * `eligibleBidderIds`' filtered list, which loses the auctioneer's own seat
+ * position) starting right after `afterId` — so bidding always continues
+ * with whoever sits immediately next at the table, wrapping around past the
+ * auctioneer, rather than jumping back to seat 1. The caller only invokes
+ * this once it's already confirmed more than one eligible bidder remains, so
+ * a candidate is always found within one lap (never falls through to the
+ * `afterId` fallback for real).
+ */
+function nextBidderInRotation(state: HotelState, auction: PendingAuction, afterId: PlayerId): PlayerId {
+  const seatOrder = state.players.map((p) => p.id);
+  const startIndex = seatOrder.indexOf(afterId);
+  for (let step = 1; step <= seatOrder.length; step += 1) {
+    const candidateId = seatOrder[(startIndex + step) % seatOrder.length];
+    if (candidateId === auction.auctioneerId) continue;
+    if (getPlayer(state, candidateId).bankrupt) continue;
+    if (auction.passedPlayerIds.includes(candidateId)) continue;
+    return candidateId;
+  }
+  return afterId;
+}
+
+/** Resolves once at most one eligible bidder still hasn't passed; otherwise advances `currentBidderId` to the next in seat-order rotation after whoever just acted. */
+function maybeResolveAuction(state: HotelState, auction: PendingAuction, actedBidderId: PlayerId): HotelState {
+  const remaining = eligibleBidderIds(state, auction.auctioneerId).filter((id) => !auction.passedPlayerIds.includes(id));
+  if (remaining.length <= 1) return resolveAuction(state, auction);
+  const currentBidderId = nextBidderInRotation(state, auction, actedBidderId);
+  return { ...state, pendingAuction: { ...auction, currentBidderId } };
 }
 
 function applyPlaceBid(state: HotelState, bidderId: PlayerId, amount: number): HotelState {
   if (!canPlaceBid(state, bidderId, amount) || !state.pendingAuction) return state;
   const auction = state.pendingAuction;
   const next = appendLog(state, { type: 'BID_PLACED', playerId: bidderId, lotId: auction.lotId, amount });
-  return maybeResolveAuction(next, { ...auction, highestBid: amount, highestBidderId: bidderId });
+  return maybeResolveAuction(next, { ...auction, highestBid: amount, highestBidderId: bidderId }, bidderId);
 }
 
 function applyPassBid(state: HotelState, bidderId: PlayerId): HotelState {
   if (!canPassBid(state, bidderId) || !state.pendingAuction) return state;
   const auction = state.pendingAuction;
   const next = appendLog(state, { type: 'BID_PASSED', playerId: bidderId, lotId: auction.lotId });
-  return maybeResolveAuction(next, { ...auction, passedPlayerIds: [...auction.passedPlayerIds, bidderId] });
+  return maybeResolveAuction(next, { ...auction, passedPlayerIds: [...auction.passedPlayerIds, bidderId] }, bidderId);
 }
 
 function applyForfeit(state: HotelState): HotelState {

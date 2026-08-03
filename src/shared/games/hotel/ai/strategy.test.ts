@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../engine/initialState';
 import { reducer } from '../engine/reducer';
-import { getCurrentPlayer, getRemainingBidderIds } from '../engine/rules';
+import { getCurrentPlayer } from '../engine/rules';
 import type { HotelState } from '../engine/state';
 import { chooseHotelAiAction, type HotelAiDifficulty } from './index';
 
@@ -49,14 +49,13 @@ describe('chooseHotelAiAction', () => {
 });
 
 describe('AI-only full game (smoke test)', () => {
-  /** Whoever can legally act right now (current turn-holder, or the first remaining auction bidder) drives one step forward — mirrors GameRoom.tryApplyOneAiMove, simplified for direct engine-level testing (no room/network involved). */
+  /** Whoever can legally act right now (current turn-holder, or — during an auction — pendingAuction.currentBidderId) drives one step forward — mirrors GameRoom.tryApplyOneAiMove, simplified for direct engine-level testing (no room/network involved). */
   function driveOneStep(state: HotelState, difficultyOf: (playerId: string) => HotelAiDifficulty): HotelState {
     if (state.turnPhase === 'AUCTION_IN_PROGRESS') {
-      for (const bidderId of getRemainingBidderIds(state)) {
-        const action = chooseHotelAiAction(state, bidderId, difficultyOf(bidderId));
-        if (action) return reducer(state, action);
-      }
-      throw new Error(`No remaining bidder could act during auction: ${JSON.stringify(state.pendingAuction)}`);
+      const bidderId = state.pendingAuction?.currentBidderId;
+      const action = bidderId ? chooseHotelAiAction(state, bidderId, difficultyOf(bidderId)) : null;
+      if (!action) throw new Error(`Current bidder could not act during auction: ${JSON.stringify(state.pendingAuction)}`);
+      return reducer(state, action);
     }
     const currentId = getCurrentPlayer(state).id;
     const action = chooseHotelAiAction(state, currentId, difficultyOf(currentId));

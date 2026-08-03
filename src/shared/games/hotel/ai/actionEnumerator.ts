@@ -1,12 +1,5 @@
 import type { HotelAction } from '../engine/actions';
-import {
-  canBuildWithoutPermit,
-  canPassBid,
-  canPlaceBid,
-  getNextBidAmount,
-  getRemainingBidderIds,
-  getStaircaseSpaceOptions,
-} from '../engine/rules';
+import { canBuildWithoutPermit, canPassBid, canPlaceBid, getMinimumBidAmount, getStaircaseSpaceOptions } from '../engine/rules';
 import { getValidActions, type HotelValidActions } from '../engine/selectors';
 import type { HotelState, PlayerId } from '../engine/state';
 
@@ -40,15 +33,12 @@ export function chanceOutcomes(state: HotelState): ChanceOutcome[] {
 
 /**
  * Who gets to act next — the current turn-holder, except during an auction,
- * where any remaining (non-passed) bidder may act. Real multiplayer bidding
- * is order-free (whoever's client sends first), but the search needs a
- * single deterministic actor per node — picking the first remaining bidder
- * is an arbitrary but consistent choice for internal simulation purposes
- * only (it doesn't affect what the ROOM actually accepts from real clients).
+ * where bidding is strictly sequential (2026-08-04 redesign) and
+ * `pendingAuction.currentBidderId` names the one player whose turn it is.
  */
 export function getActingId(state: HotelState): PlayerId | null {
   if (state.turnPhase === 'AUCTION_IN_PROGRESS') {
-    return getRemainingBidderIds(state)[0] ?? null;
+    return state.pendingAuction?.currentBidderId ?? null;
   }
   return state.players[state.currentPlayerIndex]?.id ?? null;
 }
@@ -56,9 +46,12 @@ export function getActingId(state: HotelState): PlayerId | null {
 function enumerateAuctionActions(state: HotelState, actorId: PlayerId): HotelAction[] {
   const actions: HotelAction[] = [];
   if (canPassBid(state, actorId)) actions.push({ type: 'PASS_BID', bidderId: actorId });
-  const nextBid = getNextBidAmount(state);
-  if (nextBid !== null && canPlaceBid(state, actorId, nextBid)) {
-    actions.push({ type: 'PLACE_BID', bidderId: actorId, amount: nextBid });
+  // The AI always considers the smallest legal raise — bid amounts are
+  // free-form for a human, but a single "just barely outbid" candidate is
+  // enough for the search (it doesn't need to explore every possible amount).
+  const minBid = getMinimumBidAmount(state);
+  if (minBid !== null && canPlaceBid(state, actorId, minBid)) {
+    actions.push({ type: 'PLACE_BID', bidderId: actorId, amount: minBid });
   }
   return actions;
 }

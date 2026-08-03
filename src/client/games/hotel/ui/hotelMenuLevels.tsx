@@ -18,8 +18,8 @@ export type MenuLevel =
   | { kind: 'purchase-lots' }
   | { kind: 'construction-lots' }
   | { kind: 'staircase-right-lots' }
-  | { kind: 'debt-auction-lots' }
-  | { kind: 'auction-bidding' };
+  /** Picking which owned lot to put up for auction — either voluntarily (anytime on your own turn) or to raise cash toward a pending debt (2026-08-04 redesign, see docs/hotel-0a-specifikacio.md §9). The actual bidding, once started, is NOT a wheel level — see PlayerActionWheel's AuctionBidPanel. */
+  | { kind: 'auction-lots' };
 
 /**
  * Which staircase-space picker is currently armed, if any — `spaceId` is
@@ -113,8 +113,13 @@ export function rootSlices(
       id: 'auction',
       label: 'Árverés',
       icon: <Gavel />,
-      disabled: !valid.canStartAuction && !valid.canBid,
-      onSelect: () => nav.push(valid.canBid ? { kind: 'auction-bidding' } : { kind: 'debt-auction-lots' }),
+      // Once AUCTION_IN_PROGRESS starts, this whole wheel is replaced by
+      // PlayerActionWheel's AuctionBidPanel (bidding needs a free-typed
+      // amount, not a wheel slice) — this slice only ever needs to handle
+      // STARTING a new auction, either voluntarily (any owned lot, any time
+      // on your own turn) or to raise cash toward a pending debt.
+      disabled: !valid.canStartAuction,
+      onSelect: () => nav.push({ kind: 'auction-lots' }),
     },
     {
       id: 'forfeit',
@@ -202,36 +207,12 @@ export function staircaseRightLotSlices(
   }));
 }
 
-export function debtAuctionLotSlices(state: HotelState, dispatch: Dispatch): WheelMenuSlice[] {
+/** Picking which owned lot to put up for auction — voluntary or debt-forced, see MenuLevel's 'auction-lots' doc comment. */
+export function auctionLotSlices(state: HotelState, dispatch: Dispatch): WheelMenuSlice[] {
   return getValidActions(state).auctionableLots.map((lot) => ({
     id: `auction-${lot.id}`,
     label: `${lot.name} (nyitó: ${computeAuctionOpeningBid(lot)})`,
     icon: <Gavel />,
     onSelect: () => dispatch({ type: 'START_AUCTION', lotId: lot.id }),
   }));
-}
-
-export function auctionBiddingSlices(state: HotelState, dispatch: Dispatch): WheelMenuSlice[] {
-  const valid = getValidActions(state);
-  if (valid.nextBidAmount === null) return [];
-  const nextBid = valid.nextBidAmount;
-
-  return valid.remainingBidderIds.flatMap((bidderId): WheelMenuSlice[] => {
-    const bidder = state.players.find((p) => p.id === bidderId);
-    if (!bidder) return [];
-    return [
-      {
-        id: `bid-${bidderId}`,
-        label: `${bidder.name}: +${nextBid}`,
-        icon: <Gavel />,
-        onSelect: () => dispatch({ type: 'PLACE_BID', bidderId, amount: nextBid }),
-      },
-      {
-        id: `pass-${bidderId}`,
-        label: `${bidder.name}: Passz`,
-        icon: <Flag />,
-        onSelect: () => dispatch({ type: 'PASS_BID', bidderId }),
-      },
-    ];
-  });
 }

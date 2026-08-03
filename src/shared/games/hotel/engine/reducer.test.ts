@@ -522,13 +522,79 @@ describe('reducer — debt resolution via auction', () => {
     state = { ...state, turnPhase: 'AWAITING_DEBT_RESOLUTION', pendingDebt: { amount: 900, creditorId: null } };
 
     state = reducer(state, { type: 'START_AUCTION', lotId: 'boomerang' });
+    // With only 1 eligible bidder (a 2-player game), a single bid already
+    // resolves the auction immediately — no follow-up pass needed or even
+    // possible (pendingAuction is already null by then).
     state = reducer(state, { type: 'PLACE_BID', bidderId: 'player-2', amount: 2000 });
-    state = reducer(state, { type: 'PASS_BID', bidderId: 'player-2' }); // already the only bidder — passing ends it
 
+    expect(state.pendingAuction).toBeNull();
     expect(getLot(state, 'boomerang').ownerId).toBe('player-2');
     expect(getPlayer(state, 'player-2').cash).toBe(5000 - 2000);
     // 50 + 2000 (proceeds) - 900 (debt, no creditor since it was owed to the bank) = 1150
     expect(getPlayer(state, 'player-1').cash).toBe(1150);
+  });
+});
+
+describe('reducer — voluntary auction (2026-08-04 redesign: any owned lot, any time on your own turn, not just when in debt)', () => {
+  it('can be started from RESOLVING_SPACE with no pending debt at all', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'boomerang', { ownerId: 'player-1' }); // opening bid = 250
+    state = { ...state, turnPhase: 'RESOLVING_SPACE' };
+
+    state = reducer(state, { type: 'START_AUCTION', lotId: 'boomerang' });
+
+    expect(state.turnPhase).toBe('AUCTION_IN_PROGRESS');
+    expect(state.pendingAuction?.auctioneerId).toBe('player-1');
+    expect(state.pendingAuction?.currentBidderId).toBe('player-2');
+  });
+
+  it("starts the bidding rotation with whoever sits immediately after the auctioneer's own seat — not just 'first in the player list' (regression, 2026-08-04: was wrongly skipping back to seat 1 when a non-first player auctioned)", () => {
+    let state = createInitialState(['Alice', 'Bob', 'Carol']);
+    state = updateLot(state, 'boomerang', { ownerId: 'player-2' }); // Bob (seat 2) is the auctioneer this time
+    state = { ...state, currentPlayerIndex: 1, turnPhase: 'RESOLVING_SPACE' };
+
+    state = reducer(state, { type: 'START_AUCTION', lotId: 'boomerang' });
+
+    expect(state.pendingAuction?.auctioneerId).toBe('player-2');
+    expect(state.pendingAuction?.currentBidderId).toBe('player-3'); // next seat after Bob, not back to Alice
+  });
+
+  it('rejects starting an auction for a lot the current player does not own', () => {
+    const state = { ...twoPlayerState(), turnPhase: 'RESOLVING_SPACE' as const };
+    const next = reducer(state, { type: 'START_AUCTION', lotId: 'boomerang' }); // bank-owned
+    expect(next).toBe(state);
+  });
+
+  it('resolves back into RESOLVING_SPACE (the auctioneer keeps their own turn) once settled', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'boomerang', { ownerId: 'player-1' });
+    state = { ...state, turnPhase: 'RESOLVING_SPACE' };
+    state = reducer(state, { type: 'START_AUCTION', lotId: 'boomerang' });
+
+    state = reducer(state, { type: 'PASS_BID', bidderId: 'player-2' });
+
+    expect(state.turnPhase).toBe('RESOLVING_SPACE');
+    expect(state.currentPlayerIndex).toBe(0); // still player-1's turn — never handed off
+    expect(getLot(state, 'boomerang').ownerId).toBeNull(); // nobody bid, bank keeps it
+  });
+
+  it('accepts any freely-typed amount strictly greater than the current highest bid — no fixed increment', () => {
+    // 3 players (not 2) so the auction stays open after this one bid — with
+    // only 1 eligible bidder total, a single bid resolves immediately (see
+    // the "a higher bid transfers ownership" test above), leaving nothing to
+    // inspect on pendingAuction afterward.
+    let state = createInitialState(['Alice', 'Bob', 'Carol']);
+    state = updateLot(state, 'boomerang', { ownerId: 'player-1' }); // opening bid 250
+    state = updatePlayer(state, 'player-2', { cash: 5000 });
+    state = { ...state, turnPhase: 'RESOLVING_SPACE' };
+    state = reducer(state, { type: 'START_AUCTION', lotId: 'boomerang' });
+
+    // +1 over the opening bid is legal now — no +100 step requirement.
+    const rejected = reducer(state, { type: 'PLACE_BID', bidderId: 'player-2', amount: 250 });
+    expect(rejected).toBe(state);
+    const accepted = reducer(state, { type: 'PLACE_BID', bidderId: 'player-2', amount: 251 });
+    expect(accepted.pendingAuction?.highestBid).toBe(251);
+    expect(accepted.pendingAuction?.currentBidderId).toBe('player-3');
   });
 });
 

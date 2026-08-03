@@ -11,7 +11,7 @@ import {
   getCurrentPlayer,
   getFreeStaircaseCandidates,
   getLot,
-  getNextBidAmount,
+  getMinimumBidAmount,
   getNextConstructionStep,
   getRemainingBidderIds,
   getStaircaseEligibleLots,
@@ -72,8 +72,10 @@ export interface HotelValidActions {
   canStartAuction: boolean;
   auctionableLots: HotelLot[];
   canBid: boolean;
-  nextBidAmount: number | null;
+  minimumBidAmount: number | null;
   remainingBidderIds: PlayerId[];
+  /** Whose turn it is to bid/pass right now — null when no auction is in progress. */
+  currentBidderId: PlayerId | null;
   canForfeit: boolean;
   canEndTurn: boolean;
 }
@@ -95,11 +97,19 @@ export function getValidActions(state: HotelState): HotelValidActions {
     staircaseEligibleLots: getStaircaseEligibleLots(state, player.id),
     canChooseFreeStaircaseSpace: state.turnPhase === 'AWAITING_FREE_STAIRCASE_CHOICE',
     freeStaircaseCandidates: getFreeStaircaseCandidates(state, player.id),
-    canStartAuction: state.turnPhase === 'AWAITING_DEBT_RESOLUTION',
+    // Voluntary (RESOLVING_SPACE, any owned lot, anytime on your own turn) OR
+    // the forced debt-raising path (AWAITING_DEBT_RESOLUTION) — see rules.ts's
+    // own canStartAuction/getAuctionableLots. Gated on auctionableLots being
+    // non-empty too, so a lot-less player never sees an enabled-but-dead-end
+    // "Árverés" option (same reasoning as the 2026-07-31 debt-auction fix).
+    canStartAuction:
+      (state.turnPhase === 'AWAITING_DEBT_RESOLUTION' || state.turnPhase === 'RESOLVING_SPACE') &&
+      getAuctionableLots(state).length > 0,
     auctionableLots: getAuctionableLots(state),
     canBid: state.turnPhase === 'AUCTION_IN_PROGRESS',
-    nextBidAmount: getNextBidAmount(state),
+    minimumBidAmount: getMinimumBidAmount(state),
     remainingBidderIds: getRemainingBidderIds(state),
+    currentBidderId: state.pendingAuction?.currentBidderId ?? null,
     canForfeit: canForfeit(state),
     canEndTurn: canEndTurn(state),
   };
