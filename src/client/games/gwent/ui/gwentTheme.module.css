@@ -1,0 +1,32 @@
+/**
+ * Gwent's own visual language (Gwent-0c) — a medieval tavern: a wood
+ * tabletop "ground" (layered gradients simulating grain + a vignette, no
+ * texture image — same no-image-texture convention as hotelTheme.module.css/
+ * ramsesTheme.module.css) and warm parchment "surface" panels for board
+ * zones/cards, wrought-iron dark borders, gold accent (kept from the
+ * pre-existing --shell-accent fallback already baked into matchBoard.module.css,
+ * so this theme is a strict superset, not a clashing repaint). See
+ * docs/gwent-0c-vizualis-animacio-specifikacio.md §4. No new webfont —
+ * system serif stack for display text, same "no bundled fonts anywhere in
+ * this project" convention as clusterBTheme.module.css's --display-font.
+ */
+.theme {
+  --shell-ground:
+    radial-gradient(ellipse at 50% 20%, rgba(255, 214, 150, 0.07) 0%, rgba(0, 0, 0, 0.4) 70%),
+    repeating-linear-gradient(90deg, #5a3a20 0px, #5a3a20 3px, #4e311b 4px, #5a3a20 7px, #543421 11px, #5a3a20 16px),
+    linear-gradient(180deg, #3c2414 0%, #2a180c 100%);
+  --shell-surface: linear-gradient(160deg, #ecdfbe 0%, #ddc89a 55%, #e6d3ab 100%);
+  --shell-surface-line: rgba(58, 34, 15, 0.55);
+  --shell-ink: #2b1a0d;
+  --shell-ink-soft: rgba(43, 26, 13, 0.68);
+  --shell-ink-parchment: #f4e8ca;
+  --shell-accent: #d4af37;
+  --shell-accent-soft: rgba(212, 175, 55, 0.45);
+  --shell-line: #241407;
+  --gwent-display-font: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'URW Palladio L', Georgia, serif;
+
+  color-scheme: dark;
+  background: var(--shell-ground);
+  color: var(--shell-ink-parchment);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}

@@ -1,7 +1,7 @@
 import { computeCardPower, computeRowTotal } from '../../../../../shared/games/gwent/engine/rules';
 import type { GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import type { Row } from '../../../../../shared/games/gwent/engine/types';
-import { CardTile } from './CardTile';
+import { TrackedCardTile } from './cardFlight';
 import styles from './matchBoard.module.css';
 
 const ROW_LABELS: Record<Row, string> = { Melee: 'Közelharc', Ranged: 'Távolsági', Siege: 'Ostrom' };
@@ -31,9 +31,10 @@ export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelect
       </div>
       <div className={styles.rowCards}>
         {rowState.cards.map((instance) => (
-          <CardTile
+          <TrackedCardTile
             key={instance.instanceId}
             instance={instance}
+            ownerId={playerId}
             power={computeCardPower(state, playerId, row, instance)}
             selected={false}
             disabled={!decoyTargetSelectable}

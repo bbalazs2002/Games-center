@@ -73,7 +73,8 @@ const ALL_GAMES: GameDescriptor[] = [
     // deliberately sets none of the AI/player-count flags; "Új szoba" shows
     // only the password fieldset every game gets, same as if no flag existed.
     online: {},
-    // Still no `theme`/`rules` — RulesModal/GameModeSelectPage fall back gracefully.
+    theme: () => import('../games/gwent/ui/gwentTheme.module.css').then((m) => ({ default: m.default.theme })),
+    // Still no `rules` — RulesModal falls back gracefully.
     coverImage: assetUrl('/assets/gwent/icons/box.png'),
   },
 ];

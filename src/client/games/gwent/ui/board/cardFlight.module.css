@@ -1,0 +1,15 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.ghost {
+  position: fixed;
+  pointer-events: none;
+}
+
+.hiddenPlaceholder {
+  visibility: hidden;
+}

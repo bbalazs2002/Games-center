@@ -6,7 +6,8 @@ import { createEmptyBoard, type CardInstance, type GwentState, type PlayerId, ty
 import { FOLTEST_KING_OF_TEMERIA, FRANCESCA_DAISY_OF_THE_VALLEY } from './leaderConstants';
 
 const STARTING_HAND_SIZE = 10;
-const STARTING_LIVES = 2;
+/** Exported — the UI (LifeTokens, Gwent-0c) needs this to know how many life-token slots to render. */
+export const STARTING_LIVES = 2;
 const STARTING_MULLIGANS = 2;
 
 export interface GwentPlayerConfig {

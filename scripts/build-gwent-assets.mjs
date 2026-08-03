@@ -28,6 +28,20 @@ const ASSET_ROOT = join(repoRoot, 'assets', 'Gwent', 'cards');
 const ASSET_FOLDERS = ['Monsters', 'Neutral Units', 'Neutrals', 'Nilfgaardian Empire', 'Northern Realms', "Scoia'tael"];
 const PUBLIC_CARDS_DIR = join(repoRoot, 'public', 'assets', 'gwent', 'cards');
 const PUBLIC_LEADERS_DIR = join(repoRoot, 'public', 'assets', 'gwent', 'leaders');
+// Card-back art (Gwent-0c, docs/gwent-0c-vizualis-animacio-specifikacio.md §3) — a
+// dedicated folder the user's own scan set already has, separate from the per-faction
+// front-image folders above and therefore never walked by buildFileIndex(). Skellige
+// excluded, same standing decision as ASSET_FOLDERS. Keys are the exact source filenames;
+// values are the output slug (mirrors FACTION_SLUG, plus 'default' for the generic back).
+const CARD_BACK_DIR = join(ASSET_ROOT, 'Back');
+const CARD_BACK_SLUG_BY_FILENAME = {
+  'Back.png': 'default',
+  'Neutral back.jpg': 'neutral',
+  'Monsters back.jpg': 'monsters',
+  'Nilfgaardian Empire back.jpg': 'nilfgaard',
+  'Northern Realms back.jpg': 'northern-realms',
+  "Scoia'tael back.jpg": 'scoiatael',
+};
 const ENGINE_DIR = join(repoRoot, 'src', 'shared', 'games', 'gwent', 'engine');
 
 const MAX_DIMENSION = 1024;
@@ -154,6 +168,13 @@ async function processImage(sourcePath, outputPath) {
     .flatten({ background: '#ffffff' }) // card scans are opaque — same reasoning as resize-ramses-images.mjs
     .jpeg({ quality: JPEG_QUALITY })
     .toFile(outputPath);
+}
+
+async function processCardBacks() {
+  for (const [filename, slug] of Object.entries(CARD_BACK_SLUG_BY_FILENAME)) {
+    await processImage(join(CARD_BACK_DIR, filename), join(PUBLIC_CARDS_DIR, 'backs', `${slug}.jpg`));
+  }
+  return Object.keys(CARD_BACK_SLUG_BY_FILENAME).length;
 }
 
 async function processIcons() {
@@ -361,10 +382,11 @@ export function getLeaderDef(id: string): LeaderDef {
   writeFileSync(join(ENGINE_DIR, 'leaderDefs.ts'), leaderDefsSource);
 
   const iconCount = await processIcons();
+  const backCount = await processCardBacks();
 
   const totalImages = cardDefs.reduce((n, c) => n + c.imagePaths.length, 0) + leaderDefs.reduce((n, l) => n + l.imagePaths.length, 0);
   console.log(
-    `Done: ${cardDefs.length} CardDefs + ${leaderDefs.length} LeaderDefs, ${totalImages} images + ${iconCount} icons written to public/assets/gwent/.`,
+    `Done: ${cardDefs.length} CardDefs + ${leaderDefs.length} LeaderDefs, ${totalImages} images + ${iconCount} icons + ${backCount} card backs written to public/assets/gwent/.`,
   );
 }
 

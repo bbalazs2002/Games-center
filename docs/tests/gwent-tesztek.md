@@ -1,6 +1,6 @@
 # Gwent — tesztek
 
-Futtatás: `npm run test:gwent` (113 teszt, 8 fájl). Lásd [README.md](./README.md) az általános konvenciókért. Gwent-0a.1 (kártya-katalógus + deck-építési szabályok), Gwent-0a.2 (a tényleges parti-motor: state/reducer/action-ok/vezér-képességek/selectors) és Gwent-0b (a rejtett-infó maszkolás, `rules.test.ts`-be integrálva) tesztjei együtt. A `GwentSetupPage`/`GwentMatchSetupPage`/`GwentGamePage` UI-t élő böngészős (Playwright) smoke teszt ellenőrizte 0a.2-ben; a Gwent-0b hálózati réteget (`GwentRoom`) egy élő, 2-kliens Colyseus smoke teszt (`temp/gwent-multiplayer-smoke-test.ts`, NEM fut le `npm run test`-tel — lásd `docs/gwent-0b-multiplayer-specifikacio.md` §9).
+Futtatás: `npm run test:gwent` (114 teszt, 8 fájl). Lásd [README.md](./README.md) az általános konvenciókért. Gwent-0a.1 (kártya-katalógus + deck-építési szabályok), Gwent-0a.2 (a tényleges parti-motor: state/reducer/action-ok/vezér-képességek/selectors), Gwent-0b (a rejtett-infó maszkolás, `rules.test.ts`-be integrálva) és Gwent-0c (a `selectors.ts` maszkolt-kéz regresszió, ld. lent) tesztjei együtt. A `GwentSetupPage`/`GwentMatchSetupPage`/`GwentGamePage` UI-t élő böngészős (Playwright) smoke teszt ellenőrizte 0a.2-ben és 0c-ben (vizuális/animációs kör); a Gwent-0b hálózati réteget (`GwentRoom`) egy élő, 2-kliens Colyseus smoke teszt (`temp/gwent-multiplayer-smoke-test.ts`, NEM fut le `npm run test`-tel — lásd `docs/gwent-0b-multiplayer-specifikacio.md` §9).
 
 ## `src/shared/games/gwent/engine/cardDefs.test.ts` (17 teszt)
 
@@ -70,7 +70,7 @@ A `(state, action) → newState` reducer, minden action-típusra legalább egy h
 - **`ACTIVATE_LEADER_ABILITY`** (1) — pontosan úgy fogyasztja el a kört, mint egy lapjátszás/passz, és csak egyszer használható.
 - **Francesca Hope of the Aen Seidhe** (1) — egy Agile egységet automatikusan a magasabb erőt adó sorba helyez, felülírva a kért `chosenRow`-t.
 
-## `src/shared/games/gwent/engine/selectors.test.ts` (4 teszt) — Gwent-0a.2, 2026-08-04
+## `src/shared/games/gwent/engine/selectors.test.ts` (5 teszt) — Gwent-0a.2 (2026-08-04) + Gwent-0c (2026-08-04)
 
 `getValidActions(state, viewerId)` — a UI (és egy jövőbeli AI) egyetlen forrása arról, mi engedélyezett éppen most.
 
@@ -78,6 +78,7 @@ A `(state, action) → newState` reducer, minden action-típusra legalább egy h
 - `AWAITING_START_CHOICE`-ban helyesen jelzi a pénzfeldobás-lehetőséget VAGY a döntő Scoia'tael-játékos azonosítóját.
 - Minden játszható lapnál helyesen jelzi a sor-/decoy-cél-/medic-igényt (`canAttemptToPlayCard` — a teljes `canPlayCard`-tól eltérően a lista-szintű elérhetőség NEM követeli meg előre a sor/cél kiválasztását, azt a UI egy következő lépésben gyűjti be).
 - `canContinueAfterRound` kizárólag `ROUND_RESOLVED`-ban igaz.
+- **Regresszió (Gwent-0c, 2026-08-04)**: sosem dob kivételt, ha a lépő fél kezét a hívó-megadott `viewerId` maszkolja (`toPublicGwentState`-en át) — ez a `GwentGamePage` "add tovább a gépet" kegyelmi ablakában élesben előfordult (`playableCardOptions` korábban feltétel nélkül hívott `getCardDef`-et minden kézlapra).
 
 ## `src/shared/games/gwent/engine/initialState.test.ts` (3 teszt) — Gwent-0a.2, 2026-08-04
 

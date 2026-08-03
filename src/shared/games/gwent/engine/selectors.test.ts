@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getValidActions } from './selectors';
-import { updateBoardRow, updatePlayer } from './rules';
+import { toPublicGwentState, updateBoardRow, updatePlayer } from './rules';
 import { baseTestState, card, PLAYER_1, PLAYER_2 } from './testHelpers';
 import { HORN_CARD_ID } from './specialCardIds';
 import type { GwentState } from './state';
@@ -44,6 +44,17 @@ describe('getValidActions', () => {
     expect(byId.decoy).toMatchObject({ needsDecoyTarget: true });
     expect(byId.medic).toMatchObject({ canDeclineMedic: true });
     expect(valid.canPass).toBe(true);
+  });
+
+  it('never crashes when asked for the acting player while THEIR hand is masked from the caller-supplied viewer (Gwent-0c pass-device grace window)', () => {
+    let state: GwentState = { ...baseTestState(), phase: 'ROUND_IN_PROGRESS', currentPlayerIndex: 0 };
+    state = updatePlayer(state, PLAYER_1, { hand: [card('a', TIGHT_BOND)] });
+    // toPublicGwentState(state, PLAYER_2) masks PLAYER_1's hand — exactly what
+    // GwentGamePage's brief grace window (old activeViewerId=PLAYER_2, but
+    // state.currentPlayerIndex already flipped to PLAYER_1) produces.
+    const masked = toPublicGwentState(state, PLAYER_2);
+    expect(() => getValidActions(masked, PLAYER_1)).not.toThrow();
+    expect(getValidActions(masked, PLAYER_1).playableCards).toEqual([]);
   });
 
   it('canContinueAfterRound is only true in ROUND_RESOLVED', () => {

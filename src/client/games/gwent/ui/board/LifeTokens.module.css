@@ -1,0 +1,17 @@
+.tokens {
+  display: inline-flex;
+  gap: 0.2rem;
+  align-items: center;
+}
+
+.crystal {
+  width: 1.35rem;
+  height: 1.35rem;
+  object-fit: contain;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
+}
+
+.crystalLost {
+  opacity: 0.28;
+  filter: grayscale(1) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+}

@@ -1,4 +1,5 @@
 import { getCardDef } from './cardDefs';
+import { HIDDEN_CARD_DEF_ID } from './specialCardIds';
 import type { GwentState, PlayerId } from './state';
 import { canActivateLeaderAbility } from './leaderAbilities';
 import { agileAutoOptimizes } from './leaderPassives';
@@ -38,7 +39,11 @@ export interface GwentValidActions {
 function playableCardOptions(state: GwentState, playerId: PlayerId): PlayableCardOption[] {
   const player = getPlayer(state, playerId);
   return player.hand
-    .filter((instance) => canAttemptToPlayCard(state, playerId, instance.instanceId))
+    // A masked hand (Gwent-0b, toPublicGwentState) — e.g. getValidActions
+    // called with the ACTING player while a different player is the current
+    // viewer, such as GwentGamePage's brief pass-device grace window (Gwent-0c)
+    // — never has real cards to offer; getCardDef would throw on the sentinel.
+    .filter((instance) => instance.defId !== HIDDEN_CARD_DEF_ID && canAttemptToPlayCard(state, playerId, instance.instanceId))
     .map((instance) => {
       const def = getCardDef(instance.defId);
       const isAgile = def.kind === 'Unit' && def.abilities.includes('Agile');

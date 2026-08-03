@@ -28,6 +28,15 @@ export interface LeaderAbilityPanelProps {
    * server round-trip (GwentRoom's 'requestDeckReveal'/'deckRevealed').
    */
   requestDeckReveal: (playerId: PlayerId) => Promise<CardInstance[]>;
+  /**
+   * Gwent-0c: both players' leader panels are always visible now (moved into
+   * each PlayerBoardZone), not just the acting player's — undefined means
+   * "no extra gate" (always interactive if `canActivateLeaderAbility` says
+   * so); otherwise only the panel whose `playerId` matches `viewerId` may be
+   * activated by THIS client (mirrors the myPlayer gating already used by
+   * MulliganScreen/StartingChoiceScreen/MatchBoard, see Gwent-0b).
+   */
+  viewerId?: PlayerId;
 }
 
 /** Leader abilities whose target must be picked from the player's own DECK (chosen weather card, or Bringer of Death's draw). */
@@ -43,14 +52,15 @@ const OPPONENT_DISCARD_TARGET_ABILITIES = new Set([EMHYR_THE_RELENTLESS]);
  * of Death is the one 2-step case (2 hand cards to discard + 1 deck card to
  * draw). See docs/gwent-0a-specifikacio.md §"Gwent-0a.2" for the category list.
  */
-export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckReveal }: LeaderAbilityPanelProps) {
+export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckReveal, viewerId }: LeaderAbilityPanelProps) {
   const [pickingTarget, setPickingTarget] = useState(false);
   const [selectedDiscards, setSelectedDiscards] = useState<string[]>([]);
   const [revealedDeck, setRevealedDeck] = useState<CardInstance[] | null>(null);
 
   const player = getPlayer(state, playerId);
   const leaderDef = getLeaderDef(player.leaderId);
-  const canActivate = canActivateLeaderAbility(state, playerId);
+  const isOwnPanel = viewerId === undefined || viewerId === playerId;
+  const canActivate = isOwnPanel && canActivateLeaderAbility(state, playerId);
   if (player.leaderAbilityUsed) {
     return (
       <div className={styles.leaderPanel}>
