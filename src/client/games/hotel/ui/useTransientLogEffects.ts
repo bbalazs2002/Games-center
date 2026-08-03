@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNewItemsSince } from '../../../core/useNewItemsSince';
 import type { LogEntry, PlayerId } from '../../../../shared/games/hotel/engine/state';
 
-const FLOURISH_LIFETIME_MS = 1200;
+export const FLOURISH_LIFETIME_MS = 1200;
 
 export interface CashFlourish {
   id: number;
@@ -81,7 +81,7 @@ function cashDeltaForBeneficiary(entry: LogEntry, playerId: PlayerId): CashDelta
 }
 
 /** The signed cash change (+ a short label of what caused it) a log entry causes for `playerId`, or null if the entry doesn't affect them (or causes no actual change — e.g. a RED permit roll). */
-function cashDeltaForPlayer(entry: LogEntry, playerId: PlayerId): CashDelta | null {
+export function cashDeltaForPlayer(entry: LogEntry, playerId: PlayerId): CashDelta | null {
   return cashDeltaForActingPlayer(entry, playerId) ?? cashDeltaForBeneficiary(entry, playerId);
 }
 

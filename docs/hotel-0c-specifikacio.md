@@ -40,12 +40,10 @@ public/assets/hotel/**          (VERZIÓZOTT — ez tényleg kiszolgálásra ker
         ├─ property-cards/{Hotel}-{construction,nights}.jpg
         ├─ gardens/{Hotel}-garden.png  (átlátszó háttér, lásd 5.2)
         ├─ banknotes/banknote-{50,100,500,1000,5000}.jpg
-        ├─ buildings/{Hotel}/IMG_*.jpg  (referencia-fotók — a modell 0c.2, tőled)
-        ├─ car/car-{front,back,left,right,bottom}.jpg
-        ├─ stairs/stairs-{top,bottom}.jpg
-        ├─ buildings/{hotelId}/model.obj + model.mtl + textúrák   (0c.2, tőled — még nincs)
-        └─ car/model.obj + model.mtl + textúrák                   (0c.2, tőled — még nincs)
+        └─ full-board.glb  (a végleges, kész 3D modell — épületek, autó, lépcsők mind ebben)
 ```
+
+**Törölve (2026-08-03, valós playtest jelzés: "felesleges képek a public mappában").** A `buildings/{Hotel}/IMG_*.jpg` (referencia-fotók a modellezéshez), `car/car-*.jpg` és `stairs/stairs-*.jpg` korábban is a `public/`-ba másolódtak — eredetileg a Hotel-0c.2 modellezéshez, hogy a referenciafotók bármelyik gépről elérhetők legyenek. Mióta a `full-board.glb` a KÉSZ, végleges 3D modell (épület/autó/lépcső geometria mind benne van, önálló textúra-fájl nélkül), ezekre a futó appban semmi nem hivatkozik — kb. 14MB felesleges adat minden felhasználónak. A nyers fotók változatlanul megvannak `assets/Hotel/raw-png/{buildings,car,stairs}/` alatt (gitignore-olt, a te géped), csak többé nem másolódnak a `public/`-ba — lásd `scripts/resize-hotel-images.mjs`.
 
 **Miért nem közvetlenül `assets/Hotel/png/`-ből szolgáljuk ki?** Az a mappa gitignore-olt (nagy fájlok, nem verziózott) — ha az app onnan olvasna, a build más gépen/CI-n/a bétát tesztelő családtagoknál üresen futna. A `public/`-ba másolt, ténylegesen szükséges fájlok viszont a repóval együtt utaznak.
 

@@ -38,12 +38,21 @@ describe('reducer — ROLL_MOVE_DICE', () => {
     expect(getPlayer(next, 'player-1').cash).toBe(15000 + 2000);
   });
 
-  it('landing on Start ends the turn immediately (nothing happens there)', () => {
+  it('landing on Start never auto-ends the turn — the player must still click "Kör vége" (real playtest report, 2026-08-01: this used to silently skip a staircase-purchase right granted in the same roll)', () => {
     const state = updatePlayer(twoPlayerState(), 'player-1', { position: 30 }); // one step from wrapping to Start
     const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
     expect(getPlayer(next, 'player-1').position).toBe(0);
-    expect(next.turnPhase).toBe('AWAITING_ROLL');
-    expect(next.currentPlayerIndex).toBe(1);
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+    expect(next.currentPlayerIndex).toBe(0);
+  });
+
+  it('a roll that BOTH crosses the staircase-purchase-right lane AND lands on Start keeps the right active (regression, 2026-08-01)', () => {
+    const state = updatePlayer(twoPlayerState(), 'player-1', { position: 25 }); // sitting exactly on the special lane
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 6 }); // wraps to index 0 = Start
+    expect(getPlayer(next, 'player-1').position).toBe(0);
+    expect(next.staircasePurchaseRightActive).toBe(true);
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+    expect(next.currentPlayerIndex).toBe(0);
   });
 
   it('is a no-op outside AWAITING_ROLL', () => {

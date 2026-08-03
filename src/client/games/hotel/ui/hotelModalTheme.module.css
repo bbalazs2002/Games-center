@@ -9,8 +9,24 @@
  * nearly unreadable — a real playtest complaint (2026-07-29). Matches the
  * rest of Hotel's floating glass panels (StatusChip, OwnedLotsPanel, ...)
  * instead of introducing a third, one-off look.
+ *
+ * ALSO defines the same `--shell-*` tokens as `hotelTheme.module.css`'s
+ * `.theme` (not just background/text color) — real playtest report
+ * (2026-08-03): `ui-kit/Modal` renders via a React portal straight to
+ * `document.body` (see its own doc comment), which is OUTSIDE the themed
+ * page root's DOM subtree, so CSS custom properties set there never reach a
+ * modal's content through inheritance. Every `<Button>` inside a Hotel modal
+ * (e.g. PurchaseConfirmModal's "Megvásárlom") was silently falling back to
+ * the generic blue/gray default because of this, even after the page root
+ * itself was themed.
  */
 .hotelModal {
+  --shell-surface: rgba(15, 23, 32, 0.5);
+  --shell-ink: #f3ecd9;
+  --shell-ink-soft: rgba(243, 236, 217, 0.65);
+  --shell-accent: #d4af37;
+  --shell-line: rgba(212, 175, 55, 0.4);
+
   background: rgba(15, 23, 32, 0.92);
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);

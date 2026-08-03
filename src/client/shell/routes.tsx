@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { LoadingScreen } from '../ui-kit/LoadingScreen';
 import { LoginPage } from './auth/LoginPage';
 import { RequireAuth } from './auth/RequireAuth';
+import { RouteErrorPage } from './ErrorPage';
 import { GameLoader } from './GameLoader';
 import { GameModeSelectPage } from './GameModeSelectPage';
 import { HomePage } from './HomePage';
@@ -32,6 +33,12 @@ export const router = createBrowserRouter([
     // below, instead of wiring it into each page individually — see
     // docs/shell-ux-specifikacio.md §4.1.
     element: <RootLayout />,
+    // Catches both an unmatched URL (React Router synthesizes a 404
+    // ErrorResponse when nothing below matches) and any thrown
+    // render/loader/action error from any route below — previously neither
+    // was handled at all, so both fell through to React Router's own plain
+    // default error screen (real playtest report, 2026-08-03).
+    errorElement: <RouteErrorPage />,
     children: [
       { path: '/', element: <HomePage /> },
       { path: '/games/:gameId', element: <GameModeSelectPage /> },

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTexture } from '@react-three/drei';
 import { a, useSpring } from '@react-spring/three';
@@ -8,10 +8,12 @@ import { assetUrl } from '../../../core/assetUrl';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { useNewItemsSince } from '../../../core/useNewItemsSince';
 import { Button } from '../../../ui-kit/Button';
 import { useReportFeedbackContext } from '../../../ui-kit/FeedbackContext';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { Modal } from '../../../ui-kit/Modal';
+import { useGameTheme } from '../../../shell/useGameTheme';
 import { cloneWithOpacity, cloneWithTint } from '../../../renderers/models/materialTint';
 import { useGLTFScene } from '../../../renderers/models/useGLTFScene';
 import { LoopTrackBoard3D, type LoopTrackSpace, type LoopTrackToken } from '../../../renderers/loop-track-3d/LoopTrackBoard3D';
@@ -47,7 +49,13 @@ import { getOwnedLots, getWinner } from '../../../../shared/games/hotel/engine/s
 import type { HotelLot, HotelState, Player, PlayerId } from '../../../../shared/games/hotel/engine/state';
 import { GameLogPanel } from './GameLogPanel';
 import { PlayerActionWheel } from './PlayerActionWheel';
-import { useCashFlourishes, useRecentLotPurchases, type RecentLotPurchase } from './useTransientLogEffects';
+import {
+  cashDeltaForPlayer,
+  FLOURISH_LIFETIME_MS,
+  useCashFlourishes,
+  useRecentLotPurchases,
+  type RecentLotPurchase,
+} from './useTransientLogEffects';
 import { useHotSeatAi, type HotSeatAiSlots } from './useHotSeatAi';
 import styles from './HotelGamePage.module.css';
 
@@ -526,8 +534,35 @@ function CashFlourishOverlay({ log, playerId }: { log: HotelState['log']; player
 
 /** Floating glass status chip — current player, color, and cash (with a real banknote flourish) live right beside the wheel that drives the whole turn, per the "organize around the wheel" request. */
 function StatusChip({ state, myPlayer, isCurrentPlayerAi }: { state: HotelState; myPlayer?: PlayerId; isCurrentPlayerAi: boolean }) {
-  const currentPlayer = state.players[state.currentPlayerIndex];
-  const colorIndex = state.currentPlayerIndex % PLAYER_COLORS.length;
+  const liveCurrentPlayer = state.players[state.currentPlayerIndex];
+  const newEntries = useNewItemsSince(state.log);
+  const [displayedPlayerId, setDisplayedPlayerId] = useState(liveCurrentPlayer.id);
+  const previousPlayerIdRef = useRef(liveCurrentPlayer.id);
+
+  useEffect(() => {
+    const outgoingPlayerId = previousPlayerIdRef.current;
+    previousPlayerIdRef.current = liveCurrentPlayer.id;
+    if (outgoingPlayerId === liveCurrentPlayer.id) return;
+    // The turn just advanced. If the OUTGOING player had a cash-changing
+    // event in the very same dispatch (e.g. a rent charge that bankrupted
+    // them with no lot left to auction — chargePlayer/forfeitPlayer end the
+    // turn immediately in that case), keep this chip pinned on THEM for one
+    // flourish lifetime instead of jumping straight to the new player —
+    // otherwise the flourish's own playerId match never finds a displayed
+    // chip to render against and silently never appears (real playtest
+    // report, 2026-08-03).
+    const outgoingHadCashEvent = newEntries.some((entry) => cashDeltaForPlayer(entry, outgoingPlayerId) !== null);
+    if (!outgoingHadCashEvent) {
+      setDisplayedPlayerId(liveCurrentPlayer.id);
+      return;
+    }
+    setDisplayedPlayerId(outgoingPlayerId);
+    const timeoutId = setTimeout(() => setDisplayedPlayerId(liveCurrentPlayer.id), FLOURISH_LIFETIME_MS);
+    return () => clearTimeout(timeoutId);
+  }, [liveCurrentPlayer.id, newEntries]);
+
+  const currentPlayer = state.players.find((p) => p.id === displayedPlayerId) ?? liveCurrentPlayer;
+  const colorIndex = state.players.findIndex((p) => p.id === currentPlayer.id) % PLAYER_COLORS.length;
   const you = myPlayer ? state.players.find((p) => p.id === myPlayer) : undefined;
 
   return (
@@ -820,6 +855,13 @@ export function HotelGamePage({
   onRequestNewGame,
 }: HotelGamePageProps) {
   const navigate = useNavigate();
+  // Missing here previously (real playtest report, 2026-08-01): the shared
+  // `Button`/`Modal` children (PlayerActionWheel's construction-plan buttons,
+  // PurchaseConfirmModal) style themselves off `--shell-*` custom properties,
+  // which only `hotelTheme.module.css`'s `.theme` class defines — every OTHER
+  // Hotel page (HotelSetupPage, RulesModal, LobbyPage) applies it, but this
+  // one never did, so those buttons silently fell back to generic blue/gray.
+  const themeClass = useGameTheme('hotel');
   // Local mode only (providedTransport is always set in online mode) — see
   // the persistence effect and LocalGameControls below.
   const isLocalMode = providedTransport === undefined;
@@ -926,7 +968,7 @@ export function HotelGamePage({
 
   if (winner) {
     return (
-      <div className={styles.page}>
+      <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
         <h1>Vége a játéknak!</h1>
         <p>Győztes: {winner.name}</p>
         <div className={styles.winnerActions}>
@@ -940,7 +982,7 @@ export function HotelGamePage({
   }
 
   return (
-    <div className={styles.page}>
+    <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
       <div className={styles.canvasWrapper}>
         <LoopTrackBoard3D
           spaces={spaces}

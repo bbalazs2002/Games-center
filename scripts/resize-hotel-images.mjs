@@ -19,13 +19,18 @@ const JPEG_QUALITY = 82;
 // Explicit (source, target) pairs, not a blanket mirror of assets/Hotel/**:
 // assets/Hotel/raw-png/ also contains uncurated leftover candidate photos
 // (e.g. unnamed garden/property-card shots that lost out to a better one)
-// that were never meant to ship — only these subtrees are production-intended.
-const SOURCE_TARGET_PAIRS = [
-  [join(repoRoot, 'assets', 'Hotel', 'png'), join(repoRoot, 'public', 'assets', 'hotel')],
-  [join(repoRoot, 'assets', 'Hotel', 'raw-png', 'buildings'), join(repoRoot, 'public', 'assets', 'hotel', 'buildings')],
-  [join(repoRoot, 'assets', 'Hotel', 'raw-png', 'car'), join(repoRoot, 'public', 'assets', 'hotel', 'car')],
-  [join(repoRoot, 'assets', 'Hotel', 'raw-png', 'stairs'), join(repoRoot, 'public', 'assets', 'hotel', 'stairs')],
-];
+// that were never meant to ship — only this subtree is production-intended.
+//
+// `buildings/`/`car/`/`stairs/` used to be mirrored into public/ too, as
+// modeling reference photos for Hotel-0c.2 (see docs/hotel-0c-specifikacio.md
+// §3) — now that `full-board.glb` is the actual, finished 3D model (which
+// embeds the car/stairs geometry itself, no separate texture files needed),
+// nothing in the running app reads any of those photos, so they were pure
+// dead weight in the public bundle (~14MB, real playtest report 2026-08-03).
+// The raw photos still live on your machine under assets/Hotel/raw-png/{buildings,car,stairs}/
+// (gitignored) if a future model revision ever needs to reference them again
+// — just don't re-add them here without a real runtime consumer first.
+const SOURCE_TARGET_PAIRS = [[join(repoRoot, 'assets', 'Hotel', 'png'), join(repoRoot, 'public', 'assets', 'hotel')]];
 
 async function findPngFiles(dir) {
   const entries = await readdir(dir, { withFileTypes: true });

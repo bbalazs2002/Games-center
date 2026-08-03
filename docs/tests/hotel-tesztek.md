@@ -1,6 +1,6 @@
 # Hotel — tesztek
 
-Futtatás: `npm run test:hotel` (106 teszt, 3 fájl). Lásd [README.md](./README.md) az általános konvenciókért.
+Futtatás: `npm run test:hotel` (122 teszt, 4 fájl). Lásd [README.md](./README.md) az általános konvenciókért.
 
 ## `src/shared/games/hotel/engine/rules.test.ts` (48 teszt)
 
@@ -26,12 +26,12 @@ A tiszta predikátumok/segédfüggvények — a reducer és a `getValidActions` 
 
 - Lefedi a dobható kockát, vehető telkeket, építkezési opciókat (áraikkal), lépcső-jogosultságot, árverés/licit állapotot, feladás/kör-vég lehetőségét — összesen 6 teszt a kombinációkra.
 
-## `src/shared/games/hotel/engine/reducer.test.ts` (52 teszt)
+## `src/shared/games/hotel/engine/reducer.test.ts` (62 teszt)
 
 A `(state, action) → newState` reducer maga — minden action-típushoz legalább egy happy-path és a releváns elutasítási esetek.
 
 - **`createInitialState`** (1) — mindkét játékos a parkolóban indul, egyenlő készpénzzel, 1. játékos kezd.
-- **`ROLL_MOVE_DICE`** (6) — lépés + `RESOLVING_SPACE` Vásárlás-mezőn; "2000" sáv azonnali kifizetése; Start-ra lépés azonnal befejezi a kört; no-op `AWAITING_ROLL`-on kívül; tovább-tolás foglalt mezőn; a tovább-tolás alatt átlépett sáv is kiváltja a hatását.
+- **`ROLL_MOVE_DICE`** (8) — lépés + `RESOLVING_SPACE` Vásárlás-mezőn; "2000" sáv azonnali kifizetése; Start-ra lépés SOSEM automatikus kör-vég (`RESOLVING_SPACE`-be kerül, a "Kör vége" gombbal kell lezárni — 2026-08-03-i javítás), plusz egy regressziós teszt arra, hogy egy Start-ra érkező, ugyanabban a dobásban lépcső-jogot is szerző dobás a jogot megtartja; no-op `AWAITING_ROLL`-on kívül; tovább-tolás foglalt mezőn; a tovább-tolás alatt átlépett sáv is kiváltja a hatását.
 - **`BUY_LOT`** (4) — bank-tulajdonú telek teljes áron; nem-szomszédos telek figyelmen kívül hagyva; beépítetlen telek féláron kikényszerítve másik játékostól; beépített telek NEM vehető ki kényszerrel.
 - **Építkezés + engedély-kocka** (5) — ZÖLD a tervezett módon épít, teljes áron; INGYEN (H) épít, díjmentesen; DUPLA duplán számláz; PIROS blokkolja a tervet és lezárja a további építkezést a körre; a motor (nem csak a UI) elutasítja, ha a terv a kertet az épületek előtt kérné.
 - **`BUILD_WITHOUT_PERMIT`** (3, új) — kockamentes kertépítés teljes áron, ha minden épület már fel van építve; elutasítás, ha a terv épületet is tartalmaz; a kockás út továbbra is elérhető ugyanarra a helyzetre.

@@ -1,0 +1,66 @@
+/**
+ * Same neutral, game-independent shell identity as HomePage/LoginPage —
+ * deliberately its own look, not any single game's theme, since a
+ * router-level error can happen with no game context at all.
+ */
+.page {
+  --shell-ground: #f4f4f7;
+  --shell-surface: rgba(255, 255, 255, 0.55);
+  --shell-ink: #1a1a1f;
+  --shell-ink-soft: rgba(26, 26, 31, 0.6);
+  --shell-accent: #5b5fc7;
+  --shell-line: rgba(26, 26, 31, 0.1);
+
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: var(--shell-ground);
+  color: var(--shell-ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --shell-ground: #121218;
+    --shell-surface: rgba(255, 255, 255, 0.06);
+    --shell-ink: #ececed;
+    --shell-ink-soft: rgba(236, 236, 237, 0.6);
+    --shell-accent: #8b8ff0;
+    --shell-line: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.card {
+  width: 100%;
+  max-width: 26rem;
+  text-align: center;
+  padding: 2rem;
+  background: var(--shell-surface);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid var(--shell-line);
+  border-radius: 1rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08);
+}
+
+.card h1 {
+  margin: 0 0 0.75rem;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+  color: var(--shell-accent);
+}
+
+.card p {
+  margin: 0;
+  color: var(--shell-ink-soft);
+  line-height: 1.5;
+}
+
+.actions {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}

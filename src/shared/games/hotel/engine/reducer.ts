@@ -190,7 +190,12 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
   if (owedStaircaseLotId) {
     return { ...next, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: owedStaircaseLotId };
   }
-  if (space.type === 'START') return finishTurn(next);
+  // START never auto-ends the turn (real playtest report, 2026-08-01): a
+  // player who crossed the STAIRCASE_PURCHASE_RIGHT lane in the same roll and
+  // landed exactly on START must still get to use that right before their
+  // turn ends — so START falls through to the same RESOLVING_SPACE state as
+  // every other space, letting the player act (or manually end their turn)
+  // instead of the engine silently doing it for them.
   // FREE_BUILDING resolves automatically on landing — there's nothing for the
   // player to decide (docs/hotel-0a-specifikacio.md §2 says "valamelyik
   // hoteled", i.e. the game's own pick, and unlike a staircase a building
@@ -404,8 +409,7 @@ function applyRollNights(state: HotelState, value: number): HotelState {
   if (getPlayer(next, player.id).bankrupt) return next;
   if (next.turnPhase === 'AWAITING_DEBT_RESOLUTION') return next;
 
-  const space = next.board[player.position];
-  if (space.type === 'START') return finishTurn(next);
+  // START never auto-ends the turn — see the matching note in applyRollMoveDice.
   return { ...next, turnPhase: 'RESOLVING_SPACE' };
 }
 
