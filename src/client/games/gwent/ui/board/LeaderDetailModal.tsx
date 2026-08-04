@@ -1,7 +1,9 @@
 import { assetUrl } from '../../../../core/assetUrl';
 import { Modal } from '../../../../ui-kit/Modal';
 import { useGameTheme } from '../../../../shell/useGameTheme';
+import { LEADER_TEXT_HU } from '../../../../../shared/games/gwent/engine/cardTextTranslations';
 import type { LeaderDef } from '../../../../../shared/games/gwent/engine/types';
+import { factionLabel } from '../factionDisplay';
 import styles from '../CardDetailModal.module.css';
 import themedModal from '../../../../ui-kit/themedModalContent.module.css';
 
@@ -19,6 +21,7 @@ export interface LeaderDetailModalProps {
  */
 export function LeaderDetailModal({ leader, onClose }: LeaderDetailModalProps) {
   const themeClass = useGameTheme('gwent');
+  const flavorHu = leader ? LEADER_TEXT_HU[leader.id] : undefined;
   return (
     <Modal open={leader !== null} onClose={onClose} className={[themedModal.themed, themeClass].filter(Boolean).join(' ')}>
       {leader && (
@@ -29,15 +32,15 @@ export function LeaderDetailModal({ leader, onClose }: LeaderDetailModalProps) {
             <dl className={styles.factsList}>
               <div className={styles.fact}>
                 <dt>Frakció</dt>
-                <dd>{leader.faction}</dd>
+                <dd>{factionLabel(leader.faction)}</dd>
               </div>
             </dl>
             <p className={styles.mechanicText}>{leader.abilityDescription}</p>
-            {leader.cardText && (
+            {flavorHu && (
               <div>
-                <div className={styles.cardTextLabel}>Eredeti szöveg (angol)</div>
-                <blockquote className={styles.cardText} lang="en">
-                  {leader.cardText}
+                <div className={styles.cardTextLabel}>Flavor szöveg</div>
+                <blockquote className={styles.cardText} lang="hu">
+                  {flavorHu}
                 </blockquote>
               </div>
             )}

@@ -6,7 +6,10 @@ import type { GwentAction } from '../../../../../shared/games/gwent/engine/actio
 import type { GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import { CardDetailModal } from '../CardDetailModal';
 import { CardTile } from './CardTile';
+import { useHandFan } from './useHandFan';
 import styles from './matchBoard.module.css';
+
+const MIN_VISIBLE_PX = 32;
 
 export interface MulliganScreenProps {
   state: GwentState;
@@ -28,6 +31,7 @@ export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProp
   // Gwent-0c.1 §C, 6. pont: a swap is no longer instant on click — the card
   // is shown enlarged first, and only the "Csere" footer button commits it.
   const [previewInstanceId, setPreviewInstanceId] = useState<string | null>(null);
+  const { containerRef, overlapPx } = useHandFan(activePlayer?.hand.length ?? 0, MIN_VISIBLE_PX);
 
   if (!activePlayer) return null;
 
@@ -47,14 +51,15 @@ export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProp
     <div className={styles.mulliganScreen}>
       <h2>{activePlayer.name} — kezdő kéz</h2>
       <p>Legfeljebb 2 lapot cserélhetsz újakra ({activePlayer.mulligansLeft} hátravan). Kattints egy lapra a megtekintéshez.</p>
-      <div className={styles.handArea}>
-        {activePlayer.hand.map((instance) => (
+      <div className={styles.handArea} ref={containerRef}>
+        {activePlayer.hand.map((instance, index) => (
           <CardTile
             key={instance.instanceId}
             instance={instance}
-            size="medium"
+            size="large"
             disabled={!canMulliganSwap(state, activePlayer.id, instance.instanceId)}
             onClick={() => setPreviewInstanceId(instance.instanceId)}
+            style={index > 0 ? { marginLeft: -overlapPx } : undefined}
           />
         ))}
       </div>
@@ -64,6 +69,7 @@ export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProp
 
       <CardDetailModal
         card={previewDef}
+        instance={previewInstance ?? undefined}
         onClose={() => setPreviewInstanceId(null)}
         footer={
           <>

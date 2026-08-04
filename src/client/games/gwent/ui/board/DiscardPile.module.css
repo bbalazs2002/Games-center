@@ -3,6 +3,20 @@
   width: 3rem;
   height: 4.2rem;
   margin: 0 auto;
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: default;
+}
+
+.pileClickable {
+  cursor: pointer;
+}
+
+.pileClickable:hover .layer {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6), 0 0 0 2px var(--shell-accent, #d4af37);
 }
 
 .layer {
@@ -26,6 +40,14 @@
 }
 
 .empty {
+  /* Absolutely filling .pile (same treatment as .layer) — without this it
+     shrank to just wrap its own text, so the dashed placeholder read as a
+     tiny box in the corner instead of a full card-sized outline (Gwent-0c.2
+     §J). */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;

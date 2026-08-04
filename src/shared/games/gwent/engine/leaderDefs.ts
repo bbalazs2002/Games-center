@@ -9,7 +9,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Monsters",
     abilityId: "monsters-eredin-breacc-glas-the-treacherous",
     abilityDescription: "Megduplázza minden táblán lévő Kém (Spy) kártya erejét — mindkét játékos kémjeire vonatkozik.",
-    cardText: "Doubles the strength of all spy cards (affects both players). Flavor text: \"I'm enjoying this. You are my toy.\"",
+    cardText: "\"I'm enjoying this. You are my toy.\"",
     imagePaths: ["/assets/gwent/leaders/monsters-eredin-breacc-glas-the-treacherous-1.jpg"],
   },
   {
@@ -18,7 +18,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Monsters",
     abilityId: "monsters-eredin-bringer-of-death",
     abilityDescription: "Dobj el 2 lapot a kezedből, majd húzz 1, általad választott lapot a paklidból.",
-    cardText: "Discard 2 cards and draw 1 card of your choice from your deck. Flavor text: \"It is unavoidable.\"",
+    cardText: "\"It is unavoidable.\"",
     imagePaths: ["/assets/gwent/leaders/monsters-eredin-bringer-of-death-1.jpg"],
   },
   {
@@ -27,7 +27,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Monsters",
     abilityId: "monsters-eredin-commander-of-the-red-riders",
     abilityDescription: "Válassz egy tetszőleges időjárás-kártyát a paklidból, és játszd le azonnal.",
-    cardText: "Pick any weather card from your deck and play it instantly.",
+    cardText: "\"Go on. Show me your spins, piruettes and feints. I want to watch.\"",
     imagePaths: ["/assets/gwent/leaders/monsters-eredin-commander-of-the-red-riders-1.jpg"],
   },
   {
@@ -36,7 +36,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Monsters",
     abilityId: "monsters-eredin-destroyer-of-worlds",
     abilityDescription: "Végy vissza egy lapot a dobott lapjaid közül a kezedbe.",
-    cardText: "Restore a card from your discard pile to your hand. Flavor text: \"I've long awaited this...\"",
+    cardText: "\"I've long awaited this...\"",
     imagePaths: ["/assets/gwent/leaders/monsters-eredin-destroyer-of-worlds-1.jpg"],
   },
   {
@@ -45,7 +45,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Monsters",
     abilityId: "monsters-eredin-king-of-the-wild-hunt",
     abilityDescription: "Megduplázza minden közelharci (Melee) egységed erejét, hacsak nincs már Kürt-hatás azon a soron.",
-    cardText: "Double the strength of all your Close Combat units (unless a Commander's Horn is also present on that row). Flavor text: \"Have some dignity. You know how this will end.\"",
+    cardText: "\"Have some dignity. You know how this will end.\"",
     imagePaths: ["/assets/gwent/leaders/monsters-eredin-king-of-the-wild-hunt-1.jpg"],
   },
   {
@@ -54,7 +54,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Nilfgaard",
     abilityId: "nilfgaard-emhyr-var-emreis-emperor-of-nilfgaard",
     abilityDescription: "Megnézhetsz 3 véletlenszerű lapot az ellenfél kezéből.",
-    cardText: "Look at 3 random cards from your opponent's hand",
+    cardText: "\"Your motives do not interest me. Only results.\"",
     imagePaths: ["/assets/gwent/leaders/nilfgaard-emhyr-var-emreis-emperor-of-nilfgaard-1.jpg"],
   },
   {
@@ -63,7 +63,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Nilfgaard",
     abilityId: "nilfgaard-emhyr-var-emreis-his-imperial-majesty",
     abilityDescription: "Válassz egy Felhőszakadás kártyát a paklidból, és játszd le azonnal.",
-    cardText: "Pick a Torrential Rain card from your deck and play it instantly",
+    cardText: "\"The skies wept when my Pavetta died. They will not weep for me.\"",
     imagePaths: ["/assets/gwent/leaders/nilfgaard-emhyr-var-emreis-his-imperial-majesty-1.jpg"],
   },
   {
@@ -72,7 +72,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Nilfgaard",
     abilityId: "nilfgaard-emhyr-var-emreis-invader-of-the-north",
     abilityDescription: "Minden, egységet a táblára visszahozó képesség egy véletlenszerűen kiválasztott egységet hoz vissza — mindkét játékosra érvényes.",
-    cardText: "Abilities that restore a unit to the battlefield restore a randomly-chosen unit. Affects both players.",
+    cardText: "\"Emperors command multitudes, yet cannot control two things: their time and their hearts.\"",
     imagePaths: ["/assets/gwent/leaders/nilfgaard-emhyr-var-emreis-invader-of-the-north-1.jpg"],
   },
   {
@@ -81,7 +81,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Nilfgaard",
     abilityId: "nilfgaard-emhyr-var-emreis-the-relentless",
     abilityDescription: "Húzz egy lapot az ellenfél dobott lapjai közül.",
-    cardText: "Draw a card from your opponent's discard pile",
+    cardText: "\"They do not call me the Patient. Take care they do not call you the Headless.\"",
     imagePaths: ["/assets/gwent/leaders/nilfgaard-emhyr-var-emreis-the-relentless-1.jpg"],
   },
   {
@@ -90,7 +90,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Nilfgaard",
     abilityId: "nilfgaard-emhyr-var-emreis-the-white-flame",
     abilityDescription: "Semlegesíti az ellenfél vezér-képességét.",
-    cardText: "Cancel your opponent's Leader Ability",
+    cardText: "\"A sword is but one of many tools at a ruler's disposal.\"",
     imagePaths: ["/assets/gwent/leaders/nilfgaard-emhyr-var-emreis-the-white-flame-1.jpg"],
   },
   {
@@ -99,7 +99,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "NorthernRealms",
     abilityId: "northern-realms-foltest-king-of-temeria",
     abilityDescription: "Válassz egy Áthatolhatatlan köd kártyát a paklidból, és játszd le azonnal.",
-    cardText: "Pick an Impenetrable Fog from your deck and play it instantly.",
+    cardText: "\"It is natural and beautiful that a man should love his sister.\"",
     imagePaths: ["/assets/gwent/leaders/northern-realms-foltest-king-of-temeria-1.jpg"],
   },
   {
@@ -108,7 +108,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "NorthernRealms",
     abilityId: "northern-realms-foltest-lord-commander-of-the-north",
     abilityDescription: "Töröl minden aktív időjárás-hatást, mindkét oldalon.",
-    cardText: "Clear any weather effects (on both sides) currently in play.",
+    cardText: "\"Sod advisors and their schemes. I place my trust in my soldiers' blades.\"",
     imagePaths: ["/assets/gwent/leaders/northern-realms-foltest-lord-commander-of-the-north-1.jpg"],
   },
   {
@@ -117,7 +117,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "NorthernRealms",
     abilityId: "northern-realms-foltest-son-of-medell",
     abilityDescription: "Elpusztítja az ellenfél legerősebb távolsági (Ranged) egységét/egységeit, ha az adott sor össz-ereje eléri a 10-et, és lapfelhasználás nélkül Kürt-hatást aktivál a saját távolsági sorodon.",
-    cardText: "Destroy your enemy's strongest Ranged Combat unit(s) if the combined strength of all his or her Ranged Combat units is 10 or more.",
+    cardText: "\"Dammit, I rule this land and I refuse to creep around its corners.\"",
     imagePaths: ["/assets/gwent/leaders/northern-realms-foltest-son-of-medell-1.jpg"],
   },
   {
@@ -126,7 +126,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "NorthernRealms",
     abilityId: "northern-realms-foltest-the-siegemaster",
     abilityDescription: "Megduplázza minden ostrom (Siege) egységed erejét, hacsak nincs már Kürt-hatás azon a soron.",
-    cardText: "Doubles the strength of all Siege units, unless a Commander's Horn is already in play on that row.",
+    cardText: "\"A well-aimed ballista razes not just the enemy's walls, but his morale as well.\"",
     imagePaths: ["/assets/gwent/leaders/northern-realms-foltest-the-siegemaster-1.jpg"],
   },
   {
@@ -135,7 +135,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "NorthernRealms",
     abilityId: "northern-realms-foltest-the-steel-forged",
     abilityDescription: "Elpusztítja az ellenfél legerősebb ostrom (Siege) egységét/egységeit, ha az adott sor össz-ereje eléri a 10-et.",
-    cardText: "Destroy your enemy's strongest Siege unit(s) if the combined strength of all his or her Siege units is 10 or more.",
+    cardText: "\"A beautiful day for battle.\"",
     imagePaths: ["/assets/gwent/leaders/northern-realms-foltest-the-steel-forged-1.jpg"],
   },
   {
@@ -144,7 +144,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Scoiatael",
     abilityId: "scoiatael-francesca-findabair-daisy-of-the-valley",
     abilityDescription: "A parti elején húzz egy plusz lapot.",
-    cardText: "Draw an extra card at the beginning of the battle.",
+    cardText: "\"Do not let my beauty distract your aim.\"",
     imagePaths: ["/assets/gwent/leaders/scoiatael-francesca-findabair-daisy-of-the-valley-1.jpg"],
   },
   {
@@ -153,7 +153,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Scoiatael",
     abilityId: "scoiatael-francesca-findabair-hope-of-the-aen-seidhe",
     abilityDescription: "Minden Fürge (Agile) egységedet automatikusan abba az érvényes sorba helyezi, ahol a legtöbbet ér.",
-    cardText: "Move Agile units to whichever valid row maximizes their strength (don't move units already in optimal row).",
+    cardText: "\"Daede sian caente, Aen Seidhe en'allane ael coeden...\"",
     imagePaths: ["/assets/gwent/leaders/scoiatael-francesca-findabair-hope-of-the-aen-seidhe-1.jpg"],
   },
   {
@@ -162,7 +162,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Scoiatael",
     abilityId: "scoiatael-francesca-findabair-pureblood-elf",
     abilityDescription: "Válassz egy Csípős fagy kártyát a paklidból, és játszd le azonnal.",
-    cardText: "Pick a Biting Frost card from your deck and play it instantly.",
+    cardText: "\"To live in peace, we first must kill. This is human oppression's cruel finale.\"",
     imagePaths: ["/assets/gwent/leaders/scoiatael-francesca-findabair-pureblood-elf-1.jpg"],
   },
   {
@@ -171,7 +171,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Scoiatael",
     abilityId: "scoiatael-francesca-findabair-queen-of-dol-blathanna",
     abilityDescription: "Elpusztítja az ellenfél legerősebb közelharci (Melee) egységét/egységeit, ha az adott sor össz-ereje eléri a 10-et.",
-    cardText: "Destroy your enemy's strongest Close Combat unit(s) if the combined strength of all his or her Close Combat units is 10 or more.",
+    cardText: "\"Ash shall fertilize the soil. By spring the valley shall bloom once more.\"",
     imagePaths: ["/assets/gwent/leaders/scoiatael-francesca-findabair-queen-of-dol-blathanna-1.jpg"],
   },
   {
@@ -180,7 +180,7 @@ export const LEADER_DEFS: LeaderDef[] = [
     faction: "Scoiatael",
     abilityId: "scoiatael-francesca-findabair-the-beautiful",
     abilityDescription: "Megduplázza minden távolsági (Ranged) egységed erejét, hacsak nincs már Kürt-hatás azon a soron.",
-    cardText: "Doubles the strength of all your Ranged Combat units (unless a Commander's Horn is also present on that row).",
+    cardText: "\"The Elder Race have forgotten more than humans can ever hope to know.\"",
     imagePaths: ["/assets/gwent/leaders/scoiatael-francesca-findabair-the-beautiful-1.jpg"],
   },
 ];

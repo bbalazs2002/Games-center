@@ -75,9 +75,14 @@ export function computeCardPower(state: GwentState, rowOwnerId: PlayerId, row: R
   ).length;
   power += moraleBoostSources;
 
-  if (effectiveHornActive(state, rowOwnerId, row)) power *= 2;
-  // Dandelion doubles every OTHER card in its row, persistently, but never itself (docs §4.4).
-  if (rowState.dandelionActive && def.id !== DANDELION_CARD_ID) power *= 2;
+  // Dandelion's built-in effect is IDENTICAL to a real Horn — doubles every
+  // card in the row, itself included, persistently — and the two never
+  // stack: a row with both a real/leader-auto Horn AND Dandelion still only
+  // doubles once (felhasználó correction 2026-08-04; previously this
+  // multiplied by 2 for Horn AND separately by 2 for Dandelion, quadrupling
+  // power on a row with both, and Dandelion excluded itself from its own
+  // doubling — both wrong).
+  if (effectiveHornActive(state, rowOwnerId, row) || rowState.dandelionActive) power *= 2;
 
   // Not part of the originally-locked sequence (that predates leader abilities) — applied last as a
   // clean multiplicative pass on top, since it's sourced from an entirely separate mechanic (a leader).
@@ -139,8 +144,18 @@ export function nextTurnPlayerIndex(state: GwentState, actingPlayerId: PlayerId)
 
 // --- Scoia'tael / starting-player helpers ---
 
-/** The single player whose Scoia'tael bonus decides who starts THIS round — null if neither/both players are Scoia'tael (falls back to a coin flip). */
+/**
+ * The single player whose Scoia'tael bonus decides who starts THIS round —
+ * null if neither/both players are Scoia'tael (falls back to a coin flip),
+ * OR if this isn't round 1. Real Gwent rule (Gwent-0c.3 correction,
+ * 2026-08-04 — a previous round assumed this applied every round it was
+ * decisive, which was wrong): Scoia'tael's "choose who starts" only ever
+ * applies to the FIRST round of a match; round 2+ always follows the
+ * standard "the previous round's loser starts" rule instead, even when a
+ * Scoia'tael player is in the match.
+ */
 export function scoiaTaelDecisivePlayerId(state: GwentState): PlayerId | null {
+  if (state.round !== 1) return null;
   const scoiaTaelPlayers = state.players.filter((p) => p.faction === 'Scoiatael');
   return scoiaTaelPlayers.length === 1 ? scoiaTaelPlayers[0].id : null;
 }

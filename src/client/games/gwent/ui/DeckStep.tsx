@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from '../../../ui-kit/Button';
+import { Select } from '../../../ui-kit/Select';
 import { LEADER_DEFS } from '../../../../shared/games/gwent/engine/leaderDefs';
 import type { CardDef, Faction } from '../../../../shared/games/gwent/engine/types';
 import {
@@ -8,7 +8,6 @@ import {
   validateDeckDraft,
   type DeckCardCounts,
 } from '../../../../shared/games/gwent/engine/deckRules';
-import { saveGwentDeck } from './gwentDeckPersistence';
 import { FACTION_OPTIONS } from './factionDisplay';
 import { CARD_SORT_OPTIONS, sortCards, type CardSortKey } from './cardDisplay';
 import { CardCountGrid } from './CardCountGrid';
@@ -24,8 +23,8 @@ export interface DeckStepProps {
   onLeaderChange: (next: string) => void;
 }
 
+/** "Pakli mentése" moved up to GwentMatchSetupPage (Gwent-0c.2 §D, 7. pont — merged into the wizard's own button row, in one line, instead of a separate stacked row here). */
 export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, onFactionChange, onLeaderChange }: DeckStepProps) {
-  const [savedMessage, setSavedMessage] = useState(false);
   const [sortKey, setSortKey] = useState<CardSortKey>('name');
   const [detailCard, setDetailCard] = useState<CardDef | null>(null);
 
@@ -45,38 +44,23 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, on
     const current = cardCounts[def.id] ?? 0;
     const next = Math.max(0, Math.min(def.copies, current + delta));
     if (next !== current) onCardCountsChange({ ...cardCounts, [def.id]: next });
-    setSavedMessage(false);
-  }
-
-  function handleSave(): void {
-    if (!validation.valid) return;
-    saveGwentDeck({ faction, leaderId, cardCounts });
-    setSavedMessage(true);
   }
 
   return (
     <>
       <div className={styles.stepHeader}>
-        <label className={styles.switcher}>
-          Frakció
-          <select value={faction} onChange={(event) => onFactionChange(event.target.value as Faction)}>
-            {FACTION_OPTIONS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={styles.switcher}>
-          Vezér
-          <select value={leaderId} onChange={(event) => onLeaderChange(event.target.value)}>
-            {leadersForFaction.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className={styles.switcher}>
+          <span>Frakció</span>
+          <Select
+            value={faction}
+            onChange={(value) => onFactionChange(value as Faction)}
+            options={FACTION_OPTIONS.map((f) => ({ value: f.id, label: f.label }))}
+          />
+        </div>
+        <div className={styles.switcher}>
+          <span>Vezér</span>
+          <Select value={leaderId} onChange={onLeaderChange} options={leadersForFaction.map((l) => ({ value: l.id, label: l.name }))} />
+        </div>
       </div>
 
       <div className={styles.summary}>
@@ -94,14 +78,12 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, on
       )}
 
       <div className={styles.switcher}>
-        Rendezés
-        <select value={sortKey} onChange={(event) => setSortKey(event.target.value as CardSortKey)}>
-          {CARD_SORT_OPTIONS.map((option) => (
-            <option key={option.key} value={option.key}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <span>Rendezés</span>
+        <Select
+          value={sortKey}
+          onChange={(value) => setSortKey(value as CardSortKey)}
+          options={CARD_SORT_OPTIONS.map((option) => ({ value: option.key, label: option.label }))}
+        />
       </div>
 
       <CardCountGrid
@@ -118,13 +100,6 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, on
         onChangeCount={changeCount}
         onShowDetail={setDetailCard}
       />
-
-      <div className={styles.saveRow}>
-        <Button onClick={handleSave} disabled={!validation.valid}>
-          Pakli mentése
-        </Button>
-        {savedMessage && <span className={styles.savedMessage}>Elmentve.</span>}
-      </div>
 
       <CardDetailModal card={detailCard} onClose={() => setDetailCard(null)} />
     </>

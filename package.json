@@ -25,6 +25,8 @@
     "assets:box-covers": "node scripts/resize-box-covers.mjs",
     "assets:compress-hotel-glb": "node scripts/compress-hotel-glb.mjs",
     "assets:build-gwent": "node scripts/build-gwent-assets.mjs",
+    "gwent:card-editor": "tsx scripts/gwent-card-editor.ts",
+    "gwent:card-editor:lan": "tsx scripts/gwent-card-editor.ts --lan",
     "ai:simulate-hotel": "tsx scripts/simulate-hotel-ai-games.ts",
     "ai:simulate-ramses": "tsx scripts/simulate-ramses-ai-games.ts",
     "ai:simulate-dama": "tsx scripts/simulate-dama-ai-games.ts"

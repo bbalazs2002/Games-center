@@ -13,7 +13,7 @@ export interface StartingChoiceScreenProps {
   myPlayer?: PlayerId;
 }
 
-/** AWAITING_START_CHOICE — either a coin flip (2026-08-04 clarification: token-coin-castle/torch, matches the real game's "coin toss" convention) or, if exactly one player's faction is Scoia'tael, that player's explicit pick. Re-entered every round the Scoia'tael bonus is decisive, not just round 1. */
+/** AWAITING_START_CHOICE — round 1 only: either a coin flip (2026-08-04 clarification: token-coin-castle/torch, matches the real game's "coin toss" convention) or, if exactly one player's faction is Scoia'tael, that player's explicit pick. From round 2 onward this phase is never re-entered for the Scoia'tael reason (real-rule correction, 2026-08-04) — the previous round's loser simply starts, same as every other faction. */
 export function StartingChoiceScreen({ state, dispatch, myPlayer }: StartingChoiceScreenProps) {
   const [flipping, setFlipping] = useState(false);
   const decisivePlayerId = scoiaTaelDecisivePlayerId(state);

@@ -10,6 +10,8 @@ import { reducer } from '../../../../shared/games/gwent/engine/reducer';
 import { expectedViewerId, toPublicGwentState } from '../../../../shared/games/gwent/engine/rules';
 import type { GwentAction } from '../../../../shared/games/gwent/engine/actions';
 import type { CardInstance, GwentState, PlayerId } from '../../../../shared/games/gwent/engine/state';
+import { GwentBackdrop } from './GwentBackdrop';
+import { preloadGwentMatchImages } from './imagePreload';
 import { MatchBoard } from './board/MatchBoard';
 import { MulliganScreen } from './board/MulliganScreen';
 import { PassDeviceScreen } from './board/PassDeviceScreen';
@@ -24,8 +26,15 @@ import styles from './GwentGamePage.module.css';
  * saw their own move. This grace window only applies while ROUND_IN_PROGRESS
  * (the only phase with card flights) — other phase transitions (mulligan →
  * starting choice, etc.) still switch instantly, nothing to wait for there.
+ *
+ * Gwent-0c.2 §Q: widened past the raw animation length — the felhasználó
+ * wants a further ~1s breathing room AFTER the animation settles too, so the
+ * outgoing player isn't rushed into handing the device over the instant the
+ * card lands.
  */
-const PASS_DEVICE_GRACE_MS = 550;
+const ANIMATION_SETTLE_MS = 550;
+const EXTRA_PAUSE_MS = 1000;
+const PASS_DEVICE_GRACE_MS = ANIMATION_SETTLE_MS + EXTRA_PAUSE_MS;
 
 export interface GwentGamePageProps {
   /** Local mode only — seeds the LocalGameTransport built when no transport is provided. */
@@ -84,6 +93,17 @@ export function GwentGamePage({
   const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
 
+  // Gwent-0c.3 §7: warm the image cache for the whole match right away —
+  // only safe/meaningful in local hot-seat mode, where `initialState` is
+  // already the TRUE, unmasked deal for both players (no secret to leak by
+  // preloading it — see imagePreload.ts's own doc comment). Mount-only: a
+  // deck's full card set never changes mid-match, cards just move between
+  // piles, so one pass at the start already covers everything.
+  useEffect(() => {
+    if (isLocalMode && initialState) preloadGwentMatchImages(initialState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Initialized once, from the very first state — every LATER switch goes
   // through the explicit PassDeviceScreen "Megvan, mehet" button, never
   // automatically, so nothing ever flashes into view unannounced.
@@ -114,6 +134,7 @@ export function GwentGamePage({
     const winner = state.players.find((p) => state.winnerIds.includes(p.id));
     return (
       <div className={[styles.winnerScreen, themeClass].filter(Boolean).join(' ')}>
+        <GwentBackdrop />
         <LocalGameControls gameId="gwent" onRequestNewGame={onRequestNewMatch} resumable={false} />
         <div className={styles.winnerBanner}>
           <h1>{winner?.name ?? 'Ismeretlen'} nyerte a mérkőzést!</h1>
@@ -126,6 +147,7 @@ export function GwentGamePage({
     const nextPlayer = state.players.find((p) => p.id === expectedViewer);
     return (
       <div className={themeClass}>
+        <GwentBackdrop />
         <PassDeviceScreen nextPlayerName={nextPlayer?.name ?? ''} onReveal={() => setActiveViewerId(expectedViewer)} />
       </div>
     );
@@ -146,6 +168,7 @@ export function GwentGamePage({
 
   return (
     <div className={themeClass}>
+      <GwentBackdrop />
       <LocalGameControls gameId="gwent" onRequestNewGame={onRequestNewMatch} resumable={false} />
       {viewState.phase === 'MULLIGAN' && <MulliganScreen state={viewState} dispatch={dispatch} myPlayer={myPlayer} />}
       {viewState.phase === 'AWAITING_START_CHOICE' && <StartingChoiceScreen state={viewState} dispatch={dispatch} myPlayer={myPlayer} />}

@@ -32,7 +32,8 @@ function buildPlayer(playerId: PlayerId, config: GwentPlayerConfig): PlayerState
   // Francesca Findabair: Daisy of the Valley — draws 1 extra starting card (category C
   // leader ability, resolved once here since it's automatic at match start, no player
   // action — see leaderConstants.ts / docs/gwent-0a-specifikacio.md §"Gwent-0a.2").
-  const handSize = config.leaderId === FRANCESCA_DAISY_OF_THE_VALLEY ? STARTING_HAND_SIZE + 1 : STARTING_HAND_SIZE;
+  const isDaisyOfTheValley = config.leaderId === FRANCESCA_DAISY_OF_THE_VALLEY;
+  const handSize = isDaisyOfTheValley ? STARTING_HAND_SIZE + 1 : STARTING_HAND_SIZE;
   const hand = deck.slice(0, handSize);
   const remainingDeck = deck.slice(handSize);
 
@@ -41,7 +42,13 @@ function buildPlayer(playerId: PlayerId, config: GwentPlayerConfig): PlayerState
     name: config.name,
     faction: config.faction,
     leaderId: config.leaderId,
-    leaderAbilityUsed: false,
+    // Daisy of the Valley's ability already resolved above (the extra card) —
+    // mark it used immediately so LeaderAbilityPanel shows "elhasználva"
+    // instead of a permanently-disabled "Aktiválás" button for the rest of
+    // the match (she has no LEADER_ABILITIES entry — category C, see
+    // leaderConstants.ts — so canActivateLeaderAbility would never let it be
+    // pressed anyway; this just makes the UI say so).
+    leaderAbilityUsed: isDaisyOfTheValley,
     deck: remainingDeck,
     hand,
     discard: [],

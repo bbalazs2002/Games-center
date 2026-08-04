@@ -34,6 +34,12 @@ const PUBLIC_LEADERS_DIR = join(repoRoot, 'public', 'assets', 'gwent', 'leaders'
 // excluded, same standing decision as ASSET_FOLDERS. Keys are the exact source filenames;
 // values are the output slug (mirrors FACTION_SLUG, plus 'default' for the generic back).
 const CARD_BACK_DIR = join(ASSET_ROOT, 'Back');
+// Gwent-0c.2 §B, 1. pont: "a háttér inkább kép legyen" — a real photo instead
+// of pure CSS gradients. Source is only 426×240 (a mood-reference thumbnail,
+// not a production asset) — gwentTheme.module.css deliberately blurs +
+// darkens it in CSS, which both fits the intended moody/dim look AND hides
+// the low native resolution when stretched to fill the viewport.
+const BACKGROUND_SOURCE = join(repoRoot, 'assets', 'Gwent', 'style-samples', 'medieval-tavern-background.jpg');
 const CARD_BACK_SLUG_BY_FILENAME = {
   'Back.png': 'default',
   'Neutral back.jpg': 'neutral',
@@ -93,7 +99,7 @@ const ROW_SCORCH_BY_NAME = {
 // játékos-barát megfogalmazás (a UI-nak, lásd CardDef.specialText).
 const SPECIAL_TEXT_BY_NAME = {
   Dandelion:
-    "Amíg a táblán van, a saját sorában lévő MINDEN MÁS kártya ereje duplázva marad (Kürt-szerű, tartós hatás — nem duplázza önmagát, soronként legfeljebb 1 ilyen hatás, egy valódi Kürt kártyával együtt is érvényesül).",
+    "Amíg a táblán van, a saját sorában lévő MINDEN kártya ereje duplázva marad, önmagát is beleértve (pontosan úgy, mint egy Kürt hatása — ha a soron már aktív egy valódi Kürt, a Dandelion hatása nem érvényesül, a kettő nem összegződik).",
   Cow: 'Ha bármilyen módon lekerül a tábláról (pl. Scorch), automatikusan megjelenik helyette a Bovine Defense Force (8 erejű Melee egység).',
 };
 
@@ -175,6 +181,10 @@ async function processCardBacks() {
     await processImage(join(CARD_BACK_DIR, filename), join(PUBLIC_CARDS_DIR, 'backs', `${slug}.jpg`));
   }
   return Object.keys(CARD_BACK_SLUG_BY_FILENAME).length;
+}
+
+async function processBackground() {
+  await processImage(BACKGROUND_SOURCE, join(repoRoot, 'public', 'assets', 'gwent', 'background.jpg'));
 }
 
 async function processIcons() {
@@ -383,6 +393,7 @@ export function getLeaderDef(id: string): LeaderDef {
 
   const iconCount = await processIcons();
   const backCount = await processCardBacks();
+  await processBackground();
 
   const totalImages = cardDefs.reduce((n, c) => n + c.imagePaths.length, 0) + leaderDefs.reduce((n, l) => n + l.imagePaths.length, 0);
   console.log(

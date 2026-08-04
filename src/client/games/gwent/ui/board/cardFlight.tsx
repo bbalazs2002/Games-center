@@ -1,5 +1,5 @@
 import { animated, useSpring } from '@react-spring/web';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { CardInstance, GwentLogEntry, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import type { Faction } from '../../../../../shared/games/gwent/engine/types';
 import { CardTile } from './CardTile';
@@ -191,8 +191,8 @@ export interface TrackedCardTileProps {
   disabled?: boolean;
   targetable?: boolean;
   onClick?: () => void;
-  onZoom?: () => void;
   size?: 'small' | 'medium';
+  style?: CSSProperties;
 }
 
 /** The BoardRow/HandArea entry point into the flight system — registers this card's position/visual every render, and hides the real element while a ghost is covering it. See CardFlightProvider's doc comment. */

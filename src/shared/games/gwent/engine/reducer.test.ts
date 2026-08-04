@@ -267,14 +267,16 @@ describe('reducer — CONTINUE_AFTER_ROUND', () => {
     expect(next.players.every((p) => !p.passed)).toBe(true);
   });
 
-  it('re-enters AWAITING_START_CHOICE for round 2+ whenever the Scoia\'tael bonus is decisive', () => {
+  it('Scoia\'tael\'s "choose who starts" only applies to round 1 — round 2+ still uses the loser-starts default', () => {
     let state = readyState();
     state = updatePlayer(state, PLAYER_2, { faction: 'Scoiatael' });
     state = updateBoardRow(state, PLAYER_1, 'Melee', { cards: [card('a', TOAD)] });
     let next = reducer(state, { type: 'PASS', playerId: PLAYER_1 });
     next = reducer(next, { type: 'PASS', playerId: PLAYER_2 });
     next = reducer(next, { type: 'CONTINUE_AFTER_ROUND' });
-    expect(next.phase).toBe('AWAITING_START_CHOICE');
+    expect(next.phase).toBe('ROUND_IN_PROGRESS');
+    expect(next.round).toBe(2);
+    expect(next.currentPlayerIndex).toBe(1); // player 2 lost round 1, starts round 2 regardless of their Scoia'tael faction
   });
 
   it('ends the game once a player reaches 0 lives', () => {

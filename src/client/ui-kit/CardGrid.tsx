@@ -10,9 +10,9 @@ export interface CardGridProps<T> {
   isSelected?: (item: T) => boolean;
   isDisabled?: (item: T) => boolean;
   onSelect?: (item: T) => void;
-  /** Extra content pinned to the tile's top-right corner — e.g. a deck-builder quantity stepper. */
+  /** Extra content pinned to the card ART's top-right corner — e.g. a deck-builder quantity stepper. */
   renderBadge?: (item: T) => ReactNode;
-  /** Extra content pinned to the tile's top-left corner — e.g. a "view details" magnifier button. */
+  /** Extra content pinned to the card ART's bottom-left corner (Gwent-0c.2 §E, 13. pont) — e.g. a "view details" magnifier button. */
   renderCorner?: (item: T) => ReactNode;
   className?: string;
 }
@@ -64,10 +64,10 @@ export function CardGrid<T>({
               }
             }}
           >
-            {renderBadge && <div className={styles.badge}>{renderBadge(item)}</div>}
-            {renderCorner && <div className={styles.corner}>{renderCorner(item)}</div>}
             <div className={styles.imageWrap}>
               {imageUrl ? <img className={styles.image} src={imageUrl} alt={getLabel(item)} loading="lazy" /> : null}
+              {renderBadge && <div className={styles.badge}>{renderBadge(item)}</div>}
+              {renderCorner && <div className={styles.corner}>{renderCorner(item)}</div>}
             </div>
             <div className={styles.label}>{getLabel(item)}</div>
             {getSubtitle && <div className={styles.subtitle}>{getSubtitle(item)}</div>}

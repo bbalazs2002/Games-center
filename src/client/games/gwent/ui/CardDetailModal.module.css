@@ -74,3 +74,36 @@
   font-style: italic;
   line-height: 1.4;
 }
+
+/** Wider than the Modal default (40rem) so the ability-explanation panel (Gwent-0c.2 §F, 6. pont) has room to sit beside the card facts instead of always wrapping under. */
+.wideModal {
+  max-width: min(95vw, 56rem) !important;
+}
+
+.abilitiesPanel {
+  flex: 1 1 14rem;
+  min-width: 12rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--shell-line, rgba(0, 0, 0, 0.2));
+}
+
+.abilitiesPanelTitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.75;
+}
+
+.abilityEntry {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.abilityEntry strong {
+  display: block;
+}

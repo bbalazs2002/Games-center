@@ -80,14 +80,25 @@ describe('computeCardPower', () => {
     expect(computeCardPower(state, PLAYER_1, 'Siege', card('a', MORALE_BOOST))).toBe(2); // 1 base, no other MoraleBoost source, x2 Horn
   });
 
-  it('Dandelion doubles every OTHER card in its row but never itself', () => {
+  it('Dandelion doubles every card in its row, itself included — identical to a real Horn', () => {
     let state = baseTestState();
     state = updateBoardRow(state, PLAYER_1, 'Melee', {
       cards: [card('d', DANDELION_CARD_ID), card('a', TIGHT_BOND)],
       dandelionActive: true,
     });
     expect(computeCardPower(state, PLAYER_1, 'Melee', card('a', TIGHT_BOND))).toBe(6); // 3 base x2 Dandelion
-    expect(computeCardPower(state, PLAYER_1, 'Melee', card('d', DANDELION_CARD_ID))).toBe(2); // Dandelion's own base power, undoubled
+    expect(computeCardPower(state, PLAYER_1, 'Melee', card('d', DANDELION_CARD_ID))).toBe(4); // Dandelion's own base power (2), also doubled
+  });
+
+  it('Dandelion + a real Horn on the same row never stack — still just x2, not x4', () => {
+    let state = baseTestState();
+    state = updateBoardRow(state, PLAYER_1, 'Melee', {
+      cards: [card('d', DANDELION_CARD_ID), card('a', TIGHT_BOND)],
+      dandelionActive: true,
+      hornActive: true,
+    });
+    expect(computeCardPower(state, PLAYER_1, 'Melee', card('a', TIGHT_BOND))).toBe(6); // 3 base x2, not x4
+    expect(computeCardPower(state, PLAYER_1, 'Melee', card('d', DANDELION_CARD_ID))).toBe(4); // 2 base x2, not x4
   });
 
   it('a Spy card sits in the OPPONENT board row and counts toward the opponent total', () => {
