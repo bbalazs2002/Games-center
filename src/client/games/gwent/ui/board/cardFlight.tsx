@@ -189,7 +189,9 @@ export interface TrackedCardTileProps {
   faction?: Faction;
   selected?: boolean;
   disabled?: boolean;
+  targetable?: boolean;
   onClick?: () => void;
+  onZoom?: () => void;
   size?: 'small' | 'medium';
 }
 
@@ -210,12 +212,25 @@ export function TrackedCardTile({ instance, ownerId, power, faction, ...rest }: 
 
 function FlyingCard({ ghost }: { ghost: Ghost }) {
   const spring = useSpring({
-    from: { left: ghost.from.left, top: ghost.from.top, width: ghost.from.width, height: ghost.from.height },
-    to: { left: ghost.to.left, top: ghost.to.top, width: ghost.to.width, height: ghost.to.height },
+    // `progress` drives a mid-flight scale bump only (Gwent-0c.1 §G, 18. pont)
+    // — left/top/width/height stay a plain position/size tween, so the
+    // existing pixel-precise landing (the felhasználó's earlier, stricter
+    // requirement for the destroy/discard animation) is unaffected.
+    from: { left: ghost.from.left, top: ghost.from.top, width: ghost.from.width, height: ghost.from.height, progress: 0 },
+    to: { left: ghost.to.left, top: ghost.to.top, width: ghost.to.width, height: ghost.to.height, progress: 1 },
     config: { tension: 230, friction: 26 },
   });
   return (
-    <animated.div className={styles.ghost} style={spring}>
+    <animated.div
+      className={styles.ghost}
+      style={{
+        left: spring.left,
+        top: spring.top,
+        width: spring.width,
+        height: spring.height,
+        transform: spring.progress.to((p) => `scale(${1 + Math.sin(p * Math.PI) * 0.12})`),
+      }}
+    >
       <CardTile instance={ghost.info.instance} power={ghost.info.power} faction={ghost.info.faction} size="fill" />
     </animated.div>
   );

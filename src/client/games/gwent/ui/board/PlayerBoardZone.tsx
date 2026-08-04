@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { computeSideTotal } from '../../../../../shared/games/gwent/engine/rules';
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
 import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
-import type { Row } from '../../../../../shared/games/gwent/engine/types';
+import type { CardDef, Row } from '../../../../../shared/games/gwent/engine/types';
+import { CardDetailModal } from '../CardDetailModal';
 import { BoardRow } from './BoardRow';
 import { DeckPile } from './DeckPile';
 import { DiscardPile } from './DiscardPile';
@@ -28,6 +30,9 @@ export interface PlayerBoardZoneProps {
   requestDeckReveal: (playerId: PlayerId) => Promise<CardInstance[]>;
   decoyTargetSelectable?: boolean;
   onSelectTarget?: (instanceId: string) => void;
+  /** Rows this zone's owner may click right now to finalize a pending row-choice play (Gwent-0c.1 §D) — only ever set for the ACTING player's own zone. */
+  selectableRows?: ReadonlySet<Row>;
+  onSelectRow?: (row: Row) => void;
 }
 
 const INNER_TO_OUTER_ROWS: Row[] = ['Melee', 'Ranged', 'Siege'];
@@ -41,10 +46,16 @@ export function PlayerBoardZone({
   requestDeckReveal,
   decoyTargetSelectable,
   onSelectTarget,
+  selectableRows,
+  onSelectRow,
 }: PlayerBoardZoneProps) {
   const player = state.players.find((p) => p.id === playerId)!;
   const total = computeSideTotal(state, playerId);
   const rowOrder = outer ? [...INNER_TO_OUTER_ROWS].reverse() : INNER_TO_OUTER_ROWS;
+  // Read-only zoom for board/discard cards (Gwent-0c.1 §C, 9./13. pont) — kept
+  // local to each zone rather than lifted to MatchBoard, since it never
+  // interacts with the play-flow state machine (unlike selectableRows above).
+  const [zoomedCard, setZoomedCard] = useState<CardDef | null>(null);
 
   return (
     <div className={styles.boardZone}>
@@ -68,6 +79,9 @@ export function PlayerBoardZone({
             row={row}
             decoyTargetSelectable={decoyTargetSelectable}
             onSelectTarget={onSelectTarget}
+            rowSelectable={selectableRows?.has(row) ?? false}
+            onSelectRow={() => onSelectRow?.(row)}
+            onZoomCard={setZoomedCard}
           />
         ))}
       </div>
@@ -75,16 +89,18 @@ export function PlayerBoardZone({
       <div className={styles.boardZonePileColumn}>
         {outer ? (
           <>
-            <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} />
+            <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} onZoomCard={setZoomedCard} />
             <DeckPile count={player.deck.length} faction={player.faction} zoneKey={`deck:${playerId}`} />
           </>
         ) : (
           <>
             <DeckPile count={player.deck.length} faction={player.faction} zoneKey={`deck:${playerId}`} />
-            <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} />
+            <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} onZoomCard={setZoomedCard} />
           </>
         )}
       </div>
+
+      <CardDetailModal card={zoomedCard} onClose={() => setZoomedCard(null)} />
     </div>
   );
 }

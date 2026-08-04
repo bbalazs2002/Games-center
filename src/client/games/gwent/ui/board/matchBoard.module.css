@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  padding: 1rem;
+  padding: 4rem 1.5rem 1.5rem 5rem;
+  max-width: 64rem;
+  margin: 0 auto;
   min-height: 100vh;
   background: var(--shell-ground, #0d2b1f);
   color: var(--shell-ink-parchment, #f5f0e0);
@@ -10,21 +12,53 @@
 
 .weatherBar {
   display: flex;
-  gap: 1.25rem;
   justify-content: center;
   align-items: center;
+  padding: 0.3rem 0;
+}
+
+.roundBadge {
   font-family: var(--gwent-display-font, serif);
   font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--shell-ink-parchment, #f5f0e0);
-  background: rgba(0, 0, 0, 0.28);
-  border-top: 1px solid var(--shell-accent-soft, rgba(212, 175, 55, 0.45));
-  border-bottom: 1px solid var(--shell-accent-soft, rgba(212, 175, 55, 0.45));
-  padding: 0.35rem 0;
+  letter-spacing: 0.04em;
+  color: var(--shell-ink, #2b1a0d);
+  background: var(--shell-surface, #e6d3ab);
+  border: 1px solid var(--shell-accent, #d4af37);
+  border-radius: 999px;
+  padding: 0.25rem 1.1rem;
+  box-shadow: var(--shell-shadow-deep, 0 3px 8px rgba(0, 0, 0, 0.4));
 }
 
 .weatherActive {
   color: #8fd3ff;
+}
+
+.boardZone,
+.actionBar {
+  position: relative;
+}
+
+.boardZone::before,
+.boardZone::after,
+.actionBar::before,
+.actionBar::after {
+  content: '';
+  position: absolute;
+  width: 0.85rem;
+  height: 0.85rem;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 50% 50%, #4a3018 0%, #180e05 72%, transparent 74%);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  top: 0.3rem;
+  left: 0.3rem;
+}
+
+.boardZone::after,
+.actionBar::after {
+  left: auto;
+  right: 0.3rem;
 }
 
 .boardZone {
@@ -37,9 +71,7 @@
   padding: 0.6rem;
   background: var(--shell-surface, #e6d3ab);
   color: var(--shell-ink, #2b1a0d);
-  box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.4),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  box-shadow: var(--shell-shadow-deep, 0 3px 8px rgba(0, 0, 0, 0.4)), var(--shell-shadow-lifted, inset 0 0 0 1px rgba(255, 255, 255, 0.25));
 }
 
 .boardZoneLeaderColumn {
@@ -93,6 +125,30 @@
   min-height: 4.5rem;
   border-top: 1px solid var(--shell-surface-line, rgba(58, 34, 15, 0.3));
   padding: 0.25rem 0;
+  border-radius: 0.35rem;
+  transition: background-color 0.15s ease;
+}
+
+/** A row the acting player may click to finalize a pending row-choice play (Gwent-0c.1 §D — replaces the old Melee/Ranged/Siege button list). */
+.boardRowSelectable {
+  cursor: pointer;
+  background-color: rgba(212, 175, 55, 0.18);
+  box-shadow: inset 0 0 0 2px var(--shell-accent, #d4af37);
+  animation: rowPulse 1.4s ease-in-out infinite;
+}
+
+.boardRowSelectable:hover {
+  background-color: rgba(212, 175, 55, 0.3);
+}
+
+@keyframes rowPulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px var(--shell-accent, #d4af37);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px var(--shell-accent-soft, rgba(212, 175, 55, 0.45));
+  }
 }
 
 .rowLabel {
@@ -129,6 +185,7 @@
   background: none;
   cursor: default;
   overflow: hidden;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
 }
 
 .cardClickable {
@@ -141,6 +198,13 @@
 
 .cardSelected {
   border-color: var(--shell-accent, #d4af37);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45), 0 0 0 3px var(--shell-accent-soft, rgba(212, 175, 55, 0.45));
+}
+
+/** Board/discard cards a Decoy target-pick may swap out — a highlight, never the fade `.cardDisabled` uses (Gwent-0c.1 §D: board cards must stay full-opacity at all times). */
+.cardTargetable {
+  border-color: var(--shell-accent, #d4af37);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45), 0 0 10px 2px var(--shell-accent-soft, rgba(212, 175, 55, 0.45));
 }
 
 .cardDisabled {
@@ -149,6 +213,23 @@
 
 .cardFlightHidden {
   visibility: hidden;
+}
+
+.zoomButton {
+  position: absolute;
+  bottom: 0.1rem;
+  right: 0.1rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 1.4;
+  padding: 0.05rem 0.25rem;
+  cursor: pointer;
 }
 
 .cardImage {
@@ -195,9 +276,7 @@
   padding: 0.6rem 0.75rem;
   background: var(--shell-surface, #e6d3ab);
   color: var(--shell-ink, #2b1a0d);
-  box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.4),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  box-shadow: var(--shell-shadow-deep, 0 3px 8px rgba(0, 0, 0, 0.4)), var(--shell-shadow-lifted, inset 0 0 0 1px rgba(255, 255, 255, 0.25));
 }
 
 .handSection {
@@ -221,13 +300,19 @@
 
 .targetPicker {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
   background: rgba(0, 0, 0, 0.08);
   border: 1px solid var(--shell-surface-line, rgba(58, 34, 15, 0.3));
   border-radius: 0.5rem;
   padding: 0.75rem;
+}
+
+.targetPicker > p {
+  flex-basis: 100%;
+  margin: 0;
 }
 
 .leaderPanel {
@@ -244,6 +329,8 @@
   object-fit: cover;
   border-radius: 0.35rem;
   border: 2px solid var(--shell-line, #241407);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
 }
 
 .leaderDescription {
@@ -267,7 +354,7 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  padding: 3rem 1rem;
+  padding: 4.5rem 1rem 3rem;
   min-height: 100vh;
   background: var(--shell-ground, #0d2b1f);
   color: var(--shell-ink-parchment, #f5f0e0);

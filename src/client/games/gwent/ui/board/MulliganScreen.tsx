@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { Button } from '../../../../ui-kit/Button';
 import { canConfirmMulligan, canMulliganSwap, expectedViewerId } from '../../../../../shared/games/gwent/engine/rules';
+import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
 import type { GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
+import { CardDetailModal } from '../CardDetailModal';
 import { CardTile } from './CardTile';
 import styles from './matchBoard.module.css';
 
@@ -22,6 +25,10 @@ export interface MulliganScreenProps {
  */
 export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProps) {
   const activePlayer = state.players.find((p) => p.id === expectedViewerId(state));
+  // Gwent-0c.1 §C, 6. pont: a swap is no longer instant on click — the card
+  // is shown enlarged first, and only the "Csere" footer button commits it.
+  const [previewInstanceId, setPreviewInstanceId] = useState<string | null>(null);
+
   if (!activePlayer) return null;
 
   if (myPlayer && activePlayer.id !== myPlayer) {
@@ -33,10 +40,13 @@ export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProp
     );
   }
 
+  const previewInstance = previewInstanceId ? activePlayer.hand.find((c) => c.instanceId === previewInstanceId) : null;
+  const previewDef = previewInstance ? getCardDef(previewInstance.defId) : null;
+
   return (
     <div className={styles.mulliganScreen}>
       <h2>{activePlayer.name} — kezdő kéz</h2>
-      <p>Legfeljebb 2 lapot cserélhetsz újakra ({activePlayer.mulligansLeft} hátravan). Kattints egy lapra a cseréhez.</p>
+      <p>Legfeljebb 2 lapot cserélhetsz újakra ({activePlayer.mulligansLeft} hátravan). Kattints egy lapra a megtekintéshez.</p>
       <div className={styles.handArea}>
         {activePlayer.hand.map((instance) => (
           <CardTile
@@ -44,13 +54,33 @@ export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProp
             instance={instance}
             size="medium"
             disabled={!canMulliganSwap(state, activePlayer.id, instance.instanceId)}
-            onClick={() => dispatch({ type: 'MULLIGAN_SWAP', playerId: activePlayer.id, instanceId: instance.instanceId })}
+            onClick={() => setPreviewInstanceId(instance.instanceId)}
           />
         ))}
       </div>
       <Button disabled={!canConfirmMulligan(state, activePlayer.id)} onClick={() => dispatch({ type: 'CONFIRM_MULLIGAN', playerId: activePlayer.id })}>
         Kész
       </Button>
+
+      <CardDetailModal
+        card={previewDef}
+        onClose={() => setPreviewInstanceId(null)}
+        footer={
+          <>
+            <Button
+              onClick={() => {
+                dispatch({ type: 'MULLIGAN_SWAP', playerId: activePlayer.id, instanceId: previewInstanceId as string });
+                setPreviewInstanceId(null);
+              }}
+            >
+              Csere
+            </Button>
+            <Button variant="secondary" onClick={() => setPreviewInstanceId(null)}>
+              Mégse
+            </Button>
+          </>
+        }
+      />
     </div>
   );
 }

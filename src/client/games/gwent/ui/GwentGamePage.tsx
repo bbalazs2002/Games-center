@@ -114,8 +114,10 @@ export function GwentGamePage({
     const winner = state.players.find((p) => state.winnerIds.includes(p.id));
     return (
       <div className={[styles.winnerScreen, themeClass].filter(Boolean).join(' ')}>
-        <h1>{winner?.name ?? 'Ismeretlen'} nyerte a mérkőzést!</h1>
         <LocalGameControls gameId="gwent" onRequestNewGame={onRequestNewMatch} resumable={false} />
+        <div className={styles.winnerBanner}>
+          <h1>{winner?.name ?? 'Ismeretlen'} nyerte a mérkőzést!</h1>
+        </div>
       </div>
     );
   }
@@ -152,7 +154,7 @@ export function GwentGamePage({
           state={viewState}
           dispatch={dispatch}
           myPlayer={matchBoardMyPlayer}
-          bottomViewerId={isLocalMode ? (activeViewerId ?? undefined) : undefined}
+          bottomViewerId={isLocalMode ? (activeViewerId ?? undefined) : myPlayer}
           requestDeckReveal={requestDeckReveal}
         />
       )}

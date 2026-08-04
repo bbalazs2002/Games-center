@@ -1,28 +1,35 @@
 /**
- * Gwent's own visual language (Gwent-0c) — a medieval tavern: a wood
- * tabletop "ground" (layered gradients simulating grain + a vignette, no
- * texture image — same no-image-texture convention as hotelTheme.module.css/
- * ramsesTheme.module.css) and warm parchment "surface" panels for board
- * zones/cards, wrought-iron dark borders, gold accent (kept from the
- * pre-existing --shell-accent fallback already baked into matchBoard.module.css,
- * so this theme is a strict superset, not a clashing repaint). See
- * docs/gwent-0c-vizualis-animacio-specifikacio.md §4. No new webfont —
- * system serif stack for display text, same "no bundled fonts anywhere in
- * this project" convention as clusterBTheme.module.css's --display-font.
+ * Gwent's own visual language (Gwent-0c, darkened/enriched in Gwent-0c.1
+ * per direct visual reference — assets/Gwent/style-samples/: a dim,
+ * candlelit medieval hall, wrought-iron corner fittings on the tabletop,
+ * gilt-edged parchment, warm gold/red light pools against a near-black
+ * ground). Layered gradients only — no texture image, same convention as
+ * hotelTheme.module.css/ramsesTheme.module.css. See
+ * docs/gwent-0c.1-vizualis-finomhangolas-specifikacio.md §A. No new
+ * webfont — system serif stack, same as clusterBTheme.module.css's
+ * --display-font.
  */
 .theme {
   --shell-ground:
-    radial-gradient(ellipse at 50% 20%, rgba(255, 214, 150, 0.07) 0%, rgba(0, 0, 0, 0.4) 70%),
-    repeating-linear-gradient(90deg, #5a3a20 0px, #5a3a20 3px, #4e311b 4px, #5a3a20 7px, #543421 11px, #5a3a20 16px),
-    linear-gradient(180deg, #3c2414 0%, #2a180c 100%);
-  --shell-surface: linear-gradient(160deg, #ecdfbe 0%, #ddc89a 55%, #e6d3ab 100%);
-  --shell-surface-line: rgba(58, 34, 15, 0.55);
+    radial-gradient(ellipse 38% 30% at 22% 15%, rgba(255, 200, 120, 0.1) 0%, rgba(255, 180, 90, 0) 70%),
+    radial-gradient(ellipse 42% 34% at 80% 82%, rgba(255, 190, 110, 0.08) 0%, rgba(255, 180, 90, 0) 72%),
+    radial-gradient(ellipse 90% 70% at 50% 45%, rgba(60, 36, 18, 0.5) 0%, rgba(0, 0, 0, 0.78) 100%),
+    repeating-linear-gradient(90deg, #2e1c0f 0px, #2e1c0f 3px, #26160b 4px, #2e1c0f 7px, #291809 11px, #2e1c0f 16px),
+    linear-gradient(180deg, #1c1109 0%, #0b0603 100%);
+  --shell-surface:
+    radial-gradient(ellipse 60% 40% at 30% 20%, rgba(120, 90, 45, 0.1) 0%, rgba(120, 90, 45, 0) 60%),
+    radial-gradient(ellipse 50% 35% at 75% 80%, rgba(90, 65, 30, 0.12) 0%, rgba(90, 65, 30, 0) 65%),
+    linear-gradient(160deg, #e2d3ab 0%, #d0b989 55%, #dcc79a 100%);
+  --shell-surface-line: rgba(42, 24, 10, 0.6);
   --shell-ink: #2b1a0d;
   --shell-ink-soft: rgba(43, 26, 13, 0.68);
   --shell-ink-parchment: #f4e8ca;
   --shell-accent: #d4af37;
   --shell-accent-soft: rgba(212, 175, 55, 0.45);
-  --shell-line: #241407;
+  --shell-accent-secondary: #7a1620;
+  --shell-line: #150c04;
+  --shell-shadow-deep: 0 10px 22px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shell-shadow-lifted: inset 0 0 0 1px rgba(255, 246, 220, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.22);
   --gwent-display-font: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'URW Palladio L', Georgia, serif;
 
   color-scheme: dark;

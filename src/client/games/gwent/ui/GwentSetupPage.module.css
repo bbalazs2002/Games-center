@@ -37,7 +37,16 @@
 
 .switcher select {
   font: inherit;
-  padding: 0.25rem 0.5rem;
+  padding: 0.35rem 0.6rem;
+  background: var(--shell-surface, #e6d3ab);
+  color: var(--shell-ink, #2b1a0d);
+  border: 1px solid var(--shell-line, #241407);
+  border-radius: 0.35rem;
+}
+
+.switcher select:focus-visible {
+  outline: 2px solid var(--shell-accent, #d4af37);
+  outline-offset: 1px;
 }
 
 .summary {

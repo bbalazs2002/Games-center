@@ -29,7 +29,7 @@ Fizikailag meglévő, kedvelt társasjátékok digitalizálása egy közös plat
 
 ## Játéklista (kiindulás)
 
-Hotel, Gazdálkodj okosan, Bang, Hanabi, Sakk, Malom, Dáma, Connect 4 (4 in a row), Színözön (Mastermind), Catan telepesei (kiegészítőkkel), Gwent (Witcher 3 verzió), Monopoly, Cluedo, Aqua Romana, Activity, Tabu, King Arthur, Jungle Speed, Dobble, Snapszer, Römi, Mocsár, Holland kocsma, Star Trek Fleet Captains, Ramses, Torpedó, Aranyásók, 2 lapos póker, 5 lapos póker, Himalája, Ladders and snakes, Kertvárosi kémek, Mars terraformálása, Vigyázz 6! (bővíthető lista)
+Hotel, Gazdálkodj okosan, Bang, Hanabi, Sakk, Malom, Dáma, Connect 4 (4 in a row), Színözön (Mastermind), Catan telepesei (kiegészítőkkel), Gwent (Witcher 3 verzió), Monopoly, Cluedo, Aqua Romana, Activity, Tabu, King Arthur, Jungle Speed, Dobble, Snapszer, Römi, Mocsár, Holland kocsma, Star Trek Fleet Captains, Ramses, Torpedó, Aranyásók, 2 lapos póker, 5 lapos póker, Himalája, Ladders and snakes, Kertvárosi kémek, Mars terraformálása, Vigyázz 6!, Solo, Uno, Uno Flip (bővíthető lista)
 
 ---
 
@@ -133,6 +133,7 @@ Nyitott végű, kronologikus napló — **új lépés hozzáadásakor egyszerűe
   - Gwent-0a.2 (a tényleges parti-motor: state/reducer/action-ok, mind a 20 vezér-képesség, 2D hot-seat board UI). IMPLEMENTÁLVA (2026-08-04). → [gwent-0a-specifikacio.md §10](./gwent-0a-specifikacio.md)
   - Gwent-0b (online multiplayer + játékos-specifikus rejtett kéz/pakli kikényszerítése — szerver-oldalon online módban, "add tovább a gépet" kapuval helyi hot-seat módban). IMPLEMENTÁLVA (2026-08-03), élő 2-kliens smoke teszttel ellenőrizve. → [gwent-0b-multiplayer-specifikacio.md](./gwent-0b-multiplayer-specifikacio.md)
   - Gwent-0c (középkori kocsma vizuális redesign: fa asztallap/pergamen téma, valódi kártyahát-képek, `DeckPile`/`DiscardPile`, `token-crystal.png` életjelzők, sor-/tábla-tükrözés a fizikai táblarajz szerint, tábla-forgatás helyi módban, `@react-spring/web`-alapú kártyamozgás-animáció). IMPLEMENTÁLVA (2026-08-04), élő Playwright-ellenőrzéssel igazolva. → [gwent-0c-vizualis-animacio-specifikacio.md](./gwent-0c-vizualis-animacio-specifikacio.md)
+  - Gwent-0c.1 (a 0c-s dizájnra adott 21 pontos visszajelzés: sötétebb/díszesebb kocsma-téma, kártya-nagyítás mindenhol (tábla/dobott lapok/vezér/kijátszás-/csere-előnézet), sor-választás táblára kattintva, témázott modálok/inputok, játéknapló, kártya-repülés skálázása, online mód fix alsó-oldal). IMPLEMENTÁLVA (2026-08-04), élő Playwright-ellenőrzéssel igazolva. → [gwent-0c.1-vizualis-finomhangolas-specifikacio.md](./gwent-0c.1-vizualis-finomhangolas-specifikacio.md)
 - **Hátrasorolt, még nem kezdett fázisok** (a sorrend nem végleges, playtest-tapasztalat alapján bármikor módosulhat):
   - B) klaszter bővítés (Sakk, Malom) vagy A) klaszter (Snapszer, Römi, Mocsár, Holland kocsma, Bang, Aranyásók, 2/5 lapos póker, Himalája, Vigyázz 6!)
   - Hanabi (rejtett infó teszt, E klaszter)

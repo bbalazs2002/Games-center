@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { assetUrl } from '../../../../core/assetUrl';
 import { Button } from '../../../../ui-kit/Button';
+import { LeaderDetailModal } from './LeaderDetailModal';
 import { getLeaderDef } from '../../../../../shared/games/gwent/engine/leaderDefs';
 import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
 import { canActivateLeaderAbility } from '../../../../../shared/games/gwent/engine/leaderAbilities';
@@ -56,6 +57,9 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
   const [pickingTarget, setPickingTarget] = useState(false);
   const [selectedDiscards, setSelectedDiscards] = useState<string[]>([]);
   const [revealedDeck, setRevealedDeck] = useState<CardInstance[] | null>(null);
+  // Read-only leader-card zoom (Gwent-0c.1 §C, 10. pont) — available whether
+  // the ability is still active or already used/passive.
+  const [zoomOpen, setZoomOpen] = useState(false);
 
   const player = getPlayer(state, playerId);
   const leaderDef = getLeaderDef(player.leaderId);
@@ -64,8 +68,14 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
   if (player.leaderAbilityUsed) {
     return (
       <div className={styles.leaderPanel}>
-        <img className={styles.leaderImage} src={assetUrl(leaderDef.imagePaths[0])} alt={leaderDef.name} />
+        <img
+          className={styles.leaderImage}
+          src={assetUrl(leaderDef.imagePaths[0])}
+          alt={leaderDef.name}
+          onClick={() => setZoomOpen(true)}
+        />
         <span className={styles.leaderUsed}>Vezér-képesség elhasználva</span>
+        <LeaderDetailModal leader={zoomOpen ? leaderDef : null} onClose={() => setZoomOpen(false)} />
       </div>
     );
   }
@@ -96,7 +106,13 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
 
   return (
     <div className={styles.leaderPanel}>
-      <img className={styles.leaderImage} src={assetUrl(leaderDef.imagePaths[0])} alt={leaderDef.name} />
+      <img
+        className={styles.leaderImage}
+        src={assetUrl(leaderDef.imagePaths[0])}
+        alt={leaderDef.name}
+        onClick={() => setZoomOpen(true)}
+      />
+      <LeaderDetailModal leader={zoomOpen ? leaderDef : null} onClose={() => setZoomOpen(false)} />
       <p className={styles.leaderDescription}>{leaderDef.abilityDescription}</p>
 
       {!pickingTarget && (

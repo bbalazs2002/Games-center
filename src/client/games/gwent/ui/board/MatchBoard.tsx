@@ -7,7 +7,9 @@ import { getValidActions } from '../../../../../shared/games/gwent/engine/select
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
 import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import type { Row } from '../../../../../shared/games/gwent/engine/types';
+import { CardDetailModal } from '../CardDetailModal';
 import { CardFlightProvider } from './cardFlight';
+import { GwentLogPanel } from './GwentLogPanel';
 import { HandArea } from './HandArea';
 import { PlayerBoardZone } from './PlayerBoardZone';
 import { RoundSummaryModal } from './RoundSummaryModal';
@@ -26,12 +28,15 @@ export interface MatchBoardProps {
    */
   myPlayer?: PlayerId;
   /**
-   * Local hot-seat mode only — whichever player should render at the bottom
-   * of the screen (Gwent-0c: "the board rotates so the acting player's side
-   * is always at the bottom", requested 2026-08-04) — GwentGamePage passes
-   * its `activeViewerId` here. Undefined (including always in online mode,
-   * where rotation was explicitly NOT requested) falls back to the fixed,
-   * positional `state.players[0]`/`[1]` order.
+   * Whichever player should render at the bottom of the screen. Local
+   * hot-seat mode: GwentGamePage passes its `activeViewerId` here, which
+   * changes across PassDeviceScreen hand-offs (Gwent-0c: "the board rotates
+   * so the acting player's side is always at the bottom"). Online mode
+   * (Gwent-0c.1 §H, 19. pont): GwentGamePage passes the constant `myPlayer`
+   * instead — the local viewer never changes mid-match online, so this is a
+   * fixed placement with no rotation animation, exactly as requested
+   * ("ne forogjon, de mindig a helyi játékosé legyen az alsó rész").
+   * Undefined falls back to the fixed, positional `state.players[0]`/`[1]` order.
    */
   bottomViewerId?: PlayerId;
   /** Passed straight through to each PlayerBoardZone's LeaderAbilityPanel — see its own doc comment. */
@@ -49,10 +54,20 @@ function cardFollowUp(state: GwentState, actingPlayerId: string, defId: string):
   return null;
 }
 
-const ROW_LABELS: Record<Row, string> = { Melee: 'Közelharc', Ranged: 'Távolsági', Siege: 'Ostrom' };
+/** The row(s) a confirmed card may be placed on — a single fixed row for anything without a real choice (the engine's `rules.ts` `isRowChoiceValid` REJECTS a `chosenRow` for those, see Gwent-0c.1 §2), Melee+Ranged for a non-auto-optimized Agile unit, or all 3 for Horn. */
+function selectableRowsFor(state: GwentState, actingPlayerId: string, defId: string): Row[] {
+  const def = getCardDef(defId);
+  if (def.kind === 'Horn') return ['Melee', 'Ranged', 'Siege'];
+  if (def.kind === 'Unit' && def.abilities.includes('Agile') && !agileAutoOptimizes(getPlayer(state, actingPlayerId))) return ['Melee', 'Ranged'];
+  return def.row ? [def.row] : [];
+}
 
-/** Orchestrates the ROUND_IN_PROGRESS/ROUND_RESOLVED phases: both board zones, the acting player's hand, the play-flow state machine (row/Decoy-target/Medic follow-ups), and pass. Each PlayerBoardZone owns its own leader panel/deck/discard now (Gwent-0c). */
+/** Orchestrates the ROUND_IN_PROGRESS/ROUND_RESOLVED phases: both board zones, the acting player's hand, the play-flow state machine (preview-confirm → row/Decoy-target/Medic follow-ups), and pass. Each PlayerBoardZone owns its own leader panel/deck/discard now (Gwent-0c). */
 export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestDeckReveal }: MatchBoardProps) {
+  // The hand card currently shown enlarged, BEFORE any commitment (Gwent-0c.1
+  // §C, 7. pont) — confirming moves it into `pendingCardId` below (or
+  // dispatches immediately if the card needs no further follow-up).
+  const [previewCardId, setPreviewCardId] = useState<string | null>(null);
   const [pendingCardId, setPendingCardId] = useState<string | null>(null);
 
   const actingPlayer = getCurrentPlayer(state);
@@ -64,23 +79,43 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
   const playableIds = new Set(valid.playableCards.map((p) => p.instanceId));
 
   function selectCard(instanceId: string): void {
-    const instance = actingPlayer.hand.find((c) => c.instanceId === instanceId);
+    setPreviewCardId(instanceId);
+  }
+
+  function cancelPreview(): void {
+    setPreviewCardId(null);
+  }
+
+  function confirmPreviewPlay(): void {
+    const instance = previewCardId ? actingPlayer.hand.find((c) => c.instanceId === previewCardId) : null;
+    setPreviewCardId(null);
     if (!instance) return;
     const followUp = cardFollowUp(state, actingPlayer.id, instance.defId);
     if (!followUp) {
-      dispatch({ type: 'PLAY_CARD', playerId: actingPlayer.id, instanceId });
+      dispatch({ type: 'PLAY_CARD', playerId: actingPlayer.id, instanceId: instance.instanceId });
       return;
     }
-    setPendingCardId(instanceId);
+    setPendingCardId(instance.instanceId);
   }
 
   function cancelPending(): void {
     setPendingCardId(null);
   }
 
+  function selectRow(row: Row): void {
+    if (!pendingCardId) return;
+    dispatch({ type: 'PLAY_CARD', playerId: actingPlayer.id, instanceId: pendingCardId, chosenRow: row });
+    setPendingCardId(null);
+  }
+
+  const previewInstance = previewCardId ? actingPlayer.hand.find((c) => c.instanceId === previewCardId) : null;
+  const previewDef = previewInstance ? getCardDef(previewInstance.defId) : null;
+
   const pendingInstance = pendingCardId ? actingPlayer.hand.find((c) => c.instanceId === pendingCardId) : null;
   const pendingDef = pendingInstance ? getCardDef(pendingInstance.defId) : null;
   const pendingFollowUp = pendingInstance ? cardFollowUp(state, actingPlayer.id, pendingInstance.defId) : null;
+  const selectableRows =
+    pendingFollowUp === 'row' && pendingInstance ? new Set(selectableRowsFor(state, actingPlayer.id, pendingInstance.defId)) : null;
 
   return (
     <CardFlightProvider log={state.log}>
@@ -97,15 +132,12 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
             dispatch({ type: 'PLAY_CARD', playerId: actingPlayer.id, instanceId: pendingCardId as string, decoyTargetInstanceId: instanceId });
             setPendingCardId(null);
           }}
+          selectableRows={actingPlayer.id === topPlayer.id ? (selectableRows ?? undefined) : undefined}
+          onSelectRow={selectRow}
         />
 
         <div className={styles.weatherBar}>
-          {(['Melee', 'Ranged', 'Siege'] as Row[]).map((row) => (
-            <span key={row} className={state.activeWeatherRows.includes(row) ? styles.weatherActive : undefined}>
-              {ROW_LABELS[row]} {state.activeWeatherRows.includes(row) ? '❄️' : ''}
-            </span>
-          ))}
-          <span>{state.round}. kör</span>
+          <span className={styles.roundBadge}>{state.round}. kör</span>
         </div>
 
         <PlayerBoardZone
@@ -120,6 +152,8 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
             dispatch({ type: 'PLAY_CARD', playerId: actingPlayer.id, instanceId: pendingCardId as string, decoyTargetInstanceId: instanceId });
             setPendingCardId(null);
           }}
+          selectableRows={actingPlayer.id === bottomPlayer.id ? (selectableRows ?? undefined) : undefined}
+          onSelectRow={selectRow}
         />
 
         {!isMyTurn && (
@@ -135,19 +169,7 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
 
               {pendingFollowUp === 'row' && pendingDef && (
                 <div className={styles.targetPicker}>
-                  <p>Válassz sort:</p>
-                  {(pendingDef.kind === 'Horn' ? (['Melee', 'Ranged', 'Siege'] as Row[]) : (['Melee', 'Ranged'] as Row[])).map((row) => (
-                    <Button
-                      key={row}
-                      variant="secondary"
-                      onClick={() => {
-                        dispatch({ type: 'PLAY_CARD', playerId: actingPlayer.id, instanceId: pendingCardId as string, chosenRow: row });
-                        setPendingCardId(null);
-                      }}
-                    >
-                      {ROW_LABELS[row]}
-                    </Button>
-                  ))}
+                  <p>Válassz sort a táblán a(z) {pendingDef.name} lapnak — a kiemelt sorra kattintva.</p>
                   <Button variant="secondary" onClick={cancelPending}>
                     Mégse
                   </Button>
@@ -196,7 +218,7 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
                     hand={actingPlayer.hand}
                     ownerId={actingPlayer.id}
                     playableInstanceIds={playableIds}
-                    selectedInstanceId={pendingCardId}
+                    selectedInstanceId={previewCardId ?? pendingCardId}
                     onSelectCard={selectCard}
                   />
                   <Button disabled={!canPass(state, actingPlayer.id)} onClick={() => dispatch({ type: 'PASS', playerId: actingPlayer.id })}>
@@ -208,7 +230,22 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
           </div>
         )}
 
+        <CardDetailModal
+          card={previewDef}
+          onClose={cancelPreview}
+          footer={
+            <>
+              <Button onClick={confirmPreviewPlay}>Kijátszás</Button>
+              <Button variant="secondary" onClick={cancelPreview}>
+                Mégse
+              </Button>
+            </>
+          }
+        />
+
         {state.phase === 'ROUND_RESOLVED' && <RoundSummaryModal state={state} dispatch={dispatch} />}
+
+        <GwentLogPanel state={state} />
       </div>
     </CardFlightProvider>
   );

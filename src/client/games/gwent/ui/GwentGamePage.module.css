@@ -5,10 +5,26 @@
   align-items: center;
   justify-content: center;
   gap: 1rem;
+  padding: 4.5rem 1rem 3rem;
   background: var(--shell-ground, #0d2b1f);
   color: var(--shell-ink, #f5f0e0);
 }
 
+.winnerBanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 2.5rem 3rem;
+  background: var(--shell-surface, #e6d3ab);
+  border: 3px solid var(--shell-accent, #d4af37);
+  border-radius: 0.75rem;
+  box-shadow: var(--shell-shadow-deep, 0 10px 22px rgba(0, 0, 0, 0.6)), var(--shell-shadow-lifted, inset 0 0 0 1px rgba(255, 255, 255, 0.25));
+}
+
 .winnerScreen h1 {
-  color: var(--shell-accent, #d4af37);
+  margin: 0;
+  font-family: var(--gwent-display-font, serif);
+  color: var(--shell-accent-secondary, #7a1620);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
 }

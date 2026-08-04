@@ -8,7 +8,7 @@
   width: 1.35rem;
   height: 1.35rem;
   object-fit: contain;
-  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
 }
 
 .crystalLost {
