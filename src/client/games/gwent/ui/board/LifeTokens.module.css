@@ -4,14 +4,20 @@
   align-items: center;
 }
 
+/**
+ * Gwent-0d §3, 5. korrekció: a forrás-ikon (token-crystal.png) eleve sötét,
+ * tompa vörös — `brightness`/`saturate` boost kell, hogy az AKTÍV élet
+ * ténylegesen élénknek, "élőnek" hasson a sötét fa-háttéren. Csak az
+ * ELVESZTETT élet halványul/szürkül el (`.crystalLost`), nem az aktív.
+ */
 .crystal {
   width: 1.35rem;
   height: 1.35rem;
   object-fit: contain;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
+  filter: brightness(1.4) saturate(1.5) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
 }
 
 .crystalLost {
-  opacity: 0.28;
-  filter: grayscale(1) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
+  opacity: 0.32;
+  filter: grayscale(1) brightness(0.8) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
 }

@@ -37,12 +37,17 @@ export function EyeIcon() {
   );
 }
 
-/** Gwent-0d §3: the player-info panel's generic avatar — no real photo feature exists, every player gets the same bust silhouette. */
+/**
+ * Gwent-0d §3, korrekció (referencia-kép egyeztetés): a player-info panel
+ * generikus profilképe — a referencia egy tömör, egyszínű sziluettet mutat
+ * (nem vonalrajzot), ezért ez SOLID fill, nem stroke — nincs valódi
+ * fénykép-funkció, minden játékos ugyanezt a sziluettet kapja.
+ */
 export function PersonIcon() {
   return (
-    <svg width="1.5em" height="1.5em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+    <svg width="1.6em" height="1.6em" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="8.2" r="4.2" />
+      <path d="M4 21c0-4.7 3.6-8.5 8-8.5s8 3.8 8 8.5Z" />
     </svg>
   );
 }

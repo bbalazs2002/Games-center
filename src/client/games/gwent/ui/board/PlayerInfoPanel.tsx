@@ -17,11 +17,12 @@ export interface PlayerInfoPanelProps {
 }
 
 /**
- * Gwent-0d §3, korrekció (2026-08-05) — a referencia-képeken ez a blokk a
- * BAL oszlopban ül, a vezér-kártya MELLETT/FÖLÖTT (nem egy vízszintes fejléc
- * a sorok fölött) — keskeny, függőleges kártyaként. `PlayerBoardZone.tsx`
- * mostantól a `.boardZoneLeaderColumn`-ba rendereli, a `LeaderAbilityPanel`
- * mellé.
+ * Gwent-0d §3, 2. korrekció (2026-08-05, felhasználó által küldött közeli
+ * referencia-kép alapján) — a korábbi, keskeny FÜGGŐLEGES kártya helyett egy
+ * SZÉLES, VÍZSZINTES sáv: profilkép (+ ráhelyezett kis frakció-embléma
+ * jelvény) balra, név/frakció középen, kéz-lapszám + élet-kristályok +
+ * pontszám-jelvény jobbra — pontosan a referencia elrendezése. "Passzolt"
+ * felirat jelenik meg, ha a játékos már passzolt ebben a körben.
  */
 export function PlayerInfoPanel({ player, isSelf, total, leading, isActiveTurn }: PlayerInfoPanelProps) {
   return (
@@ -30,23 +31,32 @@ export function PlayerInfoPanel({ player, isSelf, total, leading, isActiveTurn }
         .filter(Boolean)
         .join(' ')}
     >
-      <div className={styles.avatar}>
-        <PersonIcon />
+      <div className={styles.avatarWrap}>
+        <div className={styles.avatar}>
+          <PersonIcon />
+        </div>
+        <div className={styles.crestBadge}>
+          <FactionIcon faction={player.faction} />
+        </div>
       </div>
-      <span className={styles.name}>{player.name}</span>
-      <span className={styles.faction}>
-        <FactionIcon faction={player.faction} /> {factionLabel(player.faction)}
-      </span>
-      <LifeTokens lives={player.lives} />
+
+      <div className={styles.identity}>
+        <span className={styles.name}>{player.name}</span>
+        <span className={styles.faction}>{factionLabel(player.faction)}</span>
+      </div>
+
       <div className={styles.stats}>
         <span className={styles.statLine}>
           <HandCardsIcon /> {player.hand.length}
         </span>
+        <LifeTokens lives={player.lives} />
         <span className={[styles.scoreBadge, leading && styles.scoreLeading].filter(Boolean).join(' ')}>
           {leading && <LaurelWreathIcon />}
           <span className={styles.scoreNumber}>{total}</span>
         </span>
       </div>
+
+      {player.passed && <span className={styles.passedLabel}>Passzolt</span>}
     </div>
   );
 }

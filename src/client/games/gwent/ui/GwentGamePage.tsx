@@ -112,9 +112,23 @@ export function GwentGamePage({
   // elapsed for the CURRENT pending transition — this is what the render
   // below checks, not `expected !== activeViewerId` directly.
   const [gateReady, setGateReady] = useState(false);
+  // Gwent-0d §3: Emhyr var Emreis: Emperor of Nilfgaard's leader ability
+  // (LEADER_ABILITY_ACTIVATED -> LEADER_REVEALED_OPPONENT_HAND) used to be a
+  // silent log line — the felhasználó wants the revealed cards ACTUALLY
+  // shown, and the "add tovább a gépet" hand-off held back until the
+  // activating player has closed that view. Counts how many
+  // LEADER_REVEALED_OPPONENT_HAND entries have been acknowledged (closed) so
+  // far — any entry past that count, belonging to the CURRENT local viewer,
+  // is still pending.
+  const [acknowledgedRevealCount, setAcknowledgedRevealCount] = useState(0);
 
   const expectedViewer = expectedViewerId(state);
   const transitionPending = isLocalMode && expectedViewer !== null && expectedViewer !== activeViewerId;
+  const revealEntries = state.log.filter((entry) => entry.type === 'LEADER_REVEALED_OPPONENT_HAND');
+  const viewerForReveal = isLocalMode ? activeViewerId : myPlayer;
+  const latestReveal = revealEntries[revealEntries.length - 1];
+  const pendingHandReveal =
+    revealEntries.length > acknowledgedRevealCount && latestReveal?.playerId === viewerForReveal ? latestReveal : null;
 
   useEffect(() => {
     if (!transitionPending) {
@@ -143,7 +157,7 @@ export function GwentGamePage({
     );
   }
 
-  if (transitionPending && gateReady) {
+  if (transitionPending && gateReady && !pendingHandReveal) {
     const nextPlayer = state.players.find((p) => p.id === expectedViewer);
     return (
       <div className={themeClass}>
@@ -179,6 +193,8 @@ export function GwentGamePage({
           myPlayer={matchBoardMyPlayer}
           bottomViewerId={isLocalMode ? (activeViewerId ?? undefined) : myPlayer}
           requestDeckReveal={requestDeckReveal}
+          pendingHandReveal={pendingHandReveal}
+          onAcknowledgeHandReveal={() => setAcknowledgedRevealCount((n) => n + 1)}
         />
       )}
     </div>

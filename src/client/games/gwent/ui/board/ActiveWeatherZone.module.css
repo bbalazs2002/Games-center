@@ -1,16 +1,26 @@
-/** Same width as the leader column (matchBoard.module.css's `--gwent-leader-col-width`) so this strip lines up under the leader cards instead of spanning the whole board. */
+/**
+ * Gwent-0d §3, 8. korrekció: a szélesség-korlátozás a szülő `.boardDivider`-en
+ * él (matchBoard.module.css) — ez a doboz csak a rendelkezésre álló teljes
+ * szélességet tölti ki. A MAGASSÁG mostantól a szülő `.boardDividerRow`
+ * FIX `--gwent-weather-slot-h` értékét tölti ki (`height: 100%`) — állandó,
+ * üresen és aktív időjárással is ugyanakkora, elég nagy egy teljes kártyához,
+ * sosem kell rálógnia a szomszédos zónákra.
+ */
 .zone {
   display: flex;
   align-items: center;
-  /* "a kijátszott kártyák mellé" — right-aligned within the leader-column
-     width, touching the row area instead of sitting off on the far left. */
+  /* "a kijátszott kártyák mellé" — right-aligned, touching the row area instead of sitting off on the far left. */
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 0.3rem;
   flex-shrink: 0;
-  width: var(--gwent-leader-col-width, 9rem);
-  min-height: 2.9rem;
-  padding-right: 0.6rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--shell-line, rgba(21, 12, 4, 0.6));
+  border-radius: 0.35rem;
+  background: linear-gradient(160deg, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.24) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .weatherCard {
@@ -23,10 +33,10 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
+/** Teljes, le nem vágott kártyakép (object-fit: contain, nem cover) — a doboz magassága ehhez igazodik, nem fordítva. */
 .weatherImage {
   display: block;
-  width: 2.3rem;
-  height: 2.6rem;
-  object-fit: cover;
-  object-position: top;
+  width: 2.4rem;
+  height: 3.76rem;
+  object-fit: contain;
 }

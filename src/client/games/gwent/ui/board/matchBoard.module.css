@@ -9,8 +9,14 @@
 .matchBoard {
   /* Shared with ActiveWeatherZone.module.css's `.zone` so the weather strip
      lines up exactly under the leader column, even though they're siblings
-     in separate PlayerBoardZone subtrees, not the same grid. */
-  --gwent-leader-col-width: 9rem;
+     in separate PlayerBoardZone subtrees, not the same grid. Widened
+     (2026-08-05, reference crop match) so PlayerInfoPanel's horizontal
+     avatar+name+stats band has room to breathe. */
+  --gwent-leader-col-width: 18rem;
+  /* Shared with `.boardDividerLeft`'s fixed weather-slot height AND the
+     leader-card clearance margin below — moved up here (not local to
+     `.boardDividerRow`) so both can reference the SAME value. */
+  --gwent-weather-slot-h: 4.6rem;
 
   display: flex;
   flex-direction: column;
@@ -24,13 +30,13 @@
   color: var(--shell-ink-parchment, #f5f0e0);
 }
 
-.boardZone,
+.boardSurface,
 .actionBar {
   position: relative;
 }
 
-.boardZone::before,
-.boardZone::after,
+.boardSurface::before,
+.boardSurface::after,
 .actionBar::before,
 .actionBar::after {
   content: '';
@@ -46,10 +52,47 @@
   left: 0.3rem;
 }
 
-.boardZone::after,
+.boardSurface::after,
 .actionBar::after {
   left: auto;
   right: 0.3rem;
+}
+
+/**
+ * Gwent-0d §3, 3. korrekció: EGYETLEN egybefüggő felület a két PlayerBoardZone
+ * (+ a köztük lévő `.boardDivider`) köré — a korábbi "két külön keretezett
+ * doboz, réssel elválasztva" helyett. Csak EZ kap keretet/kerekített
+ * sarkot/árnyékot; a `.boardZone` már csak a belső rácsot adja.
+ */
+.boardSurface {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  border: 2px solid var(--shell-line, #241407);
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: var(--shell-panel, #3e2c17);
+  box-shadow: var(--shell-shadow-deep, 0 3px 8px rgba(0, 0, 0, 0.4)), var(--shell-shadow-lifted, inset 0 0 0 1px rgba(255, 255, 255, 0.25));
+}
+
+/**
+ * Gwent-0d §3, 6. korrekció: a bal (vezér) oszlop és a sorok közötti
+ * ezüst/vas elválasztó EGYETLEN, a teljes `.boardSurface` magasságában
+ * húzódó, abszolút pozicionált elemként — lásd MatchBoard.tsx doc-kommentje
+ * arról, miért NEM 3 külön elemen megismételt szegély. `left` pontosan a
+ * `.boardZone` bal paddingja (0.6rem) + a vezér-oszlop szélessége, ami
+ * MINDEN elemnél (zóna, elválasztó sor) ugyanaz a két érték.
+ */
+.boardMetalRail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(0.6rem + var(--gwent-leader-col-width, 9rem));
+  width: 5px;
+  background: linear-gradient(180deg, #d8dde1 0%, #7d8388 20%, #eef1f3 45%, #6b7075 70%, #cfd4d8 100%);
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }
 
 .boardZone {
@@ -62,12 +105,55 @@
      other way around. */
   flex: 1 1 0;
   min-height: 0;
-  border: 2px solid var(--shell-line, #241407);
-  border-radius: 0.6rem;
   padding: 0.6rem;
-  background: var(--shell-panel, #3e2c17);
   color: var(--shell-ink-parchment, #f4e8ca);
-  box-shadow: var(--shell-shadow-deep, 0 3px 8px rgba(0, 0, 0, 0.4)), var(--shell-shadow-lifted, inset 0 0 0 1px rgba(255, 255, 255, 0.25));
+}
+
+/**
+ * Gwent-0d §3, 10. korrekció — a bal (időjárás-hely) és a jobb (arany sáv)
+ * rész TELJESEN független egymástól:
+ *
+ * - `.boardDividerRow` magasságát KIZÁRÓLAG az arany sáv adja (vékony,
+ *   állandó) — ez a TÉNYLEGES elválasztó a fenti/lenti pályarész között.
+ * - `.boardDividerLeft` (időjárás-kártyák helye) `position: absolute`,
+ *   FIX magassággal, a sor közepére igazítva — NEM része a sor
+ *   doboz-modelljének.
+ * - ÚJ: mivel ez a doboz (fixen) túllóg a vékony soron, a szomszédos
+ *   `.leaderPanel`-ek (mindkét zónában AZ az elem, ami a középvonal felé
+ *   esik — lásd PlayerBoardZone.tsx tükrözési logikáját) kapnak pontosan
+ *   ekkora foglalt helyet (`--gwent-weather-overlay-clearance`), hogy a
+ *   túllógás SOSE érjen hozzá a vezér-kártyához — a "két oldal független"
+ *   ELVE (a doboz nem tolja szét a sorokat) MOST MÁR azzal egészül ki, hogy
+ *   a vezér-oszlop MAGA tartalmaz elég helyet, hogy a túllógást befogadja.
+ */
+.boardDividerRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0 0.6rem;
+}
+
+.boardDividerLeft {
+  position: absolute;
+  top: 50%;
+  left: 0.6rem;
+  transform: translateY(-50%);
+  z-index: 2;
+  height: var(--gwent-weather-slot-h, 5.4rem);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: var(--gwent-leader-col-width, 9rem);
+}
+
+.boardDividerGold {
+  flex: 1 1 auto;
+  margin-left: calc(var(--gwent-leader-col-width, 9rem) + 0.6rem);
+  height: 0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0.75) 15%, rgba(212, 175, 55, 0.75) 85%, rgba(212, 175, 55, 0.15) 100%);
+  box-shadow: 0 0 4px rgba(212, 175, 55, 0.5);
 }
 
 .boardZoneLeaderColumn {
@@ -82,6 +168,22 @@
      viewport's allotted height; this keeps them contained inside the
      zone's own border instead of visually spilling past it. */
   overflow-y: auto;
+}
+
+/**
+ * Gwent-0d §3, 10. korrekció: `.leaderPanel` MINDIG a középvonal (a
+ * `.boardDividerRow`) felé eső elem ebben az oszlopban (a PlayerBoardZone.tsx
+ * tükrözési logikája miatt — outer zónánál utolsó, inner zónánál első
+ * gyerek) — pontosan annyi hely fenntartva a divider felőli oldalán,
+ * amennyivel `.boardDividerLeft` túllóghat a saját (vékony) során, hogy a
+ * túllógás SOSE érjen hozzá a vezér-kártyához.
+ */
+.boardZoneLeaderColumn > .leaderPanel:last-child {
+  margin-bottom: calc((var(--gwent-weather-slot-h, 5.4rem) - 0.45rem) / 2);
+}
+
+.boardZoneLeaderColumn > .leaderPanel:first-child {
+  margin-top: calc((var(--gwent-weather-slot-h, 5.4rem) - 0.45rem) / 2);
 }
 
 .boardZoneCenterColumn {
@@ -111,11 +213,20 @@
  * reasoning as GwentBackdrop.tsx) standing in for the reference client's
  * wardrobe-like row panels.
  */
+/**
+ * Gwent-0d §3, 5. korrekció: a 3 sor EGYENLŐEN tölti ki a rendelkezésre álló
+ * teljes magasságot (`flex: 1 1 0`, nem fix `height`) — nem a lapok száma
+ * szabja meg a sor magasságát (az `.rowCards` alább vízszintesen görgethető,
+ * ha sok lap kerül egy sorra), hanem a SZÜLŐ (`.boardZoneCenterColumn`)
+ * rendelkezésre álló mérete — passzív, sosem "ugrál", de nem hagy üres
+ * helyet sem a sorok alatt/fölött.
+ */
 .boardRow {
   display: flex;
   align-items: stretch;
   gap: 0.5rem;
-  min-height: 4.5rem;
+  flex: 1 1 0;
+  min-height: 0;
   background: linear-gradient(160deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.32) 100%);
   border: 1px solid var(--shell-line, rgba(21, 12, 4, 0.6));
   padding: 0.25rem 0.4rem 0.25rem 0;
@@ -190,6 +301,7 @@
   font-family: var(--gwent-display-font, serif);
   font-weight: 700;
   font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
@@ -212,10 +324,15 @@
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
 
+/** Gwent-0d §3, korrekció: sosem törik új sorba (ami a `.boardRow` fix magasságát feszítené szét) — helyette vízszintesen görgethető, ha egy sorra több lap kerül, mint amennyi kifér. */
 .rowCards {
   display: flex;
+  align-items: center;
   gap: 0.35rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
 }
 
 .cardTile {
@@ -410,8 +527,8 @@
  * DeckPile on the opposite side.
  */
 .leaderImage {
-  width: 6rem;
-  height: 9.4rem;
+  width: 5rem;
+  height: 7.85rem;
   object-fit: contain;
   border-radius: 0.35rem;
   cursor: pointer;

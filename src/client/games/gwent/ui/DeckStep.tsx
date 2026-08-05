@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from '../../../ui-kit/Button';
 import { Select } from '../../../ui-kit/Select';
 import type { CardDef, Faction } from '../../../../shared/games/gwent/engine/types';
 import {
@@ -10,6 +11,7 @@ import {
 import { CARD_SORT_OPTIONS, sortCards, type CardSortKey } from './cardDisplay';
 import { CardCountGrid } from './CardCountGrid';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
+import { buildTestDeckCounts } from './testDeckPresets';
 import styles from './GwentSetupPage.module.css';
 
 export interface DeckStepProps {
@@ -72,6 +74,10 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange }: 
           onChange={(value) => setSortKey(value as CardSortKey)}
           options={CARD_SORT_OPTIONS.map((option) => ({ value: option.key, label: option.label }))}
         />
+        {/* Dev/teszt-kényelmi gomb (2026-08-05): egy kattintással kitölt egy garantáltan érvényes teszt-paklit, hogy ne kelljen minden teszt-parti előtt végigkattintani az építést. */}
+        <Button variant="secondary" onClick={() => onCardCountsChange(buildTestDeckCounts(faction))}>
+          Teszt pakli kitöltése
+        </Button>
       </div>
 
       <CardCountGrid

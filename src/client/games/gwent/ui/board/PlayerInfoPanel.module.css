@@ -1,23 +1,45 @@
 /**
- * Gwent-0d §3, korrekció: a bal oszlop szélességéhez (kb. 7rem) igazított,
- * FÜGGŐLEGES kártya — a referencia-képeken a játékos-adatok a vezér mellett
- * ülnek a bal oldalon, nem egy vízszintes fejléc-sávban a sorok fölött.
+ * Gwent-0d §3, 2. korrekció: SZÉLES, VÍZSZINTES sáv (nem keskeny függőleges
+ * kártya) — közeli referencia-kép alapján. Enyhén átlátszó fekete háttér;
+ * a ténylegesen soron lévő félnél (`.activeTurn`) arany fény fölül-alul.
  */
 .panel {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.5rem;
   width: 100%;
   flex-shrink: 0;
-  padding: 0.5rem 0.3rem;
+  padding: 0.4rem 0.6rem;
   border-radius: 0.4rem;
-  background: rgba(0, 0, 0, 0.32);
+  background: rgba(0, 0, 0, 0.38);
 }
 
-/** Gwent-0d §3, korrekció: a soron lévő fél sávja fölül-alul arany fényt kap — ez a TÉNYLEGES köri aktivitást jelzi, független az arany/ezüst tulajdonos-színtől. */
-.activeTurn {
-  box-shadow: 0 -3px 6px -1px var(--shell-accent, #d4af37), 0 3px 6px -1px var(--shell-accent, #d4af37);
+/**
+ * Gwent-0d §3, 5. korrekció: KIZÁRÓLAG felül/alul fény, oldalt semmi — egy
+ * `box-shadow`-val (még 0 vízszintes eltolással is) a blur a sarkoknál
+ * érzékelhetően "átfut" oldalra is, ezért két külön, teljes szélességű
+ * gradiens-sáv pszeudoelemként, közvetlenül a panel felső/alsó éle fölött/
+ * alatt — ez garantáltan nem terjed az oldalakra.
+ */
+.activeTurn::before,
+.activeTurn::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.3rem;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 100% at 50% 50%, var(--shell-accent, #d4af37) 0%, transparent 75%);
+  opacity: 0.85;
+}
+
+.activeTurn::before {
+  top: -0.25rem;
+}
+
+.activeTurn::after {
+  bottom: -0.25rem;
 }
 
 /** Gwent-0d §3: gold for the own/bottom zone, silver for the opponent/top zone — fixed per-zone, not tied to whose turn it is. */
@@ -31,10 +53,14 @@
   --owner-color-soft: var(--gwent-owner-opponent-soft, rgba(185, 192, 198, 0.4));
 }
 
-.avatar {
+.avatarWrap {
+  position: relative;
   flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
+}
+
+.avatar {
+  width: 2.6rem;
+  height: 2.6rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -42,42 +68,66 @@
   background: var(--shell-panel, #3e2c17);
   border: 2px solid var(--owner-color, currentColor);
   box-shadow: 0 0 0 2px var(--owner-color-soft, transparent), 0 3px 6px rgba(0, 0, 0, 0.5);
+  color: #c9a876;
+}
+
+/** A frakció-embléma kis jelvényként a profilkép bal-felső sarkára illesztve — a referencia-képen is így ül a portré mellett. */
+.crestBadge {
+  position: absolute;
+  top: -0.25rem;
+  left: -0.3rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--shell-panel, #241708);
+  border: 1px solid var(--shell-accent, #d4af37);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  font-size: 0.65rem;
   color: var(--shell-ink-parchment, #f4e8ca);
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .name {
   font-family: var(--gwent-display-font, serif);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--shell-ink-parchment, #f4e8ca);
-  text-align: center;
-  line-height: 1.1;
-  max-width: 100%;
-  overflow-wrap: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .faction {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.6rem;
-  opacity: 0.85;
-  text-align: center;
+  font-size: 0.68rem;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stats {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  margin-top: 0.05rem;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .statLine {
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .scoreBadge {
@@ -85,20 +135,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 2.1rem;
+  height: 2.1rem;
   border-radius: 50%;
-  background: var(--shell-surface, #e6d3ab);
-  border: 2px solid var(--owner-color, var(--shell-accent, #d4af37));
+  background: rgba(10, 10, 10, 0.75);
+  border: 1px solid rgba(230, 220, 200, 0.5);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
 }
 
 .scoreBadge svg {
   position: absolute;
-  inset: -0.35rem;
-  width: calc(100% + 0.7rem);
-  height: calc(100% + 0.7rem);
-  color: var(--owner-color, var(--shell-accent, #d4af37));
+  inset: -0.4rem;
+  width: calc(100% + 0.8rem);
+  height: calc(100% + 0.8rem);
+  color: var(--shell-accent, #d4af37);
 }
 
 .scoreNumber {
@@ -107,9 +157,17 @@
   font-family: var(--gwent-display-font, serif);
   font-weight: 700;
   font-size: 0.9rem;
-  color: var(--shell-ink, #2b1a0d);
+  font-variant-numeric: tabular-nums;
+  color: var(--shell-ink-parchment, #f4e8ca);
 }
 
-.scoreLeading .scoreNumber {
-  color: var(--shell-accent-secondary, #7a1620);
+.passedLabel {
+  position: absolute;
+  right: 0.6rem;
+  bottom: -0.1rem;
+  transform: translateY(100%);
+  font-family: var(--gwent-display-font, serif);
+  font-style: italic;
+  font-size: 0.7rem;
+  color: var(--shell-accent, #d4af37);
 }
