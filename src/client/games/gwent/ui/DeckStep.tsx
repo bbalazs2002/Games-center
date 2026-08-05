@@ -9,7 +9,7 @@ import {
 } from '../../../../shared/games/gwent/engine/deckRules';
 import { CARD_SORT_OPTIONS, sortCards, type CardSortKey } from './cardDisplay';
 import { CardCountGrid } from './CardCountGrid';
-import { CardDetailModal } from './CardDetailModal';
+import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
 import styles from './GwentSetupPage.module.css';
 
 export interface DeckStepProps {
@@ -89,7 +89,7 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange }: 
         onShowDetail={setDetailCard}
       />
 
-      <CardDetailModal card={detailCard} onClose={() => setDetailCard(null)} />
+      <CardCarouselModal entries={detailCard ? ([{ type: 'catalog', def: detailCard }] satisfies CarouselEntry[]) : null} onClose={() => setDetailCard(null)} />
     </>
   );
 }

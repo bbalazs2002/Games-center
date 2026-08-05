@@ -34,12 +34,19 @@ const PUBLIC_LEADERS_DIR = join(repoRoot, 'public', 'assets', 'gwent', 'leaders'
 // excluded, same standing decision as ASSET_FOLDERS. Keys are the exact source filenames;
 // values are the output slug (mirrors FACTION_SLUG, plus 'default' for the generic back).
 const CARD_BACK_DIR = join(ASSET_ROOT, 'Back');
-// Gwent-0c.2 §B, 1. pont: "a háttér inkább kép legyen" — a real photo instead
-// of pure CSS gradients. Source is only 426×240 (a mood-reference thumbnail,
-// not a production asset) — gwentTheme.module.css deliberately blurs +
-// darkens it in CSS, which both fits the intended moody/dim look AND hides
-// the low native resolution when stretched to fill the viewport.
-const BACKGROUND_SOURCE = join(repoRoot, 'assets', 'Gwent', 'style-samples', 'medieval-tavern-background.jpg');
+// Gwent-0d (docs/gwent-0d-vizualis-ujratervezes-specifikacio.md §0) — shared
+// decorative textures (wood tabletop, parchment, hinge/frame metal), sourced
+// from the user's own design-sample reference photos, replacing the earlier
+// low-resolution (426×240) "tavern photo" background from Gwent-0c.2.
+const TEXTURES_SOURCE_DIR = join(repoRoot, 'assets', 'Gwent', 'design-sample');
+const PUBLIC_TEXTURES_DIR = join(repoRoot, 'public', 'assets', 'gwent', 'textures');
+const TEXTURE_SLUG_BY_FILENAME = {
+  'wood-bg.jpg': 'wood',
+  'parchment2.jpg': 'parchment',
+  'parchment4.jpg': 'parchment-alt',
+  'metal.jpg': 'metal',
+  'rust-metal.jpg': 'rust-metal',
+};
 const CARD_BACK_SLUG_BY_FILENAME = {
   'Back.png': 'default',
   'Neutral back.jpg': 'neutral',
@@ -183,8 +190,11 @@ async function processCardBacks() {
   return Object.keys(CARD_BACK_SLUG_BY_FILENAME).length;
 }
 
-async function processBackground() {
-  await processImage(BACKGROUND_SOURCE, join(repoRoot, 'public', 'assets', 'gwent', 'background.jpg'));
+async function processTextures() {
+  for (const [filename, slug] of Object.entries(TEXTURE_SLUG_BY_FILENAME)) {
+    await processImage(join(TEXTURES_SOURCE_DIR, filename), join(PUBLIC_TEXTURES_DIR, `${slug}.jpg`));
+  }
+  return Object.keys(TEXTURE_SLUG_BY_FILENAME).length;
 }
 
 async function processIcons() {
@@ -393,11 +403,11 @@ export function getLeaderDef(id: string): LeaderDef {
 
   const iconCount = await processIcons();
   const backCount = await processCardBacks();
-  await processBackground();
+  const textureCount = await processTextures();
 
   const totalImages = cardDefs.reduce((n, c) => n + c.imagePaths.length, 0) + leaderDefs.reduce((n, l) => n + l.imagePaths.length, 0);
   console.log(
-    `Done: ${cardDefs.length} CardDefs + ${leaderDefs.length} LeaderDefs, ${totalImages} images + ${iconCount} icons + ${backCount} card backs written to public/assets/gwent/.`,
+    `Done: ${cardDefs.length} CardDefs + ${leaderDefs.length} LeaderDefs, ${totalImages} images + ${iconCount} icons + ${backCount} card backs + ${textureCount} textures written to public/assets/gwent/.`,
   );
 }
 

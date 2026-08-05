@@ -7,8 +7,8 @@ import { getValidActions } from '../../../../../shared/games/gwent/engine/select
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
 import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import type { Row } from '../../../../../shared/games/gwent/engine/types';
-import { CardDetailModal } from '../CardDetailModal';
 import { EyeIcon } from './boardIcons';
+import { CardCarouselModal, type CarouselEntry } from './CardCarouselModal';
 import { CardFlightProvider } from './cardFlight';
 import { CardTile } from './CardTile';
 import { GwentLogPanel } from './GwentLogPanel';
@@ -92,9 +92,18 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
   // sent as one PLAY_CARD once the chain stops (a non-Medic pick, or "Kihagyás").
   const [medicChain, setMedicChain] = useState<string[]>([]);
   // "Nézegetés" mode (Gwent-0c.2 §K, 12. pont): while on, clicking a hand
-  // card opens a read-only CardDetailModal instead of selecting it for play.
+  // card opens the read-only carousel inspector instead of selecting it for play.
   const [viewMode, setViewMode] = useState(false);
-  const [zoomedHandInstance, setZoomedHandInstance] = useState<CardInstance | null>(null);
+  // Gwent-0d §2/§4: ONE shared carousel instance for the whole board — a
+  // group is always exactly one of: the acting player's hand, one board
+  // row's cards, or one discard pile. Never mixed.
+  const [cardGroup, setCardGroup] = useState<{ cards: CardInstance[]; initialIndex: number } | null>(null);
+
+  function openCardGroup(cards: CardInstance[], initialIndex: number): void {
+    setCardGroup({ cards, initialIndex });
+  }
+
+  const carouselEntries: CarouselEntry[] | null = cardGroup ? cardGroup.cards.map((instance) => ({ type: 'card', instance })) : null;
 
   const actingPlayer = getCurrentPlayer(state);
   const isMyTurn = myPlayer === undefined || myPlayer === actingPlayer.id;
@@ -106,8 +115,8 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
 
   function selectCard(instanceId: string): void {
     if (viewMode) {
-      const instance = actingPlayer.hand.find((c) => c.instanceId === instanceId);
-      if (instance) setZoomedHandInstance(instance);
+      const index = actingPlayer.hand.findIndex((c) => c.instanceId === instanceId);
+      if (index >= 0) openCardGroup(actingPlayer.hand, index);
       return;
     }
     setPendingCardId((prev) => (prev === instanceId ? null : instanceId));
@@ -195,6 +204,7 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
           }}
           selectableRows={rowPickOwnerId === topPlayer.id ? (selectableRows ?? undefined) : undefined}
           onSelectRow={selectRow}
+          onOpenCardGroup={openCardGroup}
         />
 
         <div className={styles.weatherBar}>
@@ -215,6 +225,7 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
           }}
           selectableRows={rowPickOwnerId === bottomPlayer.id ? (selectableRows ?? undefined) : undefined}
           onSelectRow={selectRow}
+          onOpenCardGroup={openCardGroup}
         />
 
         {!isMyTurn && (
@@ -292,7 +303,7 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
           </div>
         )}
 
-        <CardDetailModal card={zoomedHandInstance ? getCardDef(zoomedHandInstance.defId) : null} instance={zoomedHandInstance ?? undefined} onClose={() => setZoomedHandInstance(null)} />
+        <CardCarouselModal entries={carouselEntries} initialIndex={cardGroup?.initialIndex} onClose={() => setCardGroup(null)} />
 
         {state.phase === 'ROUND_RESOLVED' && <RoundSummaryModal state={state} dispatch={dispatch} />}
 

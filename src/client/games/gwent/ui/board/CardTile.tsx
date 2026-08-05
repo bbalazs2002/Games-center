@@ -9,7 +9,7 @@ import styles from './matchBoard.module.css';
 
 export interface CardTileProps {
   instance: CardInstance;
-  /** Omitted for non-unit cards (weather/decoy/horn/scorch never show a power badge). */
+  /** Omitted for non-unit cards (weather/decoy/horn/scorch never show a power badge). Only rendered as a supplementary overlay at `size="small"` — the card art's own burned-in power badge is already legible at medium/large (Gwent-0d §1). */
   power?: number;
   selected?: boolean;
   disabled?: boolean;
@@ -79,7 +79,8 @@ export const CardTile = forwardRef<HTMLButtonElement, CardTileProps>(function Ca
   return (
     <button ref={ref} type="button" style={style} className={className} onClick={onClick} disabled={disabled || !onClick} title={def.name}>
       <img className={styles.cardImage} src={assetUrl(imagePath)} alt={def.name} />
-      {power !== undefined && <span className={styles.cardPower}>{power}</span>}
+      {/* Gwent-0d §1: only at board scale — the burned-in power badge is already legible at medium/large. */}
+      {power !== undefined && size === 'small' && <span className={styles.cardPower}>{power}</span>}
     </button>
   );
 });

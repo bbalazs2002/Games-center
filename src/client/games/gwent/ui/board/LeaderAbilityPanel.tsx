@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { assetUrl } from '../../../../core/assetUrl';
 import { Button } from '../../../../ui-kit/Button';
+import { CardCarouselModal, type CarouselEntry } from './CardCarouselModal';
 import { CardTile } from './CardTile';
-import { LeaderDetailModal } from './LeaderDetailModal';
 import { getLeaderDef } from '../../../../../shared/games/gwent/engine/leaderDefs';
 import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
 import { canActivateLeaderAbility } from '../../../../../shared/games/gwent/engine/leaderAbilities';
@@ -76,7 +76,7 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
           onClick={() => setZoomOpen(true)}
         />
         <span className={styles.leaderUsed}>Vezér-képesség elhasználva</span>
-        <LeaderDetailModal leader={zoomOpen ? leaderDef : null} onClose={() => setZoomOpen(false)} />
+        <CardCarouselModal entries={zoomOpen ? ([{ type: 'leader', leader: leaderDef }] satisfies CarouselEntry[]) : null} onClose={() => setZoomOpen(false)} />
       </div>
     );
   }
@@ -113,7 +113,7 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
         alt={leaderDef.name}
         onClick={() => setZoomOpen(true)}
       />
-      <LeaderDetailModal leader={zoomOpen ? leaderDef : null} onClose={() => setZoomOpen(false)} />
+      <CardCarouselModal entries={zoomOpen ? ([{ type: 'leader', leader: leaderDef }] satisfies CarouselEntry[]) : null} onClose={() => setZoomOpen(false)} />
       {/* Gwent-0c.4 §E: the description used to sit here too — removed (felhasználó: elég, ha a
           modálon látszik, ami a vezérkép kattintására már ma is nyílik, lásd fent) — this also
           removes the risk of a long description pushing LifeTokens out of the zone below. */}

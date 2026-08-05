@@ -271,22 +271,34 @@
   display: block;
 }
 
+/**
+ * Gwent-0d §1: the source card photos already bake in the full official
+ * card frame (power badge, ability icons, faction ribbon, parchment
+ * nameplate, flavor quote — confirmed by inspecting the actual art files).
+ * `size="small"` (board rows, dense stacking) deliberately CROPS to just the
+ * top ~72% of the card — art + burned-in power/ability badges — hiding the
+ * nameplate/flavor text, exactly like the reference client's tiny battlefield
+ * tiles. `size="medium"`/`"large"` show the FULL card, uncropped (nameplate
+ * legible) — `object-fit: contain` rather than `cover`, since the exact
+ * source pixel ratio isn't guaranteed identical across every card image.
+ */
 .small .cardImage {
   width: 3rem;
-  height: 4.2rem;
+  height: 3.4rem;
   object-fit: cover;
+  object-position: top;
 }
 
 .medium .cardImage {
   width: 4.5rem;
-  height: 6.3rem;
-  object-fit: cover;
+  height: 7.05rem;
+  object-fit: contain;
 }
 
 .large .cardImage {
   width: 6.5rem;
-  height: 9.1rem;
-  object-fit: cover;
+  height: 10.2rem;
+  object-fit: contain;
 }
 
 .fill,
@@ -294,18 +306,26 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top;
 }
 
+/** Supplementary legibility overlay for `size="small"` ONLY (CardTile.tsx gates this) — the burned-in power circle is real but too tiny to read at board scale. */
 .cardPower {
   position: absolute;
-  top: 0.15rem;
-  left: 0.15rem;
-  background: rgba(0, 0, 0, 0.75);
+  top: 0.1rem;
+  left: 0.1rem;
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
   color: #fff;
+  font-family: var(--gwent-display-font, serif);
   font-weight: 700;
-  font-size: 0.75rem;
-  border-radius: 0.25rem;
-  padding: 0 0.25rem;
+  font-size: 0.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.55);
 }
 
 .actionBar {

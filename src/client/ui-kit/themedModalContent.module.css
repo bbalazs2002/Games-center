@@ -8,7 +8,21 @@
  * resolves, or genuinely, e.g. FeedbackModal opened from the menu (no game
  * running, so no gameId to theme from at all).
  */
-.themed {
+/**
+ * `.themed.themed` (not just `.themed`) is deliberate — a zero-behavior-change
+ * specificity bump (0,1,0 -> 0,2,0). A themed page's own root class (e.g.
+ * gwentTheme.module.css's `.theme`) is ALWAYS applied to the SAME element as
+ * this one (Modal.tsx portals its content out of the page's DOM tree, so
+ * every caller re-applies the page's theme class directly here to restore
+ * the --shell-* custom-property scope) — two same-specificity class
+ * selectors on one element resolve by SOURCE ORDER, which is bundler-
+ * dependent and not something any of these files should have to coordinate.
+ * Found live (2026-08-05, Gwent-0d): a theme root that sets its own
+ * `background`/`background-color` (every game's does, for its page
+ * background) could silently outrank this rule and paint the modal panel in
+ * the PAGE's background instead of the modal's, depending on chunk order.
+ */
+.themed.themed {
   background: var(--shell-surface, #22222c);
   color: var(--shell-ink, #ececed);
 }

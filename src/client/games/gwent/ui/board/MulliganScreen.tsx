@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Button } from '../../../../ui-kit/Button';
 import { canConfirmMulligan, canMulliganSwap, expectedViewerId } from '../../../../../shared/games/gwent/engine/rules';
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
 import type { GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
-import { CardDetailModal } from '../CardDetailModal';
+import { CardCarouselModal, type CarouselEntry } from './CardCarouselModal';
 import { CardTile } from './CardTile';
 import { useHandFan } from './useHandFan';
 import styles from './matchBoard.module.css';
@@ -28,9 +27,9 @@ export interface MulliganScreenProps {
  */
 export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProps) {
   const activePlayer = state.players.find((p) => p.id === expectedViewerId(state));
-  // Gwent-0c.1 §C, 6. pont: a swap is no longer instant on click — the card
-  // is shown enlarged first, and only the "Csere" footer button commits it.
-  const [previewInstanceId, setPreviewInstanceId] = useState<string | null>(null);
+  // Gwent-0d §4: the reference client's redraw screen — click a card to
+  // center it in the carousel, its data shown below; "Csere" commits it.
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const { containerRef, overlapPx } = useHandFan(activePlayer?.hand.length ?? 0, MIN_VISIBLE_PX);
 
   if (!activePlayer) return null;
@@ -44,8 +43,7 @@ export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProp
     );
   }
 
-  const previewInstance = previewInstanceId ? activePlayer.hand.find((c) => c.instanceId === previewInstanceId) : null;
-  const previewDef = previewInstance ? getCardDef(previewInstance.defId) : null;
+  const entries: CarouselEntry[] = activePlayer.hand.map((instance) => ({ type: 'card', instance }));
 
   return (
     <div className={styles.mulliganScreen}>
@@ -58,7 +56,7 @@ export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProp
             instance={instance}
             size="large"
             disabled={!canMulliganSwap(state, activePlayer.id, instance.instanceId)}
-            onClick={() => setPreviewInstanceId(instance.instanceId)}
+            onClick={() => setPreviewIndex(index)}
             style={index > 0 ? { marginLeft: -overlapPx } : undefined}
           />
         ))}
@@ -67,25 +65,17 @@ export function MulliganScreen({ state, dispatch, myPlayer }: MulliganScreenProp
         Kész
       </Button>
 
-      <CardDetailModal
-        card={previewDef}
-        instance={previewInstance ?? undefined}
-        onClose={() => setPreviewInstanceId(null)}
-        footer={
-          <>
-            <Button
-              onClick={() => {
-                dispatch({ type: 'MULLIGAN_SWAP', playerId: activePlayer.id, instanceId: previewInstanceId as string });
-                setPreviewInstanceId(null);
-              }}
-            >
-              Csere
-            </Button>
-            <Button variant="secondary" onClick={() => setPreviewInstanceId(null)}>
-              Mégse
-            </Button>
-          </>
-        }
+      <CardCarouselModal
+        entries={previewIndex !== null ? entries : null}
+        initialIndex={previewIndex ?? 0}
+        onClose={() => setPreviewIndex(null)}
+        confirmLabel="Csere"
+        isConfirmDisabled={(entry) => entry.type !== 'card' || !canMulliganSwap(state, activePlayer.id, entry.instance.instanceId)}
+        onConfirm={(entry) => {
+          if (entry.type !== 'card') return;
+          dispatch({ type: 'MULLIGAN_SWAP', playerId: activePlayer.id, instanceId: entry.instance.instanceId });
+          setPreviewIndex(null);
+        }}
       />
     </div>
   );

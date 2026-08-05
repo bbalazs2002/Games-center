@@ -1,31 +1,38 @@
 /**
- * Gwent's own visual language (Gwent-0c, darkened/enriched in Gwent-0c.1,
- * a real background PHOTO added in Gwent-0c.2 §B, 1. pont — a dim,
- * candlelit medieval hall, wrought-iron corner fittings on the tabletop,
- * gilt-edged parchment, warm gold/red light pools against a near-black
- * ground). See docs/gwent-0c.2-vizualis-finomhangolas-2-specifikacio.md §B.
- * No new webfont — system serif stack, same as clusterBTheme.module.css's
- * --display-font.
+ * Gwent-0d (docs/gwent-0d-vizualis-ujratervezes-specifikacio.md) — a ground-up
+ * repaint aimed at closely matching the Gwent minigame built into The Witcher
+ * 3 (reference screenshots + raw textures in assets/Gwent/design-sample/),
+ * replacing five rounds' worth of incremental patching (0c–0c.4).
  *
- * The photo itself is NOT referenced from this CSS file (a project-wide
- * rule — public/-served paths must go through assetUrl() for the beta
- * server's subpath, which plain CSS `url()` can't do) — GwentBackdrop.tsx
- * renders it as a separate `position: fixed` layer BEHIND everything, via
- * an inline `background-image` style. `--shell-ground` here is now a
- * translucent vignette/candlelight tint layered ON TOP of that photo
- * (rather than the fully opaque gradient-only "wood tabletop" it used to
- * paint from scratch), so the photo actually shows through.
+ * `--gwent-owner-self`/`--gwent-owner-opponent` are new: the user's
+ * gold-for-self / silver-for-opponent color coding, applied to player-owned
+ * chrome (portrait ring, score badge, leader-card frame, deck-pile badge) —
+ * NOT flipped by whose turn it is, only by which physical zone (bottom vs.
+ * top) a given `PlayerBoardZone` renders.
+ *
+ * `--shell-builder-ground` is deliberately separate from `--shell-ground` —
+ * the deck-builder is its own near-black "room" in the reference client, not
+ * a continuation of the wood-tabletop match board.
+ *
+ * Typography: Cinzel (display) + EB Garamond (body), self-hosted via
+ * `@fontsource` (see gwentFonts.ts) — a deliberate, user-approved exception
+ * to the project's usual system-font-stack-only convention, specifically to
+ * get closer to the original game's lettering.
+ *
+ * The wood/parchment/metal PHOTOS themselves are never referenced here as a
+ * CSS `url()` — see GwentBackdrop.tsx's doc comment (public/-served paths
+ * need assetUrl()'s base-path prefix, which plain CSS `url()` can't apply).
+ * `--shell-ground` here is a translucent vignette layered ON TOP of
+ * GwentBackdrop's fixed wood-photo layer, not an opaque gradient painting
+ * wood from scratch.
  */
 .theme {
   --shell-ground:
-    radial-gradient(ellipse 38% 30% at 22% 15%, rgba(255, 200, 120, 0.12) 0%, rgba(255, 180, 90, 0) 70%),
-    radial-gradient(ellipse 42% 34% at 80% 82%, rgba(255, 190, 110, 0.1) 0%, rgba(255, 180, 90, 0) 72%),
-    radial-gradient(ellipse 90% 70% at 50% 45%, rgba(20, 12, 6, 0.35) 0%, rgba(0, 0, 0, 0.72) 100%),
-    linear-gradient(180deg, rgba(15, 9, 5, 0.55) 0%, rgba(6, 3, 2, 0.78) 100%);
-  --shell-surface:
-    radial-gradient(ellipse 60% 40% at 30% 20%, rgba(120, 90, 45, 0.1) 0%, rgba(120, 90, 45, 0) 60%),
-    radial-gradient(ellipse 50% 35% at 75% 80%, rgba(90, 65, 30, 0.12) 0%, rgba(90, 65, 30, 0) 65%),
-    linear-gradient(160deg, #e2d3ab 0%, #d0b989 55%, #dcc79a 100%);
+    radial-gradient(ellipse 60% 45% at 25% 10%, rgba(255, 190, 110, 0.08) 0%, rgba(255, 180, 90, 0) 65%),
+    radial-gradient(ellipse 90% 75% at 50% 50%, rgba(15, 9, 5, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%),
+    linear-gradient(180deg, rgba(12, 7, 4, 0.5) 0%, rgba(5, 3, 2, 0.8) 100%);
+  --shell-surface: linear-gradient(160deg, #ede2c3 0%, #dcc99e 55%, #e6d6ac 100%);
+  --shell-panel: linear-gradient(160deg, #5a4126 0%, #3e2c17 60%, #4a341c 100%);
   --shell-surface-line: rgba(42, 24, 10, 0.6);
   --shell-ink: #2b1a0d;
   --shell-ink-soft: rgba(43, 26, 13, 0.68);
@@ -36,13 +43,32 @@
   --shell-line: #150c04;
   --shell-shadow-deep: 0 10px 22px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.5);
   --shell-shadow-lifted: inset 0 0 0 1px rgba(255, 246, 220, 0.3), inset 0 -3px 6px rgba(0, 0, 0, 0.22);
-  --gwent-display-font: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'URW Palladio L', Georgia, serif;
+
+  /* Gwent-0d: gold-for-self / silver-for-opponent, NOT tied to whose turn it is. */
+  --gwent-owner-self: #d4af37;
+  --gwent-owner-self-soft: rgba(212, 175, 55, 0.4);
+  --gwent-owner-opponent: #b9c0c6;
+  --gwent-owner-opponent-soft: rgba(185, 192, 198, 0.4);
+
+  /* Deck-builder's own near-black "room" — see file header. */
+  --shell-builder-ground: #0a0a0a;
+  --shell-builder-line: rgba(212, 175, 55, 0.25);
+
+  --gwent-display-font: 'Cinzel', 'Iowan Old Style', Palatino, Georgia, serif;
+  --gwent-body-font: 'EB Garamond', 'Iowan Old Style', Palatino, Georgia, serif;
 
   color-scheme: dark;
   background-color: #0b0603;
   background-image: var(--shell-ground);
   color: var(--shell-ink-parchment);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--gwent-body-font);
+}
+
+.theme :global(h1),
+.theme :global(h2),
+.theme :global(h3) {
+  font-family: var(--gwent-display-font);
+  letter-spacing: 0.02em;
 }
 
 /** GwentBackdrop.tsx's own root — see this file's top doc comment. */
@@ -52,10 +78,6 @@
   z-index: -1;
   background-size: cover;
   background-position: center;
-  /* Blur hides the source photo's low native resolution (426×240 — a
-     mood-reference thumbnail, not a production asset) while still reading
-     as a real room instead of a flat color; brightness/saturate keep it
-     from ever competing with foreground text/cards for attention. */
-  filter: blur(7px) brightness(0.42) saturate(1.15);
-  transform: scale(1.08);
+  filter: blur(1px) brightness(0.4) saturate(1.05);
+  transform: scale(1.04);
 }

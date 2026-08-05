@@ -1,15 +1,11 @@
-import { useState } from 'react';
 import { computeSideTotal } from '../../../../../shared/games/gwent/engine/rules';
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
 import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import type { Row } from '../../../../../shared/games/gwent/engine/types';
-import { CardDetailModal } from '../CardDetailModal';
 import { HandCardsIcon, TrophyIcon } from './boardIcons';
 import { BoardRow } from './BoardRow';
 import { DeckPile } from './DeckPile';
 import { DiscardPile } from './DiscardPile';
-import { DiscardPileModal } from './DiscardPileModal';
 import { LeaderAbilityPanel } from './LeaderAbilityPanel';
 import { LifeTokens } from './LifeTokens';
 import styles from './matchBoard.module.css';
@@ -36,6 +32,8 @@ export interface PlayerBoardZoneProps {
   /** Rows this zone's owner may click right now to finalize a pending row-choice play (Gwent-0c.1 §D) — only ever set for the ACTING player's own zone. */
   selectableRows?: ReadonlySet<Row>;
   onSelectRow?: (row: Row) => void;
+  /** Opens the shared carousel inspector for a card GROUP (Gwent-0d §2/§4) — a board row's own cards, or this zone's whole discard pile. Lifted to MatchBoard so there's exactly one carousel instance for the whole match. */
+  onOpenCardGroup: (cards: CardInstance[], initialIndex: number) => void;
 }
 
 const INNER_TO_OUTER_ROWS: Row[] = ['Melee', 'Ranged', 'Siege'];
@@ -51,19 +49,11 @@ export function PlayerBoardZone({
   onSelectTarget,
   selectableRows,
   onSelectRow,
+  onOpenCardGroup,
 }: PlayerBoardZoneProps) {
   const player = state.players.find((p) => p.id === playerId)!;
   const total = computeSideTotal(state, playerId);
   const rowOrder = outer ? [...INNER_TO_OUTER_ROWS].reverse() : INNER_TO_OUTER_ROWS;
-  // Read-only zoom for board cards (Gwent-0c.1 §C, 9. pont; Gwent-0c.2 §P,
-  // 18. pont: direct click, no magnifier) — kept local to each zone rather
-  // than lifted to MatchBoard, since it never interacts with the play-flow
-  // state machine (unlike selectableRows above). Stores the CardInstance
-  // (not just the CardDef) so CardDetailModal can pick the SAME art variant
-  // the small tile shows (Gwent-0c.2 §H, 9. pont).
-  const [zoomedInstance, setZoomedInstance] = useState<CardInstance | null>(null);
-  // Full discard-pile listing (Gwent-0c.2 §O, 17. pont) — null when closed.
-  const [discardModalCards, setDiscardModalCards] = useState<CardInstance[] | null>(null);
 
   return (
     <div className={styles.boardZone}>
@@ -89,7 +79,7 @@ export function PlayerBoardZone({
             onSelectTarget={onSelectTarget}
             rowSelectable={selectableRows?.has(row) ?? false}
             onSelectRow={() => onSelectRow?.(row)}
-            onCardClick={setZoomedInstance}
+            onOpenGroup={onOpenCardGroup}
           />
         ))}
       </div>
@@ -97,23 +87,16 @@ export function PlayerBoardZone({
       <div className={styles.boardZonePileColumn}>
         {outer ? (
           <>
-            <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} onOpenAll={() => setDiscardModalCards(player.discard)} />
+            <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} onOpenAll={() => onOpenCardGroup(player.discard, player.discard.length - 1)} />
             <DeckPile count={player.deck.length} faction={player.faction} zoneKey={`deck:${playerId}`} />
           </>
         ) : (
           <>
             <DeckPile count={player.deck.length} faction={player.faction} zoneKey={`deck:${playerId}`} />
-            <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} onOpenAll={() => setDiscardModalCards(player.discard)} />
+            <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} onOpenAll={() => onOpenCardGroup(player.discard, player.discard.length - 1)} />
           </>
         )}
       </div>
-
-      <CardDetailModal
-        card={zoomedInstance ? getCardDef(zoomedInstance.defId) : null}
-        instance={zoomedInstance ?? undefined}
-        onClose={() => setZoomedInstance(null)}
-      />
-      <DiscardPileModal cards={discardModalCards} onClose={() => setDiscardModalCards(null)} />
     </div>
   );
 }

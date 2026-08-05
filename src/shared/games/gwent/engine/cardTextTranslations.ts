@@ -7,10 +7,10 @@
  *
  * A card/leader missing from these maps has no separate flavor quote in its
  * `cardText` (its whole `cardText` is a rules/ability description, already
- * covered in Hungarian by CardDetailModal's own facts list + the
+ * covered in Hungarian by CardCarouselModal's own facts list + the
  * ability-explanation panel — see cardDisplay.ts's ABILITY_DESCRIPTIONS_HU)
- * — CardDetailModal/LeaderDetailModal simply omit the flavor-text block for
- * those. Keys are `CardDef.id`/`LeaderDef.id`.
+ * — CardCarouselModal simply omits the flavor-text block for those. Keys
+ * are `CardDef.id`/`LeaderDef.id`.
  *
  * Full re-translation pass (2026-08-04): the felhasználó corrected many
  * English cardText entries via scripts/gwent-card-editor.ts (typos, restored

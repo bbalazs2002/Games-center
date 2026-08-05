@@ -19,11 +19,11 @@ export interface BoardRowProps {
   /** True while this exact row is a legal destination for a pending row-choice play (Gwent-0c.1 §D) — highlights the whole row and makes it clickable, replacing the old Melee/Ranged/Siege button list. */
   rowSelectable?: boolean;
   onSelectRow?: () => void;
-  /** Opens the full-size detail view for a board card (Gwent-0c.2 §P, 18. pont: direct click, no magnifier) — loses priority to Decoy target-picking whenever that's active on this row. */
-  onCardClick?: (instance: CardInstance) => void;
+  /** Opens the carousel inspector scoped to THIS row's cards only (Gwent-0d §4. pont: a row is its own group, never mixed with the rest of the board) — loses priority to Decoy target-picking whenever that's active on this row. */
+  onOpenGroup?: (cards: CardInstance[], initialIndex: number) => void;
 }
 
-export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelectTarget, rowSelectable, onSelectRow, onCardClick }: BoardRowProps) {
+export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelectTarget, rowSelectable, onSelectRow, onOpenGroup }: BoardRowProps) {
   const rowState = state.players.find((p) => p.id === playerId)!.board[row];
   const total = computeRowTotal(state, playerId, row);
   // Horn now has its own dedicated column (below) — no longer duplicated as a flag icon here (Gwent-0c.2 §R).
@@ -66,7 +66,11 @@ export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelect
             selected={false}
             targetable={decoyTargetSelectable}
             onClick={
-              decoyTargetSelectable ? () => onSelectTarget?.(instance.instanceId) : onCardClick ? () => onCardClick(instance) : undefined
+              decoyTargetSelectable
+                ? () => onSelectTarget?.(instance.instanceId)
+                : onOpenGroup
+                  ? () => onOpenGroup(sortedCards, sortedCards.findIndex((c) => c.instanceId === instance.instanceId))
+                  : undefined
             }
           />
         ))}
