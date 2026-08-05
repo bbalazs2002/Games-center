@@ -1,0 +1,115 @@
+/**
+ * Gwent-0d §3, korrekció: a bal oszlop szélességéhez (kb. 7rem) igazított,
+ * FÜGGŐLEGES kártya — a referencia-képeken a játékos-adatok a vezér mellett
+ * ülnek a bal oldalon, nem egy vízszintes fejléc-sávban a sorok fölött.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: 100%;
+  flex-shrink: 0;
+  padding: 0.5rem 0.3rem;
+  border-radius: 0.4rem;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+/** Gwent-0d §3, korrekció: a soron lévő fél sávja fölül-alul arany fényt kap — ez a TÉNYLEGES köri aktivitást jelzi, független az arany/ezüst tulajdonos-színtől. */
+.activeTurn {
+  box-shadow: 0 -3px 6px -1px var(--shell-accent, #d4af37), 0 3px 6px -1px var(--shell-accent, #d4af37);
+}
+
+/** Gwent-0d §3: gold for the own/bottom zone, silver for the opponent/top zone — fixed per-zone, not tied to whose turn it is. */
+.ownerSelf {
+  --owner-color: var(--gwent-owner-self, #d4af37);
+  --owner-color-soft: var(--gwent-owner-self-soft, rgba(212, 175, 55, 0.4));
+}
+
+.ownerOpponent {
+  --owner-color: var(--gwent-owner-opponent, #b9c0c6);
+  --owner-color-soft: var(--gwent-owner-opponent-soft, rgba(185, 192, 198, 0.4));
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--shell-panel, #3e2c17);
+  border: 2px solid var(--owner-color, currentColor);
+  box-shadow: 0 0 0 2px var(--owner-color-soft, transparent), 0 3px 6px rgba(0, 0, 0, 0.5);
+  color: var(--shell-ink-parchment, #f4e8ca);
+}
+
+.name {
+  font-family: var(--gwent-display-font, serif);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--shell-ink-parchment, #f4e8ca);
+  text-align: center;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.faction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6rem;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.05rem;
+}
+
+.statLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.7rem;
+}
+
+.scoreBadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--shell-surface, #e6d3ab);
+  border: 2px solid var(--owner-color, var(--shell-accent, #d4af37));
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
+}
+
+.scoreBadge svg {
+  position: absolute;
+  inset: -0.35rem;
+  width: calc(100% + 0.7rem);
+  height: calc(100% + 0.7rem);
+  color: var(--owner-color, var(--shell-accent, #d4af37));
+}
+
+.scoreNumber {
+  position: relative;
+  z-index: 1;
+  font-family: var(--gwent-display-font, serif);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--shell-ink, #2b1a0d);
+}
+
+.scoreLeading .scoreNumber {
+  color: var(--shell-accent-secondary, #7a1620);
+}

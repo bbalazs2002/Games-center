@@ -7,6 +7,11 @@
  * natural size and is therefore always fully visible.
  */
 .matchBoard {
+  /* Shared with ActiveWeatherZone.module.css's `.zone` so the weather strip
+     lines up exactly under the leader column, even though they're siblings
+     in separate PlayerBoardZone subtrees, not the same grid. */
+  --gwent-leader-col-width: 9rem;
+
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -17,30 +22,6 @@
   overflow: hidden;
   background: var(--shell-ground, #0d2b1f);
   color: var(--shell-ink-parchment, #f5f0e0);
-}
-
-.weatherBar {
-  display: flex;
-  flex-shrink: 0;
-  justify-content: center;
-  align-items: center;
-  padding: 0.3rem 0;
-}
-
-.roundBadge {
-  font-family: var(--gwent-display-font, serif);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--shell-ink, #2b1a0d);
-  background: var(--shell-surface, #e6d3ab);
-  border: 1px solid var(--shell-accent, #d4af37);
-  border-radius: 999px;
-  padding: 0.25rem 1.1rem;
-  box-shadow: var(--shell-shadow-deep, 0 3px 8px rgba(0, 0, 0, 0.4));
-}
-
-.weatherActive {
-  color: #8fd3ff;
 }
 
 .boardZone,
@@ -73,7 +54,7 @@
 
 .boardZone {
   display: grid;
-  grid-template-columns: 5.5rem 1fr 4rem;
+  grid-template-columns: var(--gwent-leader-col-width, 9rem) 1fr 4rem;
   gap: 0.6rem;
   align-items: stretch;
   /* The one flexible pair (Gwent-0c.2 §N) — shrinks to whatever's left after
@@ -84,8 +65,8 @@
   border: 2px solid var(--shell-line, #241407);
   border-radius: 0.6rem;
   padding: 0.6rem;
-  background: var(--shell-surface, #e6d3ab);
-  color: var(--shell-ink, #2b1a0d);
+  background: var(--shell-panel, #3e2c17);
+  color: var(--shell-ink-parchment, #f4e8ca);
   box-shadow: var(--shell-shadow-deep, 0 3px 8px rgba(0, 0, 0, 0.4)), var(--shell-shadow-lifted, inset 0 0 0 1px rgba(255, 255, 255, 0.25));
 }
 
@@ -94,7 +75,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  min-height: 0;
+  /* Gwent-0d §3: same last-resort escape hatch as `.boardZoneCenterColumn` —
+     the player-info card + full leader card together can exceed a short
+     viewport's allotted height; this keeps them contained inside the
+     zone's own border instead of visually spilling past it. */
+  overflow-y: auto;
 }
 
 .boardZoneCenterColumn {
@@ -116,44 +103,44 @@
   gap: 0.5rem;
 }
 
-.boardZoneHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-weight: 700;
-  margin-bottom: 0.3rem;
-  border-bottom: 2px solid var(--shell-accent, #d4af37);
-  padding-bottom: 0.2rem;
-}
-
-.playerName {
-  font-family: var(--gwent-display-font, serif);
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--shell-ink, #2b1a0d);
-}
-
-.livesAndRounds {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.8rem;
-  color: var(--shell-ink-soft, rgba(43, 26, 13, 0.68));
-}
-
-.livesAndRounds svg {
-  flex-shrink: 0;
-}
-
+/**
+ * Gwent-0d §3: each row is its own carved-wood "shelf", visually distinct
+ * from the surrounding `.boardZone` panel — a slightly darker gradient +
+ * its own border, plus a metal hinge strip (`.rowHinge`, real photo texture
+ * via BoardRow.tsx's inline style — CSS `url()` can't use assetUrl(), same
+ * reasoning as GwentBackdrop.tsx) standing in for the reference client's
+ * wardrobe-like row panels.
+ */
 .boardRow {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 0.5rem;
   min-height: 4.5rem;
-  border-top: 1px solid var(--shell-surface-line, rgba(58, 34, 15, 0.3));
-  padding: 0.25rem 0;
+  background: linear-gradient(160deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.32) 100%);
+  border: 1px solid var(--shell-line, rgba(21, 12, 4, 0.6));
+  padding: 0.25rem 0.4rem 0.25rem 0;
   border-radius: 0.35rem;
   transition: background-color 0.15s ease;
+}
+
+.rowHinge {
+  flex-shrink: 0;
+  width: 0.6rem;
+  border-radius: 0.2rem 0 0 0.2rem;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.rowMedallion {
+  width: 1.8rem;
+  height: 1.8rem;
+  object-fit: contain;
+  padding: 0.2rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.12) 0%, rgba(0, 0, 0, 0.35) 75%);
+  border: 1px solid var(--shell-line, rgba(21, 12, 4, 0.6));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
 }
 
 /** A row the acting player may click to finalize a pending row-choice play (Gwent-0c.1 §D — replaces the old Melee/Ranged/Siege button list). */
@@ -182,16 +169,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 4.5rem;
+  justify-content: center;
+  gap: 0.3rem;
+  width: 2.6rem;
   flex-shrink: 0;
   font-size: 0.75rem;
-  opacity: 0.9;
 }
 
+/** Gwent-0d §3: a circular parchment badge (replaces the old plain-text total) — the reference client's row score bubble. */
 .rowTotal {
-  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--shell-surface, #e6d3ab);
+  border: 1px solid var(--shell-accent, #d4af37);
+  color: var(--shell-ink, #2b1a0d);
+  font-family: var(--gwent-display-font, serif);
   font-weight: 700;
-  opacity: 1;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .rowFlags {
@@ -336,8 +335,8 @@
   border: 2px solid var(--shell-line, #241407);
   border-radius: 0.6rem;
   padding: 0.6rem 0.75rem;
-  background: var(--shell-surface, #e6d3ab);
-  color: var(--shell-ink, #2b1a0d);
+  background: var(--shell-panel, #3e2c17);
+  color: var(--shell-ink-parchment, #f4e8ca);
   box-shadow: var(--shell-shadow-deep, 0 3px 8px rgba(0, 0, 0, 0.4)), var(--shell-shadow-lifted, inset 0 0 0 1px rgba(255, 255, 255, 0.25));
 }
 
@@ -355,7 +354,7 @@
 .turnLabel {
   font-family: var(--gwent-display-font, serif);
   font-weight: 700;
-  color: var(--shell-ink, #2b1a0d);
+  color: var(--shell-accent, #d4af37);
   margin: 0;
 }
 
@@ -384,8 +383,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--shell-surface-line, rgba(58, 34, 15, 0.3));
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--shell-accent-soft, rgba(212, 175, 55, 0.45));
   border-radius: 0.5rem;
   padding: 0.75rem;
 }
@@ -403,20 +402,27 @@
   text-align: center;
 }
 
+/**
+ * Gwent-0d §3: the FULL leader card (not a cropped thumbnail) — the source
+ * image already bakes in the frame/name/flavor, same as every unit card
+ * (Gwent-0d §1), so this just needs to show it uncropped at a size that
+ * reads as a real card sitting in the left column, roughly level with the
+ * DeckPile on the opposite side.
+ */
 .leaderImage {
-  width: 4rem;
-  height: 5.6rem;
-  object-fit: cover;
+  width: 6rem;
+  height: 9.4rem;
+  object-fit: contain;
   border-radius: 0.35rem;
-  border: 2px solid var(--shell-line, #241407);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
   cursor: pointer;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
 }
 
 .leaderUsed {
   opacity: 0.65;
   font-style: italic;
   font-size: 0.7rem;
+  color: var(--shell-ink-parchment, #f4e8ca);
 }
 
 .mulliganScreen,

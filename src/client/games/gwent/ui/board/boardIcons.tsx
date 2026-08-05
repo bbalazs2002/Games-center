@@ -36,3 +36,38 @@ export function EyeIcon() {
     </svg>
   );
 }
+
+/** Gwent-0d §3: the player-info panel's generic avatar — no real photo feature exists, every player gets the same bust silhouette. */
+export function PersonIcon() {
+  return (
+    <svg width="1.5em" height="1.5em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+    </svg>
+  );
+}
+
+/**
+ * Gwent-0d §3: wraps the score badge when this side currently has the
+ * higher round-total (`computeSideTotal`) — two mirrored leaf branches along
+ * a shallow arc, positioned `absolute; inset: 0` behind the score number by
+ * the caller (a decorative motif, not a pixel-exact replica).
+ */
+export function LaurelWreathIcon() {
+  return (
+    <svg viewBox="0 0 100 60" fill="currentColor" aria-hidden="true">
+      <g>
+        <path d="M12 55 Q2 35 12 15 Q17 26 23 31 Q17 36 21 46 Q15 51 12 55Z" opacity="0.85" />
+        <ellipse cx="16" cy="21" rx="4" ry="7.5" transform="rotate(-30 16 21)" />
+        <ellipse cx="9" cy="31" rx="4" ry="7.5" transform="rotate(-8 9 31)" />
+        <ellipse cx="12" cy="43" rx="4" ry="7.5" transform="rotate(18 12 43)" />
+      </g>
+      <g transform="translate(100,0) scale(-1,1)">
+        <path d="M12 55 Q2 35 12 15 Q17 26 23 31 Q17 36 21 46 Q15 51 12 55Z" opacity="0.85" />
+        <ellipse cx="16" cy="21" rx="4" ry="7.5" transform="rotate(-30 16 21)" />
+        <ellipse cx="9" cy="31" rx="4" ry="7.5" transform="rotate(-8 9 31)" />
+        <ellipse cx="12" cy="43" rx="4" ry="7.5" transform="rotate(18 12 43)" />
+      </g>
+    </svg>
+  );
+}

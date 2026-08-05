@@ -11,7 +11,6 @@ import { ABILITY_DESCRIPTIONS_HU, ABILITY_LABELS_HU, CARD_KIND_LABELS_HU, cardMe
 import { factionLabel } from '../factionDisplay';
 import { pickVariant } from './CardTile';
 import styles from './CardCarouselModal.module.css';
-import themedModal from '../../../../ui-kit/themedModalContent.module.css';
 
 /**
  * `card` = a live board/hand/discard `CardInstance` (variant art picked via
@@ -104,7 +103,7 @@ export function CardCarouselModal({ entries, initialIndex = 0, onClose, onConfir
   const hasMechanicsPanel = !!activeCardDef && (activeCardDef.abilities.length > 0 || mechanicLine !== null);
 
   return (
-    <Modal open={entries !== null} onClose={onClose} className={[themedModal.themed, themeClass, styles.wideModal].filter(Boolean).join(' ')}>
+    <Modal open={entries !== null} onClose={onClose} className={[themeClass, styles.wideModal].filter(Boolean).join(' ')}>
       {entries && activeEntry && (
         <>
           <div className={styles.stage}>

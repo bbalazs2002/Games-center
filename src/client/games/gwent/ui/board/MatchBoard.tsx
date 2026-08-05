@@ -6,7 +6,8 @@ import { canPass, eligibleMedicTargets, getCurrentPlayer, getPlayer } from '../.
 import { getValidActions } from '../../../../../shared/games/gwent/engine/selectors';
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
 import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
-import type { Row } from '../../../../../shared/games/gwent/engine/types';
+import type { CardDef, Row } from '../../../../../shared/games/gwent/engine/types';
+import { ActiveWeatherZone } from './ActiveWeatherZone';
 import { EyeIcon } from './boardIcons';
 import { CardCarouselModal, type CarouselEntry } from './CardCarouselModal';
 import { CardFlightProvider } from './cardFlight';
@@ -96,14 +97,16 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
   const [viewMode, setViewMode] = useState(false);
   // Gwent-0d §2/§4: ONE shared carousel instance for the whole board — a
   // group is always exactly one of: the acting player's hand, one board
-  // row's cards, or one discard pile. Never mixed.
-  const [cardGroup, setCardGroup] = useState<{ cards: CardInstance[]; initialIndex: number } | null>(null);
+  // row's cards, one discard pile, or the active weather cards. Never mixed.
+  const [carousel, setCarousel] = useState<{ entries: CarouselEntry[]; initialIndex: number } | null>(null);
 
   function openCardGroup(cards: CardInstance[], initialIndex: number): void {
-    setCardGroup({ cards, initialIndex });
+    setCarousel({ entries: cards.map((instance) => ({ type: 'card', instance })), initialIndex });
   }
 
-  const carouselEntries: CarouselEntry[] | null = cardGroup ? cardGroup.cards.map((instance) => ({ type: 'card', instance })) : null;
+  function openCatalogGroup(defs: CardDef[], initialIndex: number): void {
+    setCarousel({ entries: defs.map((def) => ({ type: 'catalog', def })), initialIndex });
+  }
 
   const actingPlayer = getCurrentPlayer(state);
   const isMyTurn = myPlayer === undefined || myPlayer === actingPlayer.id;
@@ -207,9 +210,7 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
           onOpenCardGroup={openCardGroup}
         />
 
-        <div className={styles.weatherBar}>
-          <span className={styles.roundBadge}>{state.round}. kör</span>
-        </div>
+        <ActiveWeatherZone activeWeatherRows={state.activeWeatherRows} onOpenGroup={openCatalogGroup} />
 
         <PlayerBoardZone
           state={state}
@@ -303,7 +304,7 @@ export function MatchBoard({ state, dispatch, myPlayer, bottomViewerId, requestD
           </div>
         )}
 
-        <CardCarouselModal entries={carouselEntries} initialIndex={cardGroup?.initialIndex} onClose={() => setCardGroup(null)} />
+        <CardCarouselModal entries={carousel?.entries ?? null} initialIndex={carousel?.initialIndex} onClose={() => setCarousel(null)} />
 
         {state.phase === 'ROUND_RESOLVED' && <RoundSummaryModal state={state} dispatch={dispatch} />}
 

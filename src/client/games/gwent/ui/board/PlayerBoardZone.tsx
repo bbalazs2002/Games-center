@@ -1,13 +1,12 @@
-import { computeSideTotal } from '../../../../../shared/games/gwent/engine/rules';
+import { computeSideTotal, getCurrentPlayer } from '../../../../../shared/games/gwent/engine/rules';
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
 import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import type { Row } from '../../../../../shared/games/gwent/engine/types';
-import { HandCardsIcon, TrophyIcon } from './boardIcons';
 import { BoardRow } from './BoardRow';
 import { DeckPile } from './DeckPile';
 import { DiscardPile } from './DiscardPile';
 import { LeaderAbilityPanel } from './LeaderAbilityPanel';
-import { LifeTokens } from './LifeTokens';
+import { PlayerInfoPanel } from './PlayerInfoPanel';
 import styles from './matchBoard.module.css';
 
 export interface PlayerBoardZoneProps {
@@ -55,20 +54,28 @@ export function PlayerBoardZone({
   const total = computeSideTotal(state, playerId);
   const rowOrder = outer ? [...INNER_TO_OUTER_ROWS].reverse() : INNER_TO_OUTER_ROWS;
 
+  const opponent = state.players.find((p) => p.id !== playerId)!;
+  const opponentTotal = computeSideTotal(state, opponent.id);
+  const isActiveTurn = getCurrentPlayer(state).id === playerId;
+
   return (
     <div className={styles.boardZone}>
+      {/*
+        Gwent-0d §3, korrekció: a referencia-képeken a játékos-adatok (portré,
+        név, frakció, élet, kéz, pontszám) a BAL oszlopban ülnek, a vezér
+        MELLETT — nem egy vízszintes fejléc a sorok fölött (ami eddig itt
+        volt). A közép oszlop mostantól TISZTÁN a 3 sor, fejléc nélkül.
+        A portré mindig a zóna KÜLSŐ szélén ül (a referencia szerint), a
+        vezér mindig a középvonal felé — ez `outer`-nél megfordítja a sorrendet,
+        ugyanaz a tükrözési logika, mint a soroknál (`rowOrder`).
+      */}
       <div className={styles.boardZoneLeaderColumn}>
+        {outer && <PlayerInfoPanel player={player} isSelf={!outer} total={total} leading={total > opponentTotal} isActiveTurn={isActiveTurn} />}
         <LeaderAbilityPanel state={state} playerId={playerId} dispatch={dispatch} viewerId={viewerId} requestDeckReveal={requestDeckReveal} />
-        <LifeTokens lives={player.lives} />
+        {!outer && <PlayerInfoPanel player={player} isSelf={!outer} total={total} leading={total > opponentTotal} isActiveTurn={isActiveTurn} />}
       </div>
 
       <div className={styles.boardZoneCenterColumn}>
-        <div className={styles.boardZoneHeader}>
-          <span className={styles.playerName}>{player.name}</span>
-          <span className={styles.livesAndRounds}>
-            <TrophyIcon /> {player.roundsWon} · <HandCardsIcon /> {player.hand.length} · Σ {total}
-          </span>
-        </div>
         {rowOrder.map((row) => (
           <BoardRow
             key={row}

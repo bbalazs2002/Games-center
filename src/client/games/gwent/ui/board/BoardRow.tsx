@@ -3,11 +3,20 @@ import { computeCardPower, computeRowTotal } from '../../../../../shared/games/g
 import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
 import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import type { Row } from '../../../../../shared/games/gwent/engine/types';
+import { METAL_TEXTURE_PATH } from '../gwentTextures';
 import { TrackedCardTile } from './cardFlight';
 import styles from './matchBoard.module.css';
 
 const ROW_LABELS: Record<Row, string> = { Melee: 'Közelharc', Ranged: 'Távolsági', Siege: 'Ostrom' };
 const HORN_ICON_PATH = assetUrl('/assets/gwent/icons/horn.png');
+// Gwent-0d §3: the existing row-type icons already visually match the
+// reference client's carved medallions (crossed sword/bow/ballista) — reused
+// as-is, no new asset needed.
+const ROW_MEDALLION_PATH: Record<Row, string> = {
+  Melee: assetUrl('/assets/gwent/icons/melee.png'),
+  Ranged: assetUrl('/assets/gwent/icons/ranged.png'),
+  Siege: assetUrl('/assets/gwent/icons/siege.png'),
+};
 
 export interface BoardRowProps {
   state: GwentState;
@@ -46,9 +55,10 @@ export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelect
       className={[styles.boardRow, rowSelectable && styles.boardRowSelectable].filter(Boolean).join(' ')}
       onClick={rowSelectable ? onSelectRow : undefined}
     >
+      <div className={styles.rowHinge} style={{ backgroundImage: `url(${METAL_TEXTURE_PATH})` }} />
       <div className={styles.rowLabel}>
-        <span>{ROW_LABELS[row]}</span>
         <span className={styles.rowTotal}>{total}</span>
+        <img className={styles.rowMedallion} src={ROW_MEDALLION_PATH[row]} alt={ROW_LABELS[row]} title={ROW_LABELS[row]} />
         {flags && <span className={styles.rowFlags}>{flags}</span>}
       </div>
       <div className={styles.hornColumn} title={rowState.hornActive ? 'Kürt aktív ezen a soron' : undefined}>
