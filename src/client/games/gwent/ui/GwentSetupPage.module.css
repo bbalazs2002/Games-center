@@ -26,11 +26,26 @@
   gap: 1rem;
 }
 
-.stepHeader {
+/**
+ * Gwent-0c.4 §A: "a felső, beállítások rész kapjon hátteret, és egy kicsit
+ * szofisztikáltabb elrendezést" — the name input + faction/leader pickers
+ * now sit inside one bordered/surfaced panel instead of loose on `.page`'s
+ * bare background.
+ */
+.setupPanel {
   display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--shell-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--shell-line, #cbd5e0);
+  border-radius: 0.75rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+/** Faction/leader pickers inside `.setupPanel` — smaller tiles than the full CardGrid default so both fit comfortably above the deck grid on one page. */
+.compactGrid {
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
 }
 
 .switcher {
@@ -72,6 +87,11 @@
   padding: 0.1rem 0.3rem;
 }
 
+.stepperButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .stepperCount {
   color: #fff;
   font-weight: 700;
@@ -86,17 +106,6 @@
   font-weight: 600;
 }
 
-.magnifierButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  border-radius: 0.35rem;
-  padding: 0.3rem;
-  cursor: pointer;
-}
 
 .savedMessage {
   opacity: 0.8;
@@ -114,7 +123,6 @@
   font: inherit;
   font-weight: 600;
   padding: 0.5rem 0.75rem;
-  margin-bottom: 0.5rem;
   border: 1px solid var(--shell-line, #cbd5e0);
   border-radius: 0.375rem;
   background: var(--shell-surface, rgba(255, 255, 255, 0.06));

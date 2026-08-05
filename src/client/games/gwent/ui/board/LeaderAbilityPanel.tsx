@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { assetUrl } from '../../../../core/assetUrl';
 import { Button } from '../../../../ui-kit/Button';
+import { CardTile } from './CardTile';
 import { LeaderDetailModal } from './LeaderDetailModal';
 import { getLeaderDef } from '../../../../../shared/games/gwent/engine/leaderDefs';
 import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
@@ -113,7 +114,9 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
         onClick={() => setZoomOpen(true)}
       />
       <LeaderDetailModal leader={zoomOpen ? leaderDef : null} onClose={() => setZoomOpen(false)} />
-      <p className={styles.leaderDescription}>{leaderDef.abilityDescription}</p>
+      {/* Gwent-0c.4 §E: the description used to sit here too — removed (felhasználó: elég, ha a
+          modálon látszik, ami a vezérkép kattintására már ma is nyílik, lásd fent) — this also
+          removes the risk of a long description pushing LifeTokens out of the zone below. */}
 
       {!pickingTarget && (
         <Button
@@ -134,9 +137,7 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
           {(revealedDeck ?? [])
             .filter((c) => getCardDef(c.defId).kind === 'Weather')
             .map((c) => (
-              <Button key={c.instanceId} variant="secondary" onClick={() => activate(c.instanceId)}>
-                {getCardDef(c.defId).name}
-              </Button>
+              <CardTile key={c.instanceId} instance={c} size="medium" onClick={() => activate(c.instanceId)} />
             ))}
           <Button variant="secondary" onClick={closePicker}>
             Mégse
@@ -148,27 +149,25 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
         <div className={styles.targetPicker}>
           <p>Válassz 2 lapot a kezedből, amit eldobsz ({selectedDiscards.length}/2):</p>
           {player.hand.map((c) => (
-            <Button
+            <CardTile
               key={c.instanceId}
-              variant={selectedDiscards.includes(c.instanceId) ? 'primary' : 'secondary'}
+              instance={c}
+              size="medium"
+              selected={selectedDiscards.includes(c.instanceId)}
               disabled={selectedDiscards.length >= 2 && !selectedDiscards.includes(c.instanceId)}
               onClick={() =>
                 setSelectedDiscards((prev) =>
                   prev.includes(c.instanceId) ? prev.filter((id) => id !== c.instanceId) : [...prev, c.instanceId],
                 )
               }
-            >
-              {getCardDef(c.defId).name}
-            </Button>
+            />
           ))}
           {selectedDiscards.length === 2 && (
             <>
               <p>Válassz 1 lapot a pakliból, amit felhúzol:</p>
               {revealedDeck === null && <p>Pakli lekérése…</p>}
               {(revealedDeck ?? []).map((c) => (
-                <Button key={c.instanceId} variant="secondary" onClick={() => activate(c.instanceId, selectedDiscards)}>
-                  {getCardDef(c.defId).name}
-                </Button>
+                <CardTile key={c.instanceId} instance={c} size="medium" onClick={() => activate(c.instanceId, selectedDiscards)} />
               ))}
             </>
           )}
@@ -183,9 +182,7 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
           <p>Válassz egy lapot a dobott lapjaid közül:</p>
           {player.discard.length === 0 && <p>Üres a dobott lapok kupaca.</p>}
           {player.discard.map((c) => (
-            <Button key={c.instanceId} variant="secondary" onClick={() => activate(c.instanceId)}>
-              {getCardDef(c.defId).name}
-            </Button>
+            <CardTile key={c.instanceId} instance={c} size="medium" onClick={() => activate(c.instanceId)} />
           ))}
           <Button variant="secondary" onClick={() => setPickingTarget(false)}>
             Mégse
@@ -198,9 +195,7 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
           <p>Válassz egy lapot az ellenfél dobott lapjai közül:</p>
           {getOpponent(state, playerId).discard.length === 0 && <p>Üres az ellenfél dobott lapok kupaca.</p>}
           {getOpponent(state, playerId).discard.map((c) => (
-            <Button key={c.instanceId} variant="secondary" onClick={() => activate(c.instanceId)}>
-              {getCardDef(c.defId).name}
-            </Button>
+            <CardTile key={c.instanceId} instance={c} size="medium" onClick={() => activate(c.instanceId)} />
           ))}
           <Button variant="secondary" onClick={() => setPickingTarget(false)}>
             Mégse

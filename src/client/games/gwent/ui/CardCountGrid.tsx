@@ -24,7 +24,15 @@ export interface CardCountGridProps {
   onShowDetail: (def: CardDef) => void;
 }
 
-/** A titled CardGrid of deck-builder cards with a per-tile +/- quantity stepper and a magnifier detail button — shared by the unit- and special-card sections of DeckStep. */
+/**
+ * A titled CardGrid of deck-builder cards with a per-tile +/- quantity stepper — shared by the unit- and special-card sections of DeckStep.
+ *
+ * Gwent-0c.4 §C: the magnifier detail button is gone — clicking the card
+ * tile itself now opens the detail modal (`onShowDetail`); the +/- stepper
+ * is the ONLY way left to change the count, and both buttons are always
+ * shown (previously the tile click was "+1" and "−" only appeared once the
+ * count was already above 0).
+ */
 export function CardCountGrid({ title, cards, cardCounts, onChangeCount, onShowDetail }: CardCountGridProps) {
   return (
     <>
@@ -35,43 +43,38 @@ export function CardCountGrid({ title, cards, cardCounts, onChangeCount, onShowD
         getImageUrl={(c) => assetUrl(c.imagePaths[0])}
         getLabel={(c) => c.name}
         getSubtitle={subtitle}
-        onSelect={(c) => onChangeCount(c, 1)}
-        renderCorner={(def) => (
-          <button
-            type="button"
-            className={styles.magnifierButton}
-            aria-label={`${def.name} nagyítása`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onShowDetail(def);
-            }}
-          >
-            {/* Monochrome (currentColor), not the colorful 🔍 emoji (Gwent-0c.2 §E, 5. pont). */}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <circle cx="10.5" cy="10.5" r="6.5" />
-              <line x1="20" y1="20" x2="15.2" y2="15.2" />
-            </svg>
-          </button>
-        )}
+        onSelect={onShowDetail}
         renderBadge={(def) => {
           const count = cardCounts[def.id] ?? 0;
           return (
             <div className={styles.stepper}>
-              {count > 0 && (
-                <button
-                  type="button"
-                  className={styles.stepperButton}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onChangeCount(def, -1);
-                  }}
-                >
-                  −
-                </button>
-              )}
+              <button
+                type="button"
+                className={styles.stepperButton}
+                disabled={count === 0}
+                aria-label={`${def.name} eggyel kevesebb`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onChangeCount(def, -1);
+                }}
+              >
+                −
+              </button>
               <span className={styles.stepperCount}>
                 {count} / {def.copies}
               </span>
+              <button
+                type="button"
+                className={styles.stepperButton}
+                disabled={count >= def.copies}
+                aria-label={`${def.name} eggyel több`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onChangeCount(def, 1);
+                }}
+              >
+                +
+              </button>
             </div>
           );
         }}

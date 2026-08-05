@@ -207,7 +207,7 @@ export function GwentOnlineGamePage() {
               ))}
             </ul>
           )}
-          <GwentDeckBuilder title="A paklid" onValidDraftChange={setDraft} />
+          <GwentDeckBuilder title="A paklid" nameInput={null} onValidDraftChange={setDraft} />
           <div className={styles.matchActions}>
             <Button disabled={!draft} onClick={submitDeck}>
               Kész, csatlakozás a mérkőzéshez

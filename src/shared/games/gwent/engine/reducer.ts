@@ -149,16 +149,30 @@ function resolveMusterChain(state: GwentState, playerId: PlayerId, triggerDefId:
   return appendLog(next, { type: 'MUSTER_TRIGGERED', playerId, triggerInstanceId, playedInstanceIds });
 }
 
-function resolveMedic(state: GwentState, playerId: PlayerId, requestedInstanceId: string | undefined): GwentState {
+/**
+ * `requestedInstanceIds` is an ORDERED chain, not a single id (Gwent-0c.4
+ * §11: "ugyanígy... a medik képességre is" — a revived Medic-ability card's
+ * OWN Medic ability should also get a real, player-picked target, not just
+ * silently fizzle). Element 0 is this level's pick; the rest are handed down
+ * for a nested revival if the revived card itself has Medic — MatchBoard.tsx
+ * collects the whole chain client-side (reusing the SAME picker UI level by
+ * level, no new UI) before dispatching one PLAY_CARD. `resolvePlayEffects`
+ * (below) is what actually re-invokes this recursively.
+ */
+function resolveMedic(state: GwentState, playerId: PlayerId, requestedInstanceIds: string[] | undefined): GwentState {
   const wasRandom = medicPicksRandomTarget(state);
+  const [requestedInstanceId, ...restRequested] = requestedInstanceIds ?? [];
   const target = pickMedicTarget(state, playerId, requestedInstanceId);
   if (!target) return state;
   const player = getPlayer(state, playerId);
   let next = updatePlayer(state, playerId, { discard: player.discard.filter((c) => c.instanceId !== target.instanceId) });
-  const def = getCardDef(target.defId);
-  const row = def.row ?? 'Melee'; // no card in the dataset is both Agile and Medic — safe, documented fallback
-  next = placeCardOnRow(next, playerId, row, target);
-  return appendLog(next, { type: 'MEDIC_REVIVED', playerId, instanceId: target.instanceId, defId: target.defId, row, wasRandom });
+  next = appendLog(next, { type: 'MEDIC_REVIVED', playerId, instanceId: target.instanceId, defId: target.defId, wasRandom });
+  // Re-runs the FULL on-play pipeline for the revived card — Spy redirection+draw,
+  // Muster chain (hand/deck ONLY, never discard — see findMusterPartnerDefIds/
+  // resolveMusterChain, unchanged), row-scorch, AND (via the recursion back into
+  // resolveMedic below, if the revived card is itself Medic) a nested pick,
+  // exactly as if it had just been played from hand.
+  return resolvePlayEffects(next, playerId, target, undefined, restRequested.length > 0 ? restRequested : undefined);
 }
 
 function resolveRowScorchIfAny(state: GwentState, playerId: PlayerId, def: CardDef): GwentState {
@@ -178,7 +192,21 @@ function resolveRowScorchIfAny(state: GwentState, playerId: PlayerId, def: CardD
   return next;
 }
 
-function resolveUnitPlay(state: GwentState, playerId: PlayerId, instance: CardInstance, chosenRow: Row | undefined, medicReviveInstanceId: string | undefined): GwentState {
+/**
+ * Places a card on the board and resolves every on-play trigger — Spy
+ * redirection+draw, Muster chain, an optional Medic sub-step, row-scorch.
+ * Called both for a normal PLAY_CARD from hand AND (Gwent-0c.4 §11)
+ * recursively from `resolveMedic` for a just-revived card, so a Medic'd-back
+ * Spy/Muster/Medic card behaves exactly as if it had been freshly played —
+ * no separate, cut-down path for revivals anymore.
+ */
+function resolvePlayEffects(
+  state: GwentState,
+  playerId: PlayerId,
+  instance: CardInstance,
+  chosenRow: Row | undefined,
+  medicReviveInstanceIds: string[] | undefined,
+): GwentState {
   const def = getCardDef(instance.defId);
   const isSpy = def.abilities.includes('Spy');
   const boardOwnerId = isSpy ? getOpponent(state, playerId).id : playerId;
@@ -202,7 +230,7 @@ function resolveUnitPlay(state: GwentState, playerId: PlayerId, instance: CardIn
   }
 
   next = resolveMusterChain(next, playerId, instance.defId, instance.instanceId);
-  if (def.abilities.includes('Medic')) next = resolveMedic(next, playerId, medicReviveInstanceId);
+  if (def.abilities.includes('Medic')) next = resolveMedic(next, playerId, medicReviveInstanceIds);
   next = resolveRowScorchIfAny(next, playerId, def);
 
   return next;
@@ -229,8 +257,8 @@ function resolveDecoy(state: GwentState, playerId: PlayerId, decoyInstance: Card
 }
 
 function applyPlayCard(state: GwentState, action: Extract<GwentAction, { type: 'PLAY_CARD' }>): GwentState {
-  const { playerId, instanceId, chosenRow, decoyTargetInstanceId, medicReviveInstanceId } = action;
-  if (!canPlayCard(state, playerId, instanceId, chosenRow, decoyTargetInstanceId, medicReviveInstanceId)) return state;
+  const { playerId, instanceId, chosenRow, decoyTargetInstanceId, medicReviveInstanceIds } = action;
+  if (!canPlayCard(state, playerId, instanceId, chosenRow, decoyTargetInstanceId, medicReviveInstanceIds)) return state;
 
   const player = getPlayer(state, playerId);
   const instance = player.hand.find((c) => c.instanceId === instanceId);
@@ -240,12 +268,19 @@ function applyPlayCard(state: GwentState, action: Extract<GwentAction, { type: '
   let next = updatePlayer(state, playerId, { hand: player.hand.filter((c) => c.instanceId !== instanceId) });
 
   if (def.kind === 'Unit') {
-    next = resolveUnitPlay(next, playerId, instance, chosenRow, medicReviveInstanceId);
+    next = resolvePlayEffects(next, playerId, instance, chosenRow, medicReviveInstanceIds);
   } else if (def.kind === 'Decoy') {
     next = resolveDecoy(next, playerId, instance, decoyTargetInstanceId as string);
   } else if (def.kind === 'Horn') {
+    // Gwent-0c.4 §K: the Horn card itself now stays visible on the row
+    // (BoardRow.tsx pins it right after the horn-icon column) instead of
+    // going straight to discard — `hornActive` still drives the actual x2
+    // power effect (computeCardPower), the card sitting in `cards` is purely
+    // visual (basePower: null -> always contributes 0, see computeCardPower's
+    // early return). A 2nd Horn played on an already-active row just adds a
+    // 2nd (still 0-power) tile — hornActive is idempotent, nothing stacks.
     next = updateBoardRow(next, playerId, chosenRow as Row, { hornActive: true });
-    next = updatePlayer(next, playerId, { discard: [...getPlayer(next, playerId).discard, instance] });
+    next = placeCardOnRow(next, playerId, chosenRow as Row, instance);
   } else if (def.kind === 'Scorch') {
     const targets: RowTarget[] = next.players.flatMap((p) => ROWS.map((row) => ({ playerId: p.id, row })));
     const result = destroyStrongestAcross(next, targets);

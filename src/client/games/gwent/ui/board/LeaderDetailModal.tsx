@@ -37,12 +37,9 @@ export function LeaderDetailModal({ leader, onClose }: LeaderDetailModalProps) {
             </dl>
             <p className={styles.mechanicText}>{leader.abilityDescription}</p>
             {flavorHu && (
-              <div>
-                <div className={styles.cardTextLabel}>Flavor szöveg</div>
-                <blockquote className={styles.cardText} lang="hu">
-                  {flavorHu}
-                </blockquote>
-              </div>
+              <blockquote className={styles.cardText} lang="hu">
+                {flavorHu}
+              </blockquote>
             )}
           </div>
         </div>

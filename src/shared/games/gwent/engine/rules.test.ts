@@ -19,7 +19,15 @@ import {
   updatePlayer,
 } from './rules';
 import { baseTestState, card, PLAYER_1, PLAYER_2 } from './testHelpers';
-import { BOVINE_DEFENSE_FORCE_CARD_ID, COW_CARD_ID, DANDELION_CARD_ID, HIDDEN_CARD_DEF_ID, HORN_CARD_ID } from './specialCardIds';
+import {
+  BITING_FROST_CARD_ID,
+  BOVINE_DEFENSE_FORCE_CARD_ID,
+  COW_CARD_ID,
+  DANDELION_CARD_ID,
+  HIDDEN_CARD_DEF_ID,
+  HORN_CARD_ID,
+  SCORCH_CARD_ID,
+} from './specialCardIds';
 import {
   EREDIN_BREACC_GLAS_THE_TREACHEROUS,
   EREDIN_KING_OF_THE_WILD_HUNT,
@@ -165,6 +173,16 @@ describe('canPlayCard', () => {
     state = updatePlayer(state, PLAYER_1, { hand: [card('a', HORN_CARD_ID)] });
     expect(canPlayCard(state, PLAYER_1, 'a')).toBe(false);
     expect(canPlayCard(state, PLAYER_1, 'a', 'Melee')).toBe(true);
+  });
+
+  it('accepts a Weather/Scorch card with OR without a chosenRow (Gwent-0c.4 §12 — the UI always sends one now, the engine never reads it)', () => {
+    let state = baseTestState();
+    state = { ...state, phase: 'ROUND_IN_PROGRESS' };
+    state = updatePlayer(state, PLAYER_1, { hand: [card('w', BITING_FROST_CARD_ID), card('s', SCORCH_CARD_ID)] });
+    expect(canPlayCard(state, PLAYER_1, 'w')).toBe(true);
+    expect(canPlayCard(state, PLAYER_1, 'w', 'Melee')).toBe(true);
+    expect(canPlayCard(state, PLAYER_1, 's')).toBe(true);
+    expect(canPlayCard(state, PLAYER_1, 's', 'Siege')).toBe(true);
   });
 
   it('requires a valid own-board target for a Decoy card', () => {

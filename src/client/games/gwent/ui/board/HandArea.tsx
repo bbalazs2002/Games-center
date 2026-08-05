@@ -24,10 +24,10 @@ export interface HandAreaProps {
  * more should degrade gracefully, never wrap).
  */
 export function HandArea({ hand, ownerId, playableInstanceIds, selectedInstanceId, onSelectCard }: HandAreaProps) {
-  const { containerRef, overlapPx } = useHandFan(hand.length, MIN_VISIBLE_PX);
+  const { containerRef, overlapPx, needsScroll } = useHandFan(hand.length, MIN_VISIBLE_PX);
 
   return (
-    <div className={styles.handArea} ref={containerRef}>
+    <div className={[styles.handArea, needsScroll && styles.handAreaScrollable].filter(Boolean).join(' ')} ref={containerRef}>
       {hand.map((instance, index) => {
         const basePower = instance.defId === HIDDEN_CARD_DEF_ID ? null : getCardDef(instance.defId).basePower;
         return (

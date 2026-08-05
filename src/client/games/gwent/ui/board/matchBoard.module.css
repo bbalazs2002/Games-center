@@ -344,11 +344,18 @@
   /* Gwent-0c.2 §L/§O': a card-fan, not a wrapping grid — spacing between
      tiles comes entirely from useHandFan's per-tile negative margin-left
      (0 when everything fits, growing only as needed), never `gap` (which
-     would silently fight that math). overflow-x is a last-resort escape
-     hatch for a hand far past the ~15-card design ceiling. */
+     would silently fight that math). */
   gap: 0;
-  overflow-x: auto;
+  /* Gwent-0c.4 §8: `visible` by default so the selected card's `.cardSelected`
+     scale-up (below) can actually stick out instead of getting clipped — only
+     switches to a scrolling escape hatch (.handAreaScrollable) on the rare
+     hand that's past the ~15-card design ceiling even at max fan overlap. */
+  overflow: visible;
   padding-bottom: 0.2rem;
+}
+
+.handAreaScrollable {
+  overflow-x: auto;
 }
 
 .targetPicker {
@@ -384,13 +391,6 @@
   border: 2px solid var(--shell-line, #241407);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
   cursor: pointer;
-}
-
-.leaderDescription {
-  max-width: 8.5rem;
-  font-size: 0.68rem;
-  margin: 0;
-  color: var(--shell-ink-soft, rgba(43, 26, 13, 0.68));
 }
 
 .leaderUsed {

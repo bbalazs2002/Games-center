@@ -57,15 +57,6 @@
   line-height: 1.4;
 }
 
-.cardTextLabel {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.6;
-  margin-bottom: 0.15rem;
-}
-
 .cardText {
   margin: 0;
   padding-left: 0.75rem;

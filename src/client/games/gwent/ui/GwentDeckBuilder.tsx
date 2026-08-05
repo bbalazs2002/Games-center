@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { LEADER_DEFS } from '../../../../shared/games/gwent/engine/leaderDefs';
 import type { Faction } from '../../../../shared/games/gwent/engine/types';
 import { validateDeckDraft, type DeckCardCounts, type GwentDeckDraft } from '../../../../shared/games/gwent/engine/deckRules';
@@ -8,30 +8,33 @@ import { FactionStep } from './FactionStep';
 import { LeaderStep } from './LeaderStep';
 import styles from './GwentSetupPage.module.css';
 
-type Step = 'faction' | 'leader' | 'deck';
-
 export interface GwentDeckBuilderProps {
   title: string;
+  /** Rendered at the top of `.setupPanel`, above the faction picker — the caller's player-name input (Gwent-0c.4 §A: the name input moves INSIDE the same styled panel as the faction/leader pickers, not a separate loose element above it). */
+  nameInput: ReactNode;
   /** Fires on every change with the current draft once faction+leader+a fully valid deck are all chosen, or null the moment any of that stops being true. */
   onValidDraftChange: (draft: GwentDeckDraft | null) => void;
 }
 
 /**
- * The faction -> leader -> deck wizard body — extracted from Gwent-0a.1's
+ * The faction + leader + deck builder body — extracted from Gwent-0a.1's
  * `GwentSetupPage` (2026-08-04) so `GwentMatchSetupPage` can run two
  * independent instances of it (one per hot-seat player) without duplicating
  * any of the deck-building logic. `DeckStep`/`FactionStep`/`LeaderStep`/
  * `CardGrid` are unchanged.
  *
+ * Gwent-0c.4 §A: no longer a `faction`→`leader`→`deck` step-wizard — the
+ * felhasználó wants "egy oldalon" (one page): all three sections render
+ * together now, top to bottom, inside `.setupPanel`/the deck grid below it.
+ *
  * Gwent-0c.3 §2: a saved deck is now looked up PER FACTION (both here AND
  * in gwentDeckPersistence.ts) — picking a faction that has a persisted save
- * seeds its leader/card-counts automatically and jumps straight to the deck
- * step, exactly like the old single-slot `persisted` prop used to for
- * whichever faction happened to be saved last. Applies equally to BOTH
- * hot-seat players now, not just "whichever builder is shown first".
+ * seeds its leader/card-counts automatically, exactly like the old
+ * single-slot `persisted` prop used to for whichever faction happened to be
+ * saved last. Applies equally to BOTH hot-seat players now, not just
+ * "whichever builder is shown first".
  */
-export function GwentDeckBuilder({ title, onValidDraftChange }: GwentDeckBuilderProps) {
-  const [step, setStep] = useState<Step>('faction');
+export function GwentDeckBuilder({ title, nameInput, onValidDraftChange }: GwentDeckBuilderProps) {
   const [faction, setFaction] = useState<Faction | null>(null);
   // Keyed by faction (not a single flat value) so switching faction/leader mid-build never
   // discards another faction's already-picked leader/cards (0a-spec §9.5 kérés, 2026-08-01).
@@ -58,20 +61,12 @@ export function GwentDeckBuilder({ title, onValidDraftChange }: GwentDeckBuilder
     return true;
   }
 
+  // No more step-jumping (Gwent-0c.4 §A) — picking/switching a faction is the
+  // same operation either way now: apply a persisted deck if this session
+  // hasn't touched that faction yet, else default to its first leader so the
+  // deck grid below always has something to show (still freely changeable
+  // via the always-visible LeaderStep grid).
   function selectFaction(next: Faction): void {
-    setFaction(next);
-    setStep(applyPersistedDeck(next) ? 'deck' : 'leader');
-  }
-
-  function selectLeader(next: string): void {
-    if (!faction) return;
-    setLeaderIdByFaction((prev) => ({ ...prev, [faction]: next }));
-    setStep('deck');
-  }
-
-  // Switching faction from the deck step never leaves it — a faction with no leader picked
-  // yet just defaults to its first leader, changeable via the leader dropdown right there.
-  function switchFaction(next: Faction): void {
     setFaction(next);
     if (applyPersistedDeck(next)) return;
     setLeaderIdByFaction((prev) => {
@@ -81,7 +76,7 @@ export function GwentDeckBuilder({ title, onValidDraftChange }: GwentDeckBuilder
     });
   }
 
-  function switchLeader(next: string): void {
+  function selectLeader(next: string): void {
     if (!faction) return;
     setLeaderIdByFaction((prev) => ({ ...prev, [faction]: next }));
   }
@@ -95,27 +90,22 @@ export function GwentDeckBuilder({ title, onValidDraftChange }: GwentDeckBuilder
     <section className={styles.builderSection}>
       <h2>{title}</h2>
 
-      {step === 'faction' && <FactionStep selectedFaction={faction} onSelect={selectFaction} />}
+      <div className={styles.setupPanel}>
+        {nameInput}
+        <FactionStep selectedFaction={faction} onSelect={selectFaction} />
 
-      {step === 'leader' && faction && (
-        <LeaderStep
-          faction={faction}
-          leaders={LEADER_DEFS.filter((l) => l.faction === faction)}
-          selectedLeaderId={leaderId}
-          onBack={() => setStep('faction')}
-          onSelect={selectLeader}
-        />
-      )}
+        {faction && (
+          <LeaderStep
+            faction={faction}
+            leaders={LEADER_DEFS.filter((l) => l.faction === faction)}
+            selectedLeaderId={leaderId}
+            onSelect={selectLeader}
+          />
+        )}
+      </div>
 
-      {step === 'deck' && faction && leaderId && (
-        <DeckStep
-          faction={faction}
-          leaderId={leaderId}
-          cardCounts={cardCounts}
-          onCardCountsChange={changeCardCounts}
-          onFactionChange={switchFaction}
-          onLeaderChange={switchLeader}
-        />
+      {faction && leaderId && (
+        <DeckStep faction={faction} leaderId={leaderId} cardCounts={cardCounts} onCardCountsChange={changeCardCounts} />
       )}
     </section>
   );

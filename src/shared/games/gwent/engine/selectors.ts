@@ -19,7 +19,7 @@ export interface PlayableCardOption {
   instanceId: string;
   needsRowChoice: boolean;
   needsDecoyTarget: boolean;
-  /** True only for a card with the Medic ability — the medicReviveInstanceId field is always optional (omitting it just declines the revival). */
+  /** True only for a card with the Medic ability — the medicReviveInstanceIds field is always optional (omitting it just declines the revival). */
   canDeclineMedic: boolean;
 }
 

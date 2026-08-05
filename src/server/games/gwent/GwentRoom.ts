@@ -48,7 +48,8 @@ function isValidPlayCardAction(c: Record<string, unknown>): boolean {
     typeof c.instanceId === 'string' &&
     (c.chosenRow === undefined || isRow(c.chosenRow)) &&
     (c.decoyTargetInstanceId === undefined || typeof c.decoyTargetInstanceId === 'string') &&
-    (c.medicReviveInstanceId === undefined || typeof c.medicReviveInstanceId === 'string')
+    (c.medicReviveInstanceIds === undefined ||
+      (Array.isArray(c.medicReviveInstanceIds) && c.medicReviveInstanceIds.every((x) => typeof x === 'string')))
   );
 }
 

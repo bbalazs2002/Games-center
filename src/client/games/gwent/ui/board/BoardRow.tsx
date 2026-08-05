@@ -27,10 +27,19 @@ export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelect
   const rowState = state.players.find((p) => p.id === playerId)!.board[row];
   const total = computeRowTotal(state, playerId, row);
   // Horn now has its own dedicated column (below) — no longer duplicated as a flag icon here (Gwent-0c.2 §R).
-  const flags = [rowState.dandelionActive && '🌼', state.activeWeatherRows.includes(row) && '❄️'].filter(Boolean).join(' ');
+  // Gwent-0c.4 §J: the Dandelion 🌼 flag removed — the felhasználó found it redundant next to the
+  // Dandelion unit card itself already sitting visibly on the board (no separate marker needed).
+  const flags = [state.activeWeatherRows.includes(row) && '❄️'].filter(Boolean).join(' ');
   // Gwent-0c.2 §R, kiegészítő kérés: azonos nevű lapok mindig egymás mellett — a meglévő
   // cardFlight FLIP-mechanizmus automatikusan animálja az emiatti pozícióváltást is.
-  const sortedCards = [...rowState.cards].sort((a, b) => getCardDef(a.defId).name.localeCompare(getCardDef(b.defId).name));
+  // Gwent-0c.4 §K: a Kürt-lap(ok) mostantól a `cards`-ban is ott ülnek (nem tűnnek el
+  // azonnal a dobott lapok közé) — az ABC-sorrend elé, a `.hornColumn` ikon UTÁN kerülnek,
+  // lejátszási sorrendben (több egymást követő Kürt esetén sem cserélődnek fel).
+  const hornCards = rowState.cards.filter((c) => getCardDef(c.defId).kind === 'Horn');
+  const otherCards = [...rowState.cards.filter((c) => getCardDef(c.defId).kind !== 'Horn')].sort((a, b) =>
+    getCardDef(a.defId).name.localeCompare(getCardDef(b.defId).name),
+  );
+  const sortedCards = [...hornCards, ...otherCards];
 
   return (
     <div
@@ -51,7 +60,9 @@ export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelect
             key={instance.instanceId}
             instance={instance}
             ownerId={playerId}
-            power={computeCardPower(state, playerId, row, instance)}
+            // Horn cards live here now too (Gwent-0c.4 §K) but never show a power badge
+            // (basePower: null) — matches CardTile's own documented non-unit convention.
+            power={getCardDef(instance.defId).kind === 'Unit' ? computeCardPower(state, playerId, row, instance) : undefined}
             selected={false}
             targetable={decoyTargetSelectable}
             onClick={

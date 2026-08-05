@@ -108,9 +108,49 @@ describe('reducer — PLAY_CARD', () => {
     const declined = reducer(state, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'medic' });
     expect(getPlayer(declined, PLAYER_1).discard.map((c) => c.instanceId).sort()).toEqual(['dead', 'hero']);
 
-    const revived = reducer(state, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'medic', medicReviveInstanceId: 'dead' });
+    const revived = reducer(state, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'medic', medicReviveInstanceIds: ['dead'] });
     expect(getPlayer(revived, PLAYER_1).board.Melee.cards.map((c) => c.instanceId)).toEqual(['dead']);
     expect(getPlayer(revived, PLAYER_1).discard.map((c) => c.instanceId)).toEqual(['hero']);
+  });
+
+  it('Medic reviving a Spy places it on the OPPONENT board and draws 2 cards — exactly like a normal play (Gwent-0c.4 §11)', () => {
+    let state = readyState();
+    state = updatePlayer(state, PLAYER_1, {
+      hand: [card('medic', MEDIC)],
+      discard: [card('deadspy', SPY)],
+      deck: [card('d1', TIGHT_BOND), card('d2', AGILE)],
+    });
+    const next = reducer(state, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'medic', medicReviveInstanceIds: ['deadspy'] });
+    expect(getPlayer(next, PLAYER_2).board.Melee.cards.map((c) => c.instanceId)).toEqual(['deadspy']);
+    expect(getPlayer(next, PLAYER_1).hand.map((c) => c.instanceId).sort()).toEqual(['d1', 'd2']);
+  });
+
+  it('Medic reviving a Muster card triggers its Muster chain too', () => {
+    let state = readyState();
+    state = updatePlayer(state, PLAYER_1, {
+      hand: [card('medic', MEDIC)],
+      discard: [card('deadmuster', MUSTER)],
+      deck: [card('m2', MUSTER)],
+    });
+    const next = reducer(state, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'medic', medicReviveInstanceIds: ['deadmuster'] });
+    expect(getPlayer(next, PLAYER_1).board.Melee.cards.map((c) => c.instanceId).sort()).toEqual(['deadmuster', 'm2']);
+  });
+
+  it('a nested Medic chain: reviving a Medic-ability card lets IT revive something too', () => {
+    let state = readyState();
+    state = updatePlayer(state, PLAYER_1, {
+      hand: [card('medic1', MEDIC)],
+      discard: [card('medic2', MEDIC), card('dead', TIGHT_BOND)],
+    });
+    const next = reducer(state, {
+      type: 'PLAY_CARD',
+      playerId: PLAYER_1,
+      instanceId: 'medic1',
+      medicReviveInstanceIds: ['medic2', 'dead'],
+    });
+    expect(getPlayer(next, PLAYER_1).board.Ranged.cards.map((c) => c.instanceId).sort()).toEqual(['medic1', 'medic2']);
+    expect(getPlayer(next, PLAYER_1).board.Melee.cards.map((c) => c.instanceId)).toEqual(['dead']);
+    expect(getPlayer(next, PLAYER_1).discard).toEqual([]);
   });
 
   it('Emhyr Invader of the North forces a random Medic target regardless of any request, for EITHER player', () => {
@@ -131,12 +171,13 @@ describe('reducer — PLAY_CARD', () => {
     expect(getPlayer(next, PLAYER_1).discard.map((c) => c.instanceId)).toEqual(['decoy']);
   });
 
-  it('a Horn card sets the chosen row\'s flag and discards itself', () => {
+  it('a Horn card sets the chosen row\'s flag AND stays visible on that row (Gwent-0c.4 §10 — not discarded anymore)', () => {
     let state = readyState();
     state = updatePlayer(state, PLAYER_1, { hand: [card('horn', HORN_CARD_ID)] });
     const next = reducer(state, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'horn', chosenRow: 'Siege' });
     expect(getPlayer(next, PLAYER_1).board.Siege.hornActive).toBe(true);
-    expect(getPlayer(next, PLAYER_1).discard.map((c) => c.instanceId)).toEqual(['horn']);
+    expect(getPlayer(next, PLAYER_1).board.Siege.cards.map((c) => c.instanceId)).toEqual(['horn']);
+    expect(getPlayer(next, PLAYER_1).discard).toEqual([]);
   });
 
   it('Scorch destroys the strongest unit(s) across the WHOLE board, both sides, sparing weaker cards', () => {
@@ -158,15 +199,21 @@ describe('reducer — PLAY_CARD', () => {
     expect(boardIds).toEqual([BOVINE_DEFENSE_FORCE_CARD_ID]);
   });
 
-  it('a Weather card marks its row; Clear Weather resets all of them', () => {
+  it('a Weather card marks its row (with OR without a chosenRow — Gwent-0c.4 §12, the UI now always sends one); Clear Weather resets all of them', () => {
     let state = readyState();
     state = updatePlayer(state, PLAYER_1, { hand: [card('bf', 'neutral-biting-frost')] });
+    // No chosenRow — still works (old behavior, unchanged).
     let next = reducer(state, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'bf' });
     expect(next.activeWeatherRows).toEqual(['Melee']);
 
+    // WITH a chosenRow — used to be REJECTED (isRowChoiceValid required undefined); now accepted and ignored.
+    let withRow = updatePlayer(state, PLAYER_1, { hand: [card('bf2', 'neutral-biting-frost')] });
+    withRow = reducer(withRow, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'bf2', chosenRow: 'Siege' });
+    expect(withRow.activeWeatherRows).toEqual(['Melee']); // Biting Frost always hits Melee — the chosenRow ('Siege') is ignored
+
     next = updatePlayer(next, PLAYER_2, { hand: [card('cw', 'neutral-clear-weather')] });
     next = { ...next, currentPlayerIndex: 1 };
-    next = reducer(next, { type: 'PLAY_CARD', playerId: PLAYER_2, instanceId: 'cw' });
+    next = reducer(next, { type: 'PLAY_CARD', playerId: PLAYER_2, instanceId: 'cw', chosenRow: 'Ranged' });
     expect(next.activeWeatherRows).toEqual([]);
   });
 

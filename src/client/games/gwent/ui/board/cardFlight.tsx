@@ -51,11 +51,20 @@ function rectsDiffer(a: DOMRect, b: DOMRect): boolean {
   );
 }
 
-/** Own-hand draws (any reason) and Medic revives — the 2 cases where a brand-new-this-render instanceId has a resolvable, honest origin zone. */
+/**
+ * Own-hand draws (any reason), Medic revives, and Muster partners drawn
+ * straight from the DECK (Gwent-0c.4 §7) — the cases where a brand-new-this-
+ * render instanceId has a resolvable, honest origin zone. A Muster partner
+ * that came from HAND instead doesn't need this — it was already a tracked
+ * instanceId sitting in the hand zone, so its hand->board move is caught by
+ * the ordinary "this instanceId's rect moved" diff above, same as any
+ * normal play.
+ */
 function resolveEntryZone(newLogEntries: GwentLogEntry[], instanceId: string, ownerId: PlayerId): string | null {
   for (const entry of newLogEntries) {
     if (entry.type === 'CARDS_DRAWN' && entry.playerId === ownerId) return `deck:${ownerId}`;
     if (entry.type === 'MEDIC_REVIVED' && entry.instanceId === instanceId) return `discard:${entry.playerId}`;
+    if (entry.type === 'MUSTER_TRIGGERED' && entry.playerId === ownerId && entry.playedInstanceIds.includes(instanceId)) return `deck:${ownerId}`;
   }
   return null;
 }

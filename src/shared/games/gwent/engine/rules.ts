@@ -192,16 +192,36 @@ function isRowChoiceValid(player: PlayerState, def: CardDef, chosenRow: Row | un
   const isAgileUnit = def.kind === 'Unit' && def.abilities.includes('Agile');
   if (isAgileUnit) return agileAutoOptimizes(player) || chosenRow === 'Melee' || chosenRow === 'Ranged';
   if (def.kind === 'Horn') return chosenRow !== undefined;
+  // Gwent-0c.4 §M: Weather/Scorch cards accept a chosenRow (defined OR not) —
+  // the UI now always makes the player click a row to confirm play (even a
+  // Clear Weather/Scorch card that logically hits every row), but
+  // applyWeatherEffect/the Scorch branch never actually READ chosenRow
+  // (Weather uses def.weatherRow, Scorch always hits every row on both
+  // sides) — so any value here is harmless and must not be rejected.
+  if (def.kind === 'Weather' || def.kind === 'Scorch') return true;
   return chosenRow === undefined; // fixed-row units and every other special card never take a row choice
 }
 
-function isMedicChoiceValid(player: PlayerState, def: CardDef, medicReviveInstanceId: string | undefined): boolean {
-  if (medicReviveInstanceId === undefined) return true; // always optional — omitting it just declines the revival
+/**
+ * `medicReviveInstanceIds` is the whole chain (Gwent-0c.4 §11) — every id
+ * must be a distinct, currently-eligible discard-pile unit. Doesn't require
+ * a later chain entry's card to itself have Medic — the reducer's own
+ * `resolveMedic` simply stops consuming the chain once the revived card
+ * isn't Medic, so a longer-than-needed array is harmless, not invalid.
+ */
+function isMedicChoiceValid(player: PlayerState, def: CardDef, medicReviveInstanceIds: string[] | undefined): boolean {
+  if (!medicReviveInstanceIds || medicReviveInstanceIds.length === 0) return true; // always optional — omitting it just declines the revival
   if (def.kind !== 'Unit' || !def.abilities.includes('Medic')) return false;
-  const target = player.discard.find((c) => c.instanceId === medicReviveInstanceId);
-  if (!target) return false;
-  const targetDef = getCardDef(target.defId);
-  return targetDef.kind === 'Unit' && !targetDef.abilities.includes('Hero');
+  const seen = new Set<string>();
+  for (const id of medicReviveInstanceIds) {
+    if (seen.has(id)) return false; // the same discard card can't be picked twice in one chain
+    seen.add(id);
+    const target = player.discard.find((c) => c.instanceId === id);
+    if (!target) return false;
+    const targetDef = getCardDef(target.defId);
+    if (targetDef.kind !== 'Unit' || targetDef.abilities.includes('Hero')) return false;
+  }
+  return true;
 }
 
 /**
@@ -225,7 +245,7 @@ export function canPlayCard(
   instanceId: string,
   chosenRow?: Row,
   decoyTargetInstanceId?: string,
-  medicReviveInstanceId?: string,
+  medicReviveInstanceIds?: string[],
 ): boolean {
   if (!canAttemptToPlayCard(state, playerId, instanceId)) return false;
   const player = getPlayer(state, playerId);
@@ -235,7 +255,7 @@ export function canPlayCard(
   return (
     isDecoyChoiceValid(player, def, decoyTargetInstanceId) &&
     isRowChoiceValid(player, def, chosenRow) &&
-    isMedicChoiceValid(player, def, medicReviveInstanceId)
+    isMedicChoiceValid(player, def, medicReviveInstanceIds)
   );
 }
 

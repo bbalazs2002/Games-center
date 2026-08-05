@@ -19,7 +19,7 @@ export type GwentAction =
   /**
    * `chosenRow` is dual-purpose: for an Agile UNIT it's which of its two
    * legal rows to place it in; for a Horn card it's which row to boost.
-   * Never used together with `decoyTargetInstanceId`/`medicReviveInstanceId`
+   * Never used together with `decoyTargetInstanceId`/`medicReviveInstanceIds`
    * (a card is at most one of Agile/Horn/Decoy/Medic-triggering at a time).
    */
   | {
@@ -29,8 +29,17 @@ export type GwentAction =
       chosenRow?: Row;
       /** Required iff the played card's kind is 'Decoy' — an instanceId currently on the player's OWN board. */
       decoyTargetInstanceId?: string;
-      /** Optional iff the played card has the Medic ability — an instanceId in the player's OWN discard pile to revive. Omitted = decline. Ignored (random pick instead) if the Invader of the North leader passive is active on either side. */
-      medicReviveInstanceId?: string;
+      /**
+       * Optional iff the played card has the Medic ability — an ORDERED
+       * chain of instanceIds in the player's OWN discard pile to revive.
+       * Element 0 is this card's own revival target; if THAT card is also
+       * Medic, element 1 is its own revival target, and so on (Gwent-0c.4
+       * §11 — a revived Medic-ability card gets a real pick too, not a
+       * silent decline). Omitted/empty = decline. Ignored (random pick
+       * instead, chain collapses to depth 1) if the Invader of the North
+       * leader passive is active on either side.
+       */
+      medicReviveInstanceIds?: string[];
     }
   | { type: 'PASS'; playerId: PlayerId }
   /**

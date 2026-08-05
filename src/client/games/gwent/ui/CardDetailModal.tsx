@@ -78,12 +78,9 @@ export function CardDetailModal({ card, instance, onClose, footer }: CardDetailM
               )}
             </dl>
             {flavorHu && (
-              <div>
-                <div className={styles.cardTextLabel}>Flavor szöveg</div>
-                <blockquote className={styles.cardText} lang="hu">
-                  {flavorHu}
-                </blockquote>
-              </div>
+              <blockquote className={styles.cardText} lang="hu">
+                {flavorHu}
+              </blockquote>
             )}
             {footer && <div className={styles.footer}>{footer}</div>}
           </div>

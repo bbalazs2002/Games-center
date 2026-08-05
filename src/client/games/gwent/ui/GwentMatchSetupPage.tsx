@@ -70,8 +70,11 @@ export function GwentMatchSetupPage() {
         <h1>Gwent — mérkőzés előkészítése</h1>
 
         <div hidden={matchStep !== 'player1'}>
-          <input className={styles.nameInput} value={player1Name} onChange={(event) => setPlayer1Name(event.target.value)} />
-          <GwentDeckBuilder title={`${player1Name} paklija`} onValidDraftChange={setPlayer1Draft} />
+          <GwentDeckBuilder
+            title={`${player1Name} paklija`}
+            nameInput={<input className={styles.nameInput} value={player1Name} onChange={(event) => setPlayer1Name(event.target.value)} />}
+            onValidDraftChange={setPlayer1Draft}
+          />
           <div className={styles.matchActions}>
             <Button
               variant="secondary"
@@ -85,15 +88,17 @@ export function GwentMatchSetupPage() {
               Pakli mentése
             </Button>
             {player1Saved && <span className={styles.savedMessage}>Elmentve.</span>}
-            <Button disabled={!player1Draft} onClick={() => setMatchStep('player2')}>
-              Tovább — {player2Name}
-            </Button>
+            {/* Gwent-0c.4 §A: only rendered once the deck is actually valid — not just disabled while invalid. */}
+            {player1Draft && <Button onClick={() => setMatchStep('player2')}>Tovább — {player2Name}</Button>}
           </div>
         </div>
 
         <div hidden={matchStep !== 'player2'}>
-          <input className={styles.nameInput} value={player2Name} onChange={(event) => setPlayer2Name(event.target.value)} />
-          <GwentDeckBuilder title={`${player2Name} paklija`} onValidDraftChange={setPlayer2Draft} />
+          <GwentDeckBuilder
+            title={`${player2Name} paklija`}
+            nameInput={<input className={styles.nameInput} value={player2Name} onChange={(event) => setPlayer2Name(event.target.value)} />}
+            onValidDraftChange={setPlayer2Draft}
+          />
           <div className={styles.matchActions}>
             <Button variant="secondary" onClick={() => setMatchStep('player1')}>
               ← {player1Name}
@@ -110,9 +115,7 @@ export function GwentMatchSetupPage() {
               Pakli mentése
             </Button>
             {player2Saved && <span className={styles.savedMessage}>Elmentve.</span>}
-            <Button disabled={!player1Draft || !player2Draft} onClick={startMatch}>
-              Mérkőzés indítása
-            </Button>
+            {player1Draft && player2Draft && <Button onClick={startMatch}>Mérkőzés indítása</Button>}
           </div>
         </div>
       </div>

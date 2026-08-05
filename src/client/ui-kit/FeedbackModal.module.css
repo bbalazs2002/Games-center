@@ -15,6 +15,15 @@
   margin: 0 0 0.75rem;
 }
 
+/* Gwent-0c.4 §D: the native radios had no styling at all before — a cheap,
+   robust fix (no custom radio component needed) that themes them with the
+   same accent every other themed control here already uses. */
+.typeFieldset input[type='radio'] {
+  accent-color: var(--shell-accent, #667eea);
+  width: 1rem;
+  height: 1rem;
+}
+
 .textarea {
   width: 100%;
   resize: vertical;

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Select } from '../../../ui-kit/Select';
-import { LEADER_DEFS } from '../../../../shared/games/gwent/engine/leaderDefs';
 import type { CardDef, Faction } from '../../../../shared/games/gwent/engine/types';
 import {
   cardsForFaction,
@@ -8,7 +7,6 @@ import {
   validateDeckDraft,
   type DeckCardCounts,
 } from '../../../../shared/games/gwent/engine/deckRules';
-import { FACTION_OPTIONS } from './factionDisplay';
 import { CARD_SORT_OPTIONS, sortCards, type CardSortKey } from './cardDisplay';
 import { CardCountGrid } from './CardCountGrid';
 import { CardDetailModal } from './CardDetailModal';
@@ -19,12 +17,18 @@ export interface DeckStepProps {
   leaderId: string;
   cardCounts: DeckCardCounts;
   onCardCountsChange: (next: DeckCardCounts) => void;
-  onFactionChange: (next: Faction) => void;
-  onLeaderChange: (next: string) => void;
 }
 
-/** "Pakli mentése" moved up to GwentMatchSetupPage (Gwent-0c.2 §D, 7. pont — merged into the wizard's own button row, in one line, instead of a separate stacked row here). */
-export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, onFactionChange, onLeaderChange }: DeckStepProps) {
+/**
+ * "Pakli mentése" moved up to GwentMatchSetupPage (Gwent-0c.2 §D, 7. pont — merged into the wizard's own button row, in one line, instead of a separate stacked row here).
+ *
+ * Gwent-0c.4 §A: the faction/leader `<Select>` switchers that used to live
+ * here are gone — faction/leader are now picked via the always-visible
+ * FactionStep/LeaderStep image grids above (one page, no more wizard steps),
+ * so a second, redundant text-dropdown for the same choice would just be
+ * clutter.
+ */
+export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange }: DeckStepProps) {
   const [sortKey, setSortKey] = useState<CardSortKey>('name');
   const [detailCard, setDetailCard] = useState<CardDef | null>(null);
 
@@ -38,7 +42,6 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, on
     sortKey,
   );
   const validation = validateDeckDraft({ faction, leaderId, cardCounts });
-  const leadersForFaction = LEADER_DEFS.filter((l) => l.faction === faction);
 
   function changeCount(def: CardDef, delta: number): void {
     const current = cardCounts[def.id] ?? 0;
@@ -48,21 +51,6 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, on
 
   return (
     <>
-      <div className={styles.stepHeader}>
-        <div className={styles.switcher}>
-          <span>Frakció</span>
-          <Select
-            value={faction}
-            onChange={(value) => onFactionChange(value as Faction)}
-            options={FACTION_OPTIONS.map((f) => ({ value: f.id, label: f.label }))}
-          />
-        </div>
-        <div className={styles.switcher}>
-          <span>Vezér</span>
-          <Select value={leaderId} onChange={onLeaderChange} options={leadersForFaction.map((l) => ({ value: l.id, label: l.name }))} />
-        </div>
-      </div>
-
       <div className={styles.summary}>
         <span>
           Nem-Hero egységkártya: {validation.nonHeroUnitCount} / {MIN_NON_HERO_UNIT_CARDS}

@@ -1,5 +1,4 @@
 import { assetUrl } from '../../../core/assetUrl';
-import { Button } from '../../../ui-kit/Button';
 import { CardGrid } from '../../../ui-kit/CardGrid';
 import type { Faction, LeaderDef } from '../../../../shared/games/gwent/engine/types';
 import { factionLabel } from './factionDisplay';
@@ -9,19 +8,14 @@ export interface LeaderStepProps {
   faction: Faction;
   leaders: LeaderDef[];
   selectedLeaderId: string | null;
-  onBack: () => void;
   onSelect: (leaderId: string) => void;
 }
 
-export function LeaderStep({ faction, leaders, selectedLeaderId, onBack, onSelect }: LeaderStepProps) {
+/** Gwent-0c.4 §A: no longer a wizard "step" — rendered alongside FactionStep/DeckStep on one page, so there's no "back" to offer anymore. */
+export function LeaderStep({ faction, leaders, selectedLeaderId, onSelect }: LeaderStepProps) {
   return (
     <>
-      <div className={styles.stepHeader}>
-        <Button variant="secondary" onClick={onBack}>
-          ← Frakció
-        </Button>
-        <p>Válassz vezért ({factionLabel(faction)}):</p>
-      </div>
+      <p>Válassz vezért ({factionLabel(faction)}):</p>
       <CardGrid
         items={leaders}
         getKey={(l) => l.id}
@@ -30,6 +24,7 @@ export function LeaderStep({ faction, leaders, selectedLeaderId, onBack, onSelec
         getSubtitle={(l) => l.abilityDescription}
         isSelected={(l) => l.id === selectedLeaderId}
         onSelect={(l) => onSelect(l.id)}
+        className={styles.compactGrid}
       />
     </>
   );

@@ -87,7 +87,8 @@ export type GwentLogEntry =
   | { type: 'CARD_MOVED_TO_OPPONENT'; playerId: PlayerId; instanceId: string; defId: string; row: Row }
   | { type: 'CARDS_DRAWN'; playerId: PlayerId; count: number; reason: 'SPY' | 'ROUND_WON_BONUS' | 'MULLIGAN' }
   | { type: 'MUSTER_TRIGGERED'; playerId: PlayerId; triggerInstanceId: string; playedInstanceIds: string[] }
-  | { type: 'MEDIC_REVIVED'; playerId: PlayerId; instanceId: string; defId: string; row: Row; wasRandom: boolean }
+  /** No `row` field (Gwent-0c.4 §11) — placement now goes through resolvePlayEffects, which appends its own CARD_PLAYED/CARD_MOVED_TO_OPPONENT entry with the authoritative row+side right after this one. */
+  | { type: 'MEDIC_REVIVED'; playerId: PlayerId; instanceId: string; defId: string; wasRandom: boolean }
   | { type: 'DECOY_SWAPPED'; playerId: PlayerId; decoyInstanceId: string; returnedInstanceId: string; returnedDefId: string }
   | { type: 'WEATHER_APPLIED'; playerId: PlayerId; row: Row }
   | { type: 'WEATHER_CLEARED'; playerId: PlayerId }
