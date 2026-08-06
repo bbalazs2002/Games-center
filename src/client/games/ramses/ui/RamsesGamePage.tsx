@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTexture } from '@react-three/drei';
+import { a, useSpring } from '@react-spring/three';
 import { assetUrl } from '../../../core/assetUrl';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
@@ -72,6 +73,8 @@ for (const treasure of TREASURE_CONFIGS) {
 
 interface RamsesCellViewData extends RamsesCell {
   pyramidColor: string;
+  /** Non-null ONLY on the cell a pyramid just slid INTO, for exactly the one render right after that happens — see useSlideAnimationOffset. */
+  slideFromOffset: [number, number, number] | null;
 }
 
 /**
@@ -119,6 +122,33 @@ function usePersistentPyramidColors(state: RamsesState): Map<string, string> {
     if (color) colorByCellId.set(cellId, color);
   }
   return colorByCellId;
+}
+
+/**
+ * Real playtest report (2026-08-06): a slid pyramid used to just instantly
+ * vanish from its old cell and appear at the new one, no motion at all. Only
+ * ONE pyramid ever moves per SLIDE_PYRAMID — from the new `emptyCellId` (it
+ * just lost its piece) to the previous one (it just gained it), same
+ * single-step diff `usePersistentPyramidColors` already relies on. Returns
+ * the destination cell id plus the LOCAL offset (relative to that cell's own
+ * grid position) the piece should visually start at — non-null only for the
+ * one render immediately following the transition; `AnimatedPyramid` springs
+ * it back to [0,0,0] from there. Row/col deltas alone are enough (no need
+ * for GridBoard3D's absolute cellPosition math — it cancels out in a delta).
+ */
+function useSlideAnimationOffset(state: RamsesState): { cellId: string; offset: [number, number, number] } | null {
+  const lastEmptyCellIdRef = useRef(state.emptyCellId);
+  if (lastEmptyCellIdRef.current === state.emptyCellId) return null;
+
+  const fromCell = state.board.find((cell) => cell.id === state.emptyCellId); // just emptied — the piece came FROM here
+  const toCell = state.board.find((cell) => cell.id === lastEmptyCellIdRef.current); // where it landed
+  lastEmptyCellIdRef.current = state.emptyCellId;
+  if (!fromCell || !toCell) return null;
+
+  return {
+    cellId: toCell.id,
+    offset: [(fromCell.col - toCell.col) * CELL_SIZE, 0, (fromCell.row - toCell.row) * CELL_SIZE],
+  };
 }
 
 const SPECIAL_ANNOUNCEMENT_DURATION_MS = 2600;
@@ -304,15 +334,38 @@ function RevealedCellPlane({ treasureId }: { treasureId: string | null }) {
   );
 }
 
+/**
+ * A pyramid cone wrapped in a spring-animated local offset — snaps to
+ * `slideFromOffset` (see useSlideAnimationOffset) the moment it's given a
+ * non-null one, then eases back to [0,0,0], reading as the piece physically
+ * sliding in from its old cell. Every other render leaves the spring alone
+ * (its own `useEffect` only reacts to a NEW non-null offset), so a piece
+ * that's just sitting still costs nothing extra.
+ */
+function AnimatedPyramid({ color, slideFromOffset }: { color: string; slideFromOffset: [number, number, number] | null }) {
+  const [spring, api] = useSpring(() => ({ offset: [0, 0, 0] as [number, number, number] }));
+
+  useEffect(() => {
+    if (!slideFromOffset) return;
+    api.set({ offset: slideFromOffset });
+    void api.start({ offset: [0, 0, 0], config: { tension: 260, friction: 22 } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slideFromOffset]);
+
+  return (
+    <a.group position={spring.offset as unknown as [number, number, number]}>
+      <mesh position={[0, PYRAMID_HEIGHT / 2, 0]} rotation={[0, Math.PI / 4, 0]}>
+        <coneGeometry args={[PYRAMID_BASE_RADIUS, PYRAMID_HEIGHT, 4]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+    </a.group>
+  );
+}
+
 /** Pyramids stay simple colored cones (see PYRAMID_COLORS) — the real physical pieces are plain, unmarked plastic, nothing to photograph/texture. Only the "what's under it" layer gets a real photo. */
 function renderCell(cell: RamsesCellViewData) {
   if (cell.hasPyramid) {
-    return (
-      <mesh position={[0, PYRAMID_HEIGHT / 2, 0]} rotation={[0, Math.PI / 4, 0]}>
-        <coneGeometry args={[PYRAMID_BASE_RADIUS, PYRAMID_HEIGHT, 4]} />
-        <meshStandardMaterial color={cell.pyramidColor} />
-      </mesh>
-    );
+    return <AnimatedPyramid color={cell.pyramidColor} slideFromOffset={cell.slideFromOffset} />;
   }
 
   return (
@@ -536,6 +589,7 @@ export function RamsesGamePage({
   // publish as-is, same guarantee the rest of this page already relies on.
   useReportFeedbackContext('ramses', state);
   const pyramidColors = usePersistentPyramidColors(state);
+  const slideAnimation = useSlideAnimationOffset(state);
   const specialAnnouncement = useSpecialCardAnnouncement(state);
   const transferAnnouncement = useCardTransferAnnouncement(state);
   const turnAnnouncement = useTurnStartAnnouncement(state, hotSeatAiSlots ?? {});
@@ -578,7 +632,11 @@ export function RamsesGamePage({
     id: cell.id,
     row: cell.row,
     col: cell.col,
-    data: { ...cell, pyramidColor: pyramidColors.get(cell.id) ?? PYRAMID_COLORS[0] },
+    data: {
+      ...cell,
+      pyramidColor: pyramidColors.get(cell.id) ?? PYRAMID_COLORS[0],
+      slideFromOffset: slideAnimation && slideAnimation.cellId === cell.id ? slideAnimation.offset : null,
+    },
   }));
 
   function handleCellClick(cellId: string): void {
@@ -597,6 +655,7 @@ export function RamsesGamePage({
           onCellClick={handleCellClick}
           boardColor={BOARD_COLOR}
           background={<RamsesBoardFrame />}
+          topDownCamera
         />
         {specialAnnouncement && (
           <div className={styles.specialAnnouncement} key={specialAnnouncement}>

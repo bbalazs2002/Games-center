@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { HOTEL_CONFIGS } from './hotelConfigs';
 import { createInitialState } from './initialState';
 import { reducer } from './reducer';
-import { getLot, getPlayer, updateLot, updatePlayer, updateSpace } from './rules';
+import { canStartAuction, getAuctionableLots, getLot, getPlayer, updateLot, updatePlayer, updateSpace } from './rules';
 import { PARKING_POSITION, type HotelState } from './state';
 
 const fujiyamaStaircasePrice = HOTEL_CONFIGS.find((c) => c.id === 'fujiyama')!.staircasePrice;
@@ -595,6 +595,45 @@ describe('reducer — voluntary auction (2026-08-04 redesign: any owned lot, any
     const accepted = reducer(state, { type: 'PLACE_BID', bidderId: 'player-2', amount: 251 });
     expect(accepted.pendingAuction?.highestBid).toBe(251);
     expect(accepted.pendingAuction?.currentBidderId).toBe('player-3');
+  });
+});
+
+describe('reducer — cannot voluntarily re-auction a lot bought this same turn', () => {
+  function stateAfterBuyingFujiyama(): HotelState {
+    const onPurchaseSpace = { ...updatePlayer(twoPlayerState(), 'player-1', { position: 2 }), turnPhase: 'RESOLVING_SPACE' as const };
+    return reducer(onPurchaseSpace, { type: 'BUY_LOT', lotId: 'fujiyama' });
+  }
+
+  it('rejects START_AUCTION for a lot bought earlier this same turn', () => {
+    const state = stateAfterBuyingFujiyama();
+    expect(canStartAuction(state, 'fujiyama')).toBe(false);
+    expect(getAuctionableLots(state).map((lot) => lot.id)).not.toContain('fujiyama');
+
+    const next = reducer(state, { type: 'START_AUCTION', lotId: 'fujiyama' });
+    expect(next).toBe(state);
+  });
+
+  it('allows auctioning a DIFFERENT, previously-owned lot on the same turn', () => {
+    let state = stateAfterBuyingFujiyama();
+    state = updateLot(state, 'boomerang', { ownerId: 'player-1' }); // already owned before this turn
+
+    const next = reducer(state, { type: 'START_AUCTION', lotId: 'boomerang' });
+    expect(next.turnPhase).toBe('AUCTION_IN_PROGRESS');
+  });
+
+  it('the restriction clears once the turn actually ends', () => {
+    let state = stateAfterBuyingFujiyama();
+    expect(state.lotsBoughtThisTurn).toEqual(['fujiyama']);
+    state = reducer(state, { type: 'END_TURN' });
+    expect(state.lotsBoughtThisTurn).toEqual([]);
+  });
+
+  it('the FORCED debt-raising auction path still allows a lot bought this same turn (no dead-end escape hatch)', () => {
+    let state = stateAfterBuyingFujiyama(); // player-1 now owns only fujiyama, bought this turn, cash reduced by its price
+    state = { ...state, turnPhase: 'AWAITING_DEBT_RESOLUTION', pendingDebt: { amount: 1, creditorId: null } };
+
+    expect(canStartAuction(state, 'fujiyama')).toBe(true);
+    expect(getAuctionableLots(state).map((lot) => lot.id)).toContain('fujiyama');
   });
 });
 

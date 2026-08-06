@@ -38,6 +38,7 @@ export function createInitialState(playerNames: string[]): HotelState {
     pendingAuction: null,
     staircasePurchaseRightActive: false,
     lotsWithStaircasePurchasedThisTurn: [],
+    lotsBoughtThisTurn: [],
     status: 'IN_PROGRESS',
     winnerId: null,
     log: [],

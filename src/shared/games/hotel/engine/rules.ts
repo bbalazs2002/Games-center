@@ -332,18 +332,30 @@ export function canChooseFreeStaircaseSpace(state: HotelState, lotId: string, sp
  * during the free part of their own turn (2026-08-04 redesign — previously
  * only reachable when a debt was unpayable), or as the forced debt-raising
  * path (unchanged — see chargePlayer/afterDebtRaisingAction).
+ *
+ * The voluntary path excludes a lot bought (or force-bought) THIS turn — a
+ * real playtest report: buying a lot and immediately re-auctioning it the
+ * same turn made no sense. The forced debt-raising path deliberately does
+ * NOT apply this restriction — it's a last-resort "raise cash or go
+ * bankrupt" mechanism (see chargePlayer/afterDebtRaisingAction's own
+ * `ownedLotsOf(...).length === 0` INSOLVENT check, which still counts a
+ * just-bought lot as owned), so excluding it there could dead-end a player
+ * into AWAITING_DEBT_RESOLUTION with nothing left to auction.
  */
 export function canStartAuction(state: HotelState, lotId: string): boolean {
   if (getLot(state, lotId).ownerId !== getCurrentPlayer(state).id) return false;
   if (state.turnPhase === 'AWAITING_DEBT_RESOLUTION') return state.pendingDebt !== null;
-  return state.turnPhase === 'RESOLVING_SPACE';
+  if (state.turnPhase !== 'RESOLVING_SPACE') return false;
+  return !state.lotsBoughtThisTurn.includes(lotId);
 }
 
-/** Lots the current player could put up for auction right now — either voluntarily (own turn) or to raise cash toward a pending debt. */
+/** Lots the current player could put up for auction right now — either voluntarily (own turn, excluding lots bought this same turn — see canStartAuction) or to raise cash toward a pending debt (no such exclusion). */
 export function getAuctionableLots(state: HotelState): HotelLot[] {
   const isDebtPhase = state.turnPhase === 'AWAITING_DEBT_RESOLUTION' && state.pendingDebt !== null;
   if (!isDebtPhase && state.turnPhase !== 'RESOLVING_SPACE') return [];
-  return ownedLotsOf(state, getCurrentPlayer(state).id);
+  const owned = ownedLotsOf(state, getCurrentPlayer(state).id);
+  if (isDebtPhase) return owned;
+  return owned.filter((lot) => !state.lotsBoughtThisTurn.includes(lot.id));
 }
 
 export function canPlaceBid(state: HotelState, bidderId: PlayerId, amount: number): boolean {

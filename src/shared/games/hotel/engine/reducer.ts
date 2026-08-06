@@ -115,6 +115,7 @@ function finishTurn(state: HotelState): HotelState {
     pendingNightsRollLotId: null,
     staircasePurchaseRightActive: false,
     lotsWithStaircasePurchasedThisTurn: [],
+    lotsBoughtThisTurn: [],
   };
 }
 
@@ -225,6 +226,7 @@ function applyBuyLot(state: HotelState, lotId: string): HotelState {
   // bank-owned (unowned) lot has no one to pay.
   if (previousOwnerId !== null) next = payFromBank(next, previousOwnerId, price);
   next = updateLot(next, lotId, { ownerId: player.id, bankBuybackPrice: null });
+  next = { ...next, lotsBoughtThisTurn: [...next.lotsBoughtThisTurn, lotId] };
   return appendLog(next, { type: 'LOT_BOUGHT', playerId: player.id, lotId, price });
 }
 

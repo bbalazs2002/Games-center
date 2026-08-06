@@ -99,6 +99,7 @@ export class HotelStateSchema extends Schema {
   declare pendingAuction?: AuctionSchema;
   declare staircasePurchaseRightActive: boolean;
   declare lotsWithStaircasePurchasedThisTurn: ArraySchema<string>;
+  declare lotsBoughtThisTurn: ArraySchema<string>;
   declare status: string;
   declare winnerId?: string;
   /** One JSON.stringify(LogEntry) per element — see docs/hotel-0b-multiplayer-specifikacio.md §6.2 for why not a LogEntrySchema class. */
@@ -123,6 +124,7 @@ defineTypes(HotelStateSchema, {
   pendingAuction: AuctionSchema,
   staircasePurchaseRightActive: 'boolean',
   lotsWithStaircasePurchasedThisTurn: ['string'],
+  lotsBoughtThisTurn: ['string'],
   status: 'string',
   winnerId: 'string',
   log: ['string'],

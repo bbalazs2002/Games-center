@@ -190,6 +190,8 @@ export interface HotelState {
   staircasePurchaseRightActive: boolean;
   /** Lot ids already used for a paid staircase purchase this turn — max 1/hotel/turn. */
   lotsWithStaircasePurchasedThisTurn: string[];
+  /** Lot ids bought (or force-bought) this turn — canStartAuction's voluntary path excludes these, so a lot can't be immediately re-auctioned the same turn it was bought. */
+  lotsBoughtThisTurn: string[];
   status: HotelStatus;
   /** Only set once status is FINISHED — the last non-bankrupt player. */
   winnerId: PlayerId | null;

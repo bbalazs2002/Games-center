@@ -163,6 +163,8 @@ export function applyHotelStateToSchema(schema: HotelStateSchema, state: HotelSt
   schema.staircasePurchaseRightActive = state.staircasePurchaseRightActive;
   if (!schema.lotsWithStaircasePurchasedThisTurn) schema.lotsWithStaircasePurchasedThisTurn = new ArraySchema<string>();
   replaceStringArray(schema.lotsWithStaircasePurchasedThisTurn, state.lotsWithStaircasePurchasedThisTurn);
+  if (!schema.lotsBoughtThisTurn) schema.lotsBoughtThisTurn = new ArraySchema<string>();
+  replaceStringArray(schema.lotsBoughtThisTurn, state.lotsBoughtThisTurn);
   schema.status = state.status;
   schema.winnerId = state.winnerId ?? undefined;
   syncLog(schema, state.log);
@@ -245,6 +247,7 @@ export function decodeHotelStateSchema(schema: HotelStateSchema): HotelState {
     pendingAuction: decodeAuction(schema),
     staircasePurchaseRightActive: schema.staircasePurchaseRightActive,
     lotsWithStaircasePurchasedThisTurn: [...schema.lotsWithStaircasePurchasedThisTurn],
+    lotsBoughtThisTurn: [...schema.lotsBoughtThisTurn],
     status: schema.status as HotelStatus,
     winnerId: schema.winnerId ?? null,
     log: schema.log.map((entry) => JSON.parse(entry) as LogEntry),

@@ -90,7 +90,7 @@ function propertyActions(state: HotelState, valid: HotelValidActions, actorId: P
   return actions;
 }
 
-function turnFlowActions(valid: HotelValidActions): HotelAction[] {
+function turnFlowActions(state: HotelState, valid: HotelValidActions): HotelAction[] {
   const actions: HotelAction[] = [];
 
   if (valid.canChooseFreeStaircaseSpace) {
@@ -99,7 +99,16 @@ function turnFlowActions(valid: HotelValidActions): HotelAction[] {
     }
   }
 
-  if (valid.canStartAuction) {
+  // Real playtest report: the AI opportunistically auctioned off lots just
+  // to pad its cash buffer, since the heuristic's soft cash-safety penalty
+  // (heuristic.ts's cashSafetyPenalty) can make a voluntary sale look
+  // attractive well before the player is in any actual danger. The engine's
+  // rules.ts still allows a human to voluntarily auction anytime on their
+  // own turn (RESOLVING_SPACE) — that stays; the AI is restricted here, one
+  // level up, to ONLY the forced debt-raising path (AWAITING_DEBT_RESOLUTION,
+  // reached when a charge genuinely couldn't be paid — see
+  // reducer.ts's chargePlayer), i.e. "only if it would otherwise go bankrupt".
+  if (state.turnPhase === 'AWAITING_DEBT_RESOLUTION' && valid.canStartAuction) {
     for (const lot of valid.auctionableLots) actions.push({ type: 'START_AUCTION', lotId: lot.id });
   }
 
@@ -126,5 +135,5 @@ export function enumerateCandidateActions(state: HotelState, actorId: PlayerId):
   if (state.turnPhase === 'AUCTION_IN_PROGRESS') return enumerateAuctionActions(state, actorId);
 
   const valid = getValidActions(state); // assumes actorId is the current turn-holder — true for every non-auction phase
-  return [...propertyActions(state, valid, actorId), ...turnFlowActions(valid)];
+  return [...propertyActions(state, valid, actorId), ...turnFlowActions(state, valid)];
 }

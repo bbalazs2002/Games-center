@@ -22,6 +22,15 @@ export interface GridBoard3DProps<TCellData> {
   boardThickness?: number;
   /** Color of the board base. */
   boardColor?: string;
+  /**
+   * Locks the camera to a static, straight-down view with no player-driven
+   * orbit/pan/zoom at all — Ramses's request (2026-08-06): the board stays a
+   * real 3D scene (pieces/lighting/perspective unchanged), but the viewing
+   * angle itself is fixed, not something the player can spin around.
+   * Defaults to the original free-orbit camera, unaffected for any future
+   * consumer that doesn't opt in.
+   */
+  topDownCamera?: boolean;
 }
 
 // Exported so a consumer's own `background` content (e.g. a full-board decal)
@@ -59,12 +68,30 @@ export function GridBoard3D<TCellData>({
   background,
   boardThickness = DEFAULT_BOARD_THICKNESS,
   boardColor = DEFAULT_BOARD_COLOR,
+  topDownCamera = false,
 }: GridBoard3DProps<TCellData>) {
+  // Tall enough to frame the whole grid (scales with its longer side) plus a
+  // little margin — the tiny Z epsilon avoids the camera sitting EXACTLY on
+  // the polar axis, a known degenerate case for OrbitControls' spherical math.
+  const topDownHeight = Math.max(rows, cols) * CELL_SIZE * 1.35;
+  const cameraProps = topDownCamera ? { position: [0, topDownHeight, 0.0001] as const, fov: 45 } : { position: [0, 9, 7] as const, fov: 45 };
+
   return (
-    <Canvas className={styles.canvas} camera={{ position: [0, 9, 7], fov: 45 }}>
+    <Canvas className={styles.canvas} camera={cameraProps}>
       <ambientLight intensity={0.7} />
       <directionalLight position={[5, 10, 5]} intensity={0.8} />
-      <OrbitControls enablePan={false} minDistance={4} maxDistance={18} maxPolarAngle={Math.PI / 2.2} />
+      {/*
+        `enabled={false}` still lets OrbitControls run its own initial
+        target/position math once (orienting the camera exactly at the
+        board center), it just stops listening for further pointer input —
+        more robust than hand-rolling a lookAt, reusing the same math the
+        free-orbit camera already relies on.
+      */}
+      {topDownCamera ? (
+        <OrbitControls enabled={false} />
+      ) : (
+        <OrbitControls enablePan={false} minDistance={4} maxDistance={18} maxPolarAngle={Math.PI / 2.2} />
+      )}
       <Suspense fallback={null}>{background}</Suspense>
       {boardThickness > 0 && (
         <mesh position={[0, -boardThickness / 2, 0]}>
