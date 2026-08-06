@@ -1,4 +1,5 @@
-import type { CardDef, CardKind, Row, UnitAbility } from '../../../../shared/games/gwent/engine/types';
+import { cardsForFaction, isHeroCard, type DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
+import type { CardDef, CardKind, Faction, Row, UnitAbility } from '../../../../shared/games/gwent/engine/types';
 
 export const ROW_LABELS_HU: Record<Row, string> = {
   Melee: 'Közelharc',
@@ -87,6 +88,41 @@ export const CARD_SORT_OPTIONS: { key: CardSortKey; label: string }[] = [
 ];
 
 const ROW_ORDER: Record<Row, number> = { Melee: 0, Ranged: 1, Siege: 2 };
+
+export interface DeckStats {
+  totalCardCount: number;
+  unitCount: number;
+  specialCount: number;
+  heroCount: number;
+  totalPower: number;
+}
+
+/**
+ * Gwent-0d §4: the deck-builder's middle-column stat block — purely
+ * informational (unlike deckRules.ts's `validateDeckDraft`, which computes
+ * only what the MIN_NON_HERO_UNIT_CARDS rule needs), so it lives here with
+ * the rest of the display-only helpers rather than in the engine.
+ */
+export function computeDeckStats(cardCounts: DeckCardCounts, faction: Faction): DeckStats {
+  let totalCardCount = 0;
+  let unitCount = 0;
+  let specialCount = 0;
+  let heroCount = 0;
+  let totalPower = 0;
+  for (const def of cardsForFaction(faction)) {
+    const count = cardCounts[def.id] ?? 0;
+    if (count <= 0) continue;
+    totalCardCount += count;
+    if (def.kind === 'Unit') {
+      unitCount += count;
+      if (isHeroCard(def)) heroCount += count;
+      if (def.basePower !== null) totalPower += def.basePower * count;
+    } else {
+      specialCount += count;
+    }
+  }
+  return { totalCardCount, unitCount, specialCount, heroCount, totalPower };
+}
 
 /** Pure display-order sort, deck-builder UI only — never affects deck validity/rules. */
 export function sortCards(cards: CardDef[], key: CardSortKey): CardDef[] {

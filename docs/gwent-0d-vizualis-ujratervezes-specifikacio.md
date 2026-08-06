@@ -1,6 +1,12 @@
 # Gwent-0d — teljes vizuális újratervezés a Witcher 3-beli Gwent minijáték alapján
 
-**Státusz: TERVEZVE, jóváhagyva (2026-08-05) — ez a dokumentum az implementáció ELSŐ lépéseként készül, a projekt "terv előbb `docs/`-ba, kód csak utána" konvenciója szerint.**
+**Státusz (2026-08-05): 0–4. fázis KÉSZ, élőben ellenőrizve (tsc/eslint/tesztek/build zöld). Az 5. fázis (maradék képernyők token-szintű igazítása) még hátravan.**
+
+- 0. fázis (asset-pipeline, betűtípusok, alap-tokenek) — kész.
+- 1. fázis (`CardTile` egyszerűsítés) — kész.
+- 2. fázis (`CardCarouselModal`) — kész.
+- 3. fázis (meccs-tábla) — kész; több élő korrekciós kör után (időjárás-sáv/vezér-gomb átfedés, ezüst margó folytonossága, arany elválasztó szélessége, húzópakli-hely, jobb oldali margó a sínig, ellenfél-oldali vezér-gomb elrejtése) a felhasználó jóváhagyta a végleges állapotot referenciapontként (`git tag gwent-0d-phase3-checkpoint`).
+- 4. fázis (pakli-építő két hasábos átépítése) — kész: `FactionStep` középre igazított ciklikus váltóvá alakult, `LeaderStep` kompakt csempesorrá a középső oszlopban, `DeckStep` Gyűjtemény/Pakliban két hasábra bomlott (kattintás = ±1 példány, kis "i" gomb nyitja a karuszelt), a középső oszlop vezér-kártyát + pakli-statisztikát mutat. A már ezáltal feleslegessé vált `CardGrid`/`CardCountGrid` törölve.
 
 ## Kontextus
 

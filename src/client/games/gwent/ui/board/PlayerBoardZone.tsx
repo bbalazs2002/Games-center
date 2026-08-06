@@ -91,7 +91,7 @@ export function PlayerBoardZone({
         ))}
       </div>
 
-      <div className={styles.boardZonePileColumn}>
+      <div className={outer ? styles.boardZonePileColumn : `${styles.boardZonePileColumn} ${styles.pileColumnBottomGap}`}>
         {outer ? (
           <>
             <DiscardPile cards={player.discard} zoneKey={`discard:${playerId}`} onOpenAll={() => onOpenCardGroup(player.discard, player.discard.length - 1)} />

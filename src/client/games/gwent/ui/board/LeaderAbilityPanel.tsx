@@ -118,7 +118,14 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
           modálon látszik, ami a vezérkép kattintására már ma is nyílik, lásd fent) — this also
           removes the risk of a long description pushing LifeTokens out of the zone below. */}
 
-      {!pickingTarget && (
+      {/*
+        A felhasználó kérése: a gomb csak a SAJÁT (mindig alul megjelenő)
+        vezér-panelen jelenjen meg — a felső zóna mindig az ellenfélé
+        (lásd MatchBoard.tsx `bottomPlayer`/`topPlayer` doc-kommentje), ott a
+        gomb sosem lenne aktiválható, a puszta (letiltott) megjelenése is
+        felesleges zaj volt.
+      */}
+      {isOwnPanel && !pickingTarget && (
         <Button
           disabled={!canActivate}
           onClick={() => (needsDeckTarget || needsOwnDiscardTarget || needsOpponentDiscardTarget ? void openPicker() : activate())}

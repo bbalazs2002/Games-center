@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from '../../../ui-kit/Button';
 import { Select } from '../../../ui-kit/Select';
 import type { CardDef, Faction } from '../../../../shared/games/gwent/engine/types';
@@ -8,8 +8,9 @@ import {
   validateDeckDraft,
   type DeckCardCounts,
 } from '../../../../shared/games/gwent/engine/deckRules';
+import type { CardInstance } from '../../../../shared/games/gwent/engine/state';
 import { CARD_SORT_OPTIONS, sortCards, type CardSortKey } from './cardDisplay';
-import { CardCountGrid } from './CardCountGrid';
+import { CardTile } from './board/CardTile';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
 import { buildTestDeckCounts } from './testDeckPresets';
 import styles from './GwentSetupPage.module.css';
@@ -19,36 +20,65 @@ export interface DeckStepProps {
   leaderId: string;
   cardCounts: DeckCardCounts;
   onCardCountsChange: (next: DeckCardCounts) => void;
+  /** Gwent-0d §4: the leader picker + selected leader card + deck stats — composed by GwentDeckBuilder.tsx, slotted here between the two card columns. */
+  middleColumn: ReactNode;
+}
+
+interface DeckCardTileProps {
+  def: CardDef;
+  count: number;
+  onAdd?: () => void;
+  onRemove?: () => void;
+  onInfo: () => void;
+}
+
+/** A single dense collection/deck tile — the card's own small crop (Gwent-0d §1) IS the add/remove button; a tiny corner "i" opens the shared carousel for a closer look, a sibling button (not nested — CardTile is itself a `<button>`). */
+function DeckCardTile({ def, count, onAdd, onRemove, onInfo }: DeckCardTileProps) {
+  // No real CardInstance exists yet for a catalog entry — id-stable synthetic one, same trick CardCarouselModal's 'catalog' entries avoid needing (Gwent-0d §2 doc comment).
+  const instance: CardInstance = { instanceId: def.id, defId: def.id, chosenRow: null };
+  const atMax = onAdd !== undefined && count >= def.copies;
+  return (
+    <div className={styles.deckTile}>
+      <CardTile instance={instance} size="small" disabled={atMax} onClick={onAdd ?? onRemove} />
+      {count > 0 && <span className={styles.deckTileCount}>×{count}</span>}
+      <button
+        type="button"
+        className={styles.deckTileInfo}
+        aria-label={`${def.name} részletei`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onInfo();
+        }}
+      >
+        i
+      </button>
+    </div>
+  );
 }
 
 /**
- * "Pakli mentése" moved up to GwentMatchSetupPage (Gwent-0c.2 §D, 7. pont — merged into the wizard's own button row, in one line, instead of a separate stacked row here).
- *
- * Gwent-0c.4 §A: the faction/leader `<Select>` switchers that used to live
- * here are gone — faction/leader are now picked via the always-visible
- * FactionStep/LeaderStep image grids above (one page, no more wizard steps),
- * so a second, redundant text-dropdown for the same choice would just be
- * clutter.
+ * Gwent-0d §4: a korábbi EGY görgethető lista (Egységkártyák + Speciális
+ * kártyák egymás alatt) helyett KÉT hasáb — "Gyűjtemény" (a frakció összes
+ * lapja, kattintásra +1) és "Pakliban" (csak a `count > 0` lapok, kattintásra
+ * −1) — köztük a `middleColumn` (vezér + statisztika). A `cardCounts`/
+ * `changeCount` állapot-modell változatlan, csak a renderelés alakult át.
  */
-export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange }: DeckStepProps) {
+export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, middleColumn }: DeckStepProps) {
   const [sortKey, setSortKey] = useState<CardSortKey>('name');
-  const [detailCard, setDetailCard] = useState<CardDef | null>(null);
+  const [detailGroup, setDetailGroup] = useState<{ list: CardDef[]; index: number } | null>(null);
 
-  const availableCards = cardsForFaction(faction);
-  const units = sortCards(
-    availableCards.filter((c) => c.kind === 'Unit'),
-    sortKey,
-  );
-  const specials = sortCards(
-    availableCards.filter((c) => c.kind !== 'Unit'),
-    sortKey,
-  );
+  const collection = sortCards(cardsForFaction(faction), sortKey);
+  const owned = collection.filter((def) => (cardCounts[def.id] ?? 0) > 0);
   const validation = validateDeckDraft({ faction, leaderId, cardCounts });
 
   function changeCount(def: CardDef, delta: number): void {
     const current = cardCounts[def.id] ?? 0;
     const next = Math.max(0, Math.min(def.copies, current + delta));
     if (next !== current) onCardCountsChange({ ...cardCounts, [def.id]: next });
+  }
+
+  function openDetail(list: CardDef[], def: CardDef): void {
+    setDetailGroup({ list, index: Math.max(0, list.findIndex((c) => c.id === def.id)) });
   }
 
   return (
@@ -80,22 +110,46 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange }: 
         </Button>
       </div>
 
-      <CardCountGrid
-        title="Egységkártyák"
-        cards={units}
-        cardCounts={cardCounts}
-        onChangeCount={changeCount}
-        onShowDetail={setDetailCard}
-      />
-      <CardCountGrid
-        title="Speciális kártyák"
-        cards={specials}
-        cardCounts={cardCounts}
-        onChangeCount={changeCount}
-        onShowDetail={setDetailCard}
-      />
+      <div className={styles.deckColumns}>
+        <div className={styles.deckColumn}>
+          <h2>Gyűjtemény</h2>
+          <div className={styles.deckGrid}>
+            {collection.map((def) => (
+              <DeckCardTile
+                key={def.id}
+                def={def}
+                count={cardCounts[def.id] ?? 0}
+                onAdd={() => changeCount(def, 1)}
+                onInfo={() => openDetail(collection, def)}
+              />
+            ))}
+          </div>
+        </div>
 
-      <CardCarouselModal entries={detailCard ? ([{ type: 'catalog', def: detailCard }] satisfies CarouselEntry[]) : null} onClose={() => setDetailCard(null)} />
+        <div className={styles.deckMiddleColumn}>{middleColumn}</div>
+
+        <div className={styles.deckColumn}>
+          <h2>Pakliban</h2>
+          {owned.length === 0 && <p className={styles.deckColumnEmpty}>Még nincs egy lap sem a paliban.</p>}
+          <div className={styles.deckGrid}>
+            {owned.map((def) => (
+              <DeckCardTile
+                key={def.id}
+                def={def}
+                count={cardCounts[def.id] ?? 0}
+                onRemove={() => changeCount(def, -1)}
+                onInfo={() => openDetail(owned, def)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <CardCarouselModal
+        entries={detailGroup ? (detailGroup.list.map((def) => ({ type: 'catalog', def })) satisfies CarouselEntry[]) : null}
+        initialIndex={detailGroup?.index}
+        onClose={() => setDetailGroup(null)}
+      />
     </>
   );
 }

@@ -1,9 +1,8 @@
 /**
  * Small monochrome (`currentColor`) status icons for the match board, in
  * place of colorful emoji (Gwent-0c.3 §8: "a kupa, szumma és ilyen ikonok
- * mind legyenek monochrome, egyszerű ikonok"). Same style as
- * CardCountGrid.tsx's magnifier icon — plain stroke-based SVG, no fill,
- * scales cleanly with font-size via `em`-sized width/height.
+ * mind legyenek monochrome, egyszerű ikonok") — plain stroke-based SVG, no
+ * fill, scales cleanly with font-size via `em`-sized width/height.
  */
 
 export function TrophyIcon() {

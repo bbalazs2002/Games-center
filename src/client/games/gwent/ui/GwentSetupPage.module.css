@@ -43,9 +43,246 @@
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 }
 
-/** Faction/leader pickers inside `.setupPanel` — smaller tiles than the full CardGrid default so both fit comfortably above the deck grid on one page. */
-.compactGrid {
-  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+/**
+ * Gwent-0d §4: középre igazított frakció-fejléc-váltó — a szomszédos
+ * frakciók neve balra/jobbra, kattintásra cikliken vált (nem egy 4-csempés
+ * rácsból választ, mint korábban a CardGrid-alapú megoldás).
+ */
+.factionSwitcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.factionNeighbor {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--shell-ink-parchment, inherit);
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.factionNeighbor:hover {
+  opacity: 0.9;
+}
+
+.factionCurrent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 14rem;
+}
+
+.factionEmblem {
+  font-size: 1.8rem;
+  color: var(--shell-accent, #d4af37);
+}
+
+.factionName {
+  font-family: var(--gwent-display-font, serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--shell-accent, #d4af37);
+}
+
+.factionBonus {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  max-width: 22rem;
+}
+
+/**
+ * Gwent-0d §4: a kompakt vezér-választó sor — apró csempék, a kiválasztott
+ * vezér teljes kártyája/statisztikája a középső oszlopban, alább jelenik meg
+ * (GwentDeckBuilder.tsx `middleColumn`-ja).
+ */
+.leaderCompact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.leaderCompactLabel {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.leaderCompactRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.leaderCompactTile {
+  border: 2px solid transparent;
+  border-radius: 0.3rem;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  line-height: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.leaderCompactTile:hover {
+  opacity: 0.9;
+}
+
+.leaderCompactTileSelected {
+  border-color: var(--shell-accent, #d4af37);
+  opacity: 1;
+}
+
+.leaderCompactImage {
+  display: block;
+  width: 2.6rem;
+  height: 2.95rem;
+  object-fit: cover;
+  object-position: top;
+}
+
+.selectedLeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.selectedLeaderImage {
+  width: 7rem;
+  height: 11rem;
+  object-fit: contain;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
+}
+
+.selectedLeaderAbility {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+/** Gwent-0d §4: a pakli-statisztika kompakt cím/érték párokként — lapszám, egység-/speciális-/hős-szám, össz-erő. */
+.deckStats {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.3rem 0.75rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--shell-line, #cbd5e0);
+  border-radius: 0.5rem;
+}
+
+.deckStats > div {
+  display: contents;
+}
+
+.deckStats dt {
+  opacity: 0.75;
+}
+
+.deckStats dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/**
+ * Gwent-0d §4: a régi egy-hasábos lista helyett három oszlop — Gyűjtemény /
+ * vezér+statisztika / Pakliban. Kis képernyőn (a `minmax` a szűk középső
+ * oszlopot rögzíti) a két kártya-oszlop zsugorodik, sosem a középső.
+ */
+.deckColumns {
+  display: grid;
+  grid-template-columns: 1fr minmax(11rem, 14rem) 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.deckColumn h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.deckColumnEmpty {
+  opacity: 0.7;
+  font-size: 0.85rem;
+}
+
+.deckMiddleColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  background: var(--shell-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--shell-line, #cbd5e0);
+  border-radius: 0.75rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.deckGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/** Egy Gyűjtemény/Pakliban csempe — a kártyakép maga a fő gomb (hozzáadás/eltávolítás), a bal-alsó darabszám-jelvény és a jobb-felső "i" infógomb ráülő overlay. */
+.deckTile {
+  position: relative;
+}
+
+.deckTileCount {
+  position: absolute;
+  left: 0.1rem;
+  bottom: 0.1rem;
+  padding: 0 0.3rem;
+  border-radius: 0.6rem;
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.deckTileInfo {
+  position: absolute;
+  top: 0.1rem;
+  right: 0.1rem;
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-family: serif;
+  font-style: italic;
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
 }
 
 .switcher {
@@ -67,45 +304,6 @@
   padding-left: 1.25rem;
   color: #c0392b;
 }
-
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 0.35rem;
-  padding: 0.1rem 0.35rem;
-}
-
-.stepperButton {
-  border: none;
-  background: transparent;
-  color: #fff;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0.1rem 0.3rem;
-}
-
-.stepperButton:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.stepperCount {
-  color: #fff;
-  font-weight: 700;
-  min-width: 1ch;
-  text-align: center;
-}
-
-.mechanicTag {
-  /* Gold-on-cream (CardGrid tiles are parchment-colored since Gwent-0c.1) was
-     low-contrast/faint — a real playtest report (Gwent-0c.2 §G). */
-  color: var(--shell-accent-secondary, #7a1620);
-  font-weight: 600;
-}
-
 
 .savedMessage {
   opacity: 0.8;

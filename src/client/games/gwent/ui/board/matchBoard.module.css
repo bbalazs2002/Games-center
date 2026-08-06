@@ -145,6 +145,9 @@
   align-items: center;
   justify-content: flex-end;
   width: var(--gwent-leader-col-width, 9rem);
+  /* Same reasoning as `.boardZoneLeaderColumn`'s own padding-right above —
+     keeps the active weather cards from touching `.boardMetalRail`. */
+  padding-right: 0.6rem;
 }
 
 .boardDividerGold {
@@ -163,6 +166,11 @@
   justify-content: flex-start;
   gap: 0.4rem;
   min-height: 0;
+  /* A `PlayerInfoPanel`/weather-slot szélessége a teljes oszlopot kitölti
+     (`width: 100%`) — enélkül a jobb szélük pontosan a `.boardMetalRail`
+     vonaláig érne. Csak jobbra kell, a bal szél a tábla saját (már
+     amúgy is meglévő) széléhez igazodik. */
+  padding-right: 0.6rem;
   /* Gwent-0d §3: same last-resort escape hatch as `.boardZoneCenterColumn` —
      the player-info card + full leader card together can exceed a short
      viewport's allotted height; this keeps them contained inside the
@@ -203,6 +211,18 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 0.5rem;
+}
+
+/**
+ * Gwent-0d §3, korrekció: az alsó (belső, `!outer`) zóna oszlopában a
+ * PAKLI (DeckPile) az ELSŐ gyerek — enélkül közvetlenül az elválasztó
+ * alatt ülne, üres hely nélkül fölötte (a `.boardZoneLeaderColumn`
+ * szomszédos `.leaderPanel`-je már kapott hasonló hézagot). Csak az
+ * alsó zónára vonatkozik — a felsőében a Pakli az UTOLSÓ gyerek, ott a
+ * `space-between` már eleve a divider felé tolja, nincs mit igazítani.
+ */
+.pileColumnBottomGap > :first-child {
+  margin-top: 1rem;
 }
 
 /**

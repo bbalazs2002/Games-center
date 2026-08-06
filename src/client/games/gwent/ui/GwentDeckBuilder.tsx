@@ -1,8 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { LEADER_DEFS } from '../../../../shared/games/gwent/engine/leaderDefs';
+import { assetUrl } from '../../../core/assetUrl';
+import { getLeaderDef, LEADER_DEFS } from '../../../../shared/games/gwent/engine/leaderDefs';
 import type { Faction } from '../../../../shared/games/gwent/engine/types';
 import { validateDeckDraft, type DeckCardCounts, type GwentDeckDraft } from '../../../../shared/games/gwent/engine/deckRules';
+import { computeDeckStats } from './cardDisplay';
 import { loadPersistedGwentDeck } from './gwentDeckPersistence';
+import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
 import { DeckStep } from './DeckStep';
 import { FactionStep } from './FactionStep';
 import { LeaderStep } from './LeaderStep';
@@ -40,6 +43,8 @@ export function GwentDeckBuilder({ title, nameInput, onValidDraftChange }: Gwent
   // discards another faction's already-picked leader/cards (0a-spec §9.5 kérés, 2026-08-01).
   const [leaderIdByFaction, setLeaderIdByFaction] = useState<Partial<Record<Faction, string>>>({});
   const [cardCountsByFaction, setCardCountsByFaction] = useState<Partial<Record<Faction, DeckCardCounts>>>({});
+  // Gwent-0d §4: read-only leader-card zoom for the middle column's selected-leader art — same "click the card to open the carousel" pattern as LeaderAbilityPanel's board version.
+  const [leaderZoomOpen, setLeaderZoomOpen] = useState(false);
 
   const leaderId = faction ? (leaderIdByFaction[faction] ?? null) : null;
   const cardCounts = faction ? (cardCountsByFaction[faction] ?? {}) : {};
@@ -86,6 +91,62 @@ export function GwentDeckBuilder({ title, nameInput, onValidDraftChange }: Gwent
     setCardCountsByFaction((prev) => ({ ...prev, [faction]: next }));
   }
 
+  const selectedLeader = leaderId ? getLeaderDef(leaderId) : null;
+  const stats = faction ? computeDeckStats(cardCounts, faction) : null;
+
+  // Gwent-0d §4: the middle column (leader picker + selected leader card +
+  // deck stats) is composed HERE (GwentDeckBuilder owns faction/leader/stats
+  // knowledge) but physically slotted by DeckStep, between its two card
+  // columns — avoids duplicating DeckStep's sort/validation state upward
+  // just to split it into two separately-callable halves.
+  const middleColumn = faction && (
+    <>
+      <LeaderStep faction={faction} leaders={LEADER_DEFS.filter((l) => l.faction === faction)} selectedLeaderId={leaderId} onSelect={selectLeader} />
+
+      {selectedLeader && (
+        <div className={styles.selectedLeader}>
+          <img
+            className={styles.selectedLeaderImage}
+            src={assetUrl(selectedLeader.imagePaths[0])}
+            alt={selectedLeader.name}
+            onClick={() => setLeaderZoomOpen(true)}
+          />
+          <p className={styles.selectedLeaderAbility}>{selectedLeader.abilityDescription}</p>
+        </div>
+      )}
+
+      {stats && (
+        <dl className={styles.deckStats}>
+          <div>
+            <dt>Lapok</dt>
+            <dd>{stats.totalCardCount}</dd>
+          </div>
+          <div>
+            <dt>Egységek</dt>
+            <dd>{stats.unitCount}</dd>
+          </div>
+          <div>
+            <dt>Speciális</dt>
+            <dd>{stats.specialCount}</dd>
+          </div>
+          <div>
+            <dt>Hősök</dt>
+            <dd>{stats.heroCount}</dd>
+          </div>
+          <div>
+            <dt>Össz-erő</dt>
+            <dd>{stats.totalPower}</dd>
+          </div>
+        </dl>
+      )}
+
+      <CardCarouselModal
+        entries={leaderZoomOpen && selectedLeader ? ([{ type: 'leader', leader: selectedLeader }] satisfies CarouselEntry[]) : null}
+        onClose={() => setLeaderZoomOpen(false)}
+      />
+    </>
+  );
+
   return (
     <section className={styles.builderSection}>
       <h2>{title}</h2>
@@ -93,19 +154,10 @@ export function GwentDeckBuilder({ title, nameInput, onValidDraftChange }: Gwent
       <div className={styles.setupPanel}>
         {nameInput}
         <FactionStep selectedFaction={faction} onSelect={selectFaction} />
-
-        {faction && (
-          <LeaderStep
-            faction={faction}
-            leaders={LEADER_DEFS.filter((l) => l.faction === faction)}
-            selectedLeaderId={leaderId}
-            onSelect={selectLeader}
-          />
-        )}
       </div>
 
       {faction && leaderId && (
-        <DeckStep faction={faction} leaderId={leaderId} cardCounts={cardCounts} onCardCountsChange={changeCardCounts} />
+        <DeckStep faction={faction} leaderId={leaderId} cardCounts={cardCounts} onCardCountsChange={changeCardCounts} middleColumn={middleColumn} />
       )}
     </section>
   );
