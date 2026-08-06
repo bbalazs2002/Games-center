@@ -1,9 +1,17 @@
+/**
+ * Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — az egész oldal
+ * férjen ki egy képernyőre, sose görgessen maga az OLDAL, csak a
+ * pakli-hasábok belseje (`.deckGrid`) — fix `100dvh` magasság, nincs oldal-
+ * szintű túlcsordulás. Ugyanaz az elv, mint a `matchBoard.module.css`
+ * `.matchBoard`-jánál. `MenuNav` (position: absolute, top: 1rem) miatt kell a
+ * ~2.75rem felső padding, hogy a cím sose csússzon alá.
+ */
 .page {
   position: relative;
-  min-height: 100vh;
+  height: 100dvh;
   display: flex;
   justify-content: center;
-  padding: 4rem 1rem 2rem;
+  padding: 2.75rem 1rem 0.75rem;
   background: var(--shell-ground, transparent);
   /* NOT --shell-ink (dark, tuned for text sitting ON a light parchment
      surface) — .page's own background is the dark --shell-ground, so its
@@ -12,18 +20,57 @@
      overrides back to --shell-ink locally. Real bug, found live (Gwent-0c.2
      §A): every loose heading/label directly on .page rendered dark-on-dark. */
   color: var(--shell-ink-parchment, inherit);
+  overflow: hidden;
 }
 
+/**
+ * Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — a cím legyen
+ * egy vonalban a `MenuNav` "Főmenü" gombjával. `MenuNav` (position: absolute,
+ * top: 1rem, lásd MenuNav.module.css) a `.page`-hez (position: relative)
+ * horgonyzott overlay, NEM része a `.content` flex-flow-jának — a cím ide
+ * igazodva szintén `position: absolute`-ra vált (ugyanahhoz a `.page`
+ * ancestorhoz horgonyozva, hiszen `.content`-nek nincs saját `position`-je),
+ * jobbra igazítva, hogy sose ütközzön a bal oldali gombokkal, függetlenül
+ * azok tényleges szélességétől.
+ */
 .page h1 {
+  position: absolute;
+  top: 1.1rem;
+  right: 1rem;
+  margin: 0;
+  font-size: 1.3rem;
   color: var(--shell-accent, inherit);
 }
 
 .content {
   max-width: 60rem;
   width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.4rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/**
+ * Gwent-0d §4 korrekció: a két hot-seat játékos-lépés wrappere (eddig
+ * osztály/stílus nélküli `<div hidden>`) — a látható félnek ki kell töltenie
+ * a maradék magasságot (`.builderSection` kapja a görgethető pakli-hasábokat),
+ * a `[hidden]` szabály pedig EXPLICIT újra ki van mondva, mert egy saját
+ * `display: flex` szabály a UA-stíluslapnál MAGASABB prioritású (author vs.
+ * user-agent cascade origin), tehát felülírná a böngésző alap rejtését.
+ */
+.playerStep {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  gap: 0.4rem;
+}
+
+.playerStep[hidden] {
+  display: none;
 }
 
 /**
@@ -31,41 +78,60 @@
  * szofisztikáltabb elrendezést" — the name input + faction/leader pickers
  * now sit inside one bordered/surfaced panel instead of loose on `.page`'s
  * bare background.
+ *
+ * Gwent-0d §4 korrekció (2026-08-06): a pergamen (`--shell-surface`) háttér
+ * lekerült — sötét, félig-áttetsző sáv lett helyette (a `.deckStats`-nál már
+ * bevált stílus), és a padding/gap is szűkebb, hogy a felső sáv ne foglaljon
+ * ennyi helyet.
  */
 .setupPanel {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.25rem 1.5rem;
-  background: var(--shell-surface, rgba(255, 255, 255, 0.04));
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(0, 0, 0, 0.22);
   border: 1px solid var(--shell-line, #cbd5e0);
-  border-radius: 0.75rem;
+  border-radius: 0.6rem;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
 
 /**
  * Gwent-0d §4: középre igazított frakció-fejléc-váltó — a szomszédos
  * frakciók neve balra/jobbra, kattintásra cikliken vált (nem egy 4-csempés
  * rácsból választ, mint korábban a CardGrid-alapú megoldás).
+ *
+ * Gwent-0d §4 korrekció (2026-08-06): a `.factionNeighbor` gombok korábban a
+ * saját szövegük szélességét vették fel — mivel "Scoia'tael" és "Nilfgaardian
+ * Empire" különböző hosszú, a sor asszimetrikusan tolódott el, és a
+ * `justify-content: center` csak a TELJES sort központosította, nem magát az
+ * aktív frakciót. Most mindkét szomszéd-gomb AZONOS, fix szélességű
+ * (`.factionNeighbor`), ezért `.factionCurrent` garantáltan középen marad,
+ * függetlenül attól, melyik két szomszéd neve látszik.
  */
 .factionSwitcher {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 1rem;
   text-align: center;
 }
 
 .factionNeighbor {
-  flex-shrink: 0;
+  flex: 0 0 8rem;
+  width: 8rem;
+  overflow: hidden;
   border: none;
   background: none;
-  padding: 0.3rem 0.5rem;
+  padding: 0.2rem 0.4rem;
   font: inherit;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--shell-ink-parchment, inherit);
   opacity: 0.55;
   cursor: pointer;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   transition: opacity 0.15s ease;
 }
 
@@ -77,26 +143,26 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  min-width: 14rem;
+  gap: 0.1rem;
+  min-width: 12rem;
 }
 
 .factionEmblem {
-  font-size: 1.8rem;
+  font-size: 1.4rem;
   color: var(--shell-accent, #d4af37);
 }
 
 .factionName {
   font-family: var(--gwent-display-font, serif);
-  font-size: 1.2rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--shell-accent, #d4af37);
 }
 
 .factionBonus {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   opacity: 0.75;
-  max-width: 22rem;
+  max-width: 20rem;
 }
 
 /**
@@ -162,8 +228,8 @@
 }
 
 .selectedLeaderImage {
-  width: 7rem;
-  height: 11rem;
+  width: 5.5rem;
+  height: 8.6rem;
   object-fit: contain;
   border-radius: 0.35rem;
   cursor: pointer;
@@ -172,7 +238,7 @@
 
 .selectedLeaderAbility {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   opacity: 0.85;
 }
 
@@ -180,13 +246,14 @@
 .deckStats {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.3rem 0.75rem;
+  gap: 0.25rem 0.75rem;
   margin: 0;
-  padding: 0.6rem 0.75rem;
+  padding: 0.5rem 0.65rem;
   width: 100%;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(0, 0, 0, 0.28);
   border: 1px solid var(--shell-line, #cbd5e0);
   border-radius: 0.5rem;
+  flex-shrink: 0;
 }
 
 .deckStats > div {
@@ -204,45 +271,84 @@
   font-variant-numeric: tabular-nums;
 }
 
+/** Gwent-0d §4 korrekció (2026-08-06): a "Lapok" sor pirosra vált, amíg a nem-Hero egységkártya-szám nem éri el a minimumot — ez veszi át a törölt "Legalább 22..." hibaüzenet/összegző-sor szerepét. */
+.deckStatInvalid {
+  color: #e5484d;
+}
+
 /**
  * Gwent-0d §4: a régi egy-hasábos lista helyett három oszlop — Gyűjtemény /
- * vezér+statisztika / Pakliban. Kis képernyőn (a `minmax` a szűk középső
- * oszlopot rögzíti) a két kártya-oszlop zsugorodik, sosem a középső.
+ * vezér+statisztika / Pakliban.
+ *
+ * Gwent-0d §4 korrekció (2026-08-06): `align-items: start` helyett a
+ * (default) `stretch` — mindhárom oszlop kitölti a sor teljes (a szülő
+ * `.builderSection`-től `flex: 1 1 0`-val kapott) magasságát, hogy a kártya-
+ * hasábok BELSEJE (`.deckGrid`) tudjon önállóan görgetni ahelyett, hogy az
+ * egész oldalt nyújtaná meg.
  */
 .deckColumns {
   display: grid;
   grid-template-columns: 1fr minmax(11rem, 14rem) 1fr;
-  gap: 1.25rem;
-  align-items: start;
+  gap: 1rem;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.deckColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 0;
 }
 
 .deckColumn h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1rem;
+  margin: 0;
+  font-size: 0.95rem;
+  flex-shrink: 0;
 }
 
 .deckColumnEmpty {
   opacity: 0.7;
   font-size: 0.85rem;
+  flex-shrink: 0;
 }
 
+/**
+ * Gwent-0d §4 korrekció (2026-08-06): a pergamen háttér lekerült (sötét,
+ * félig-áttetsző lett helyette), a `position: sticky` pedig okafogyottá vált
+ * — az oldal többé nem görgethet egészben (lásd `.page`), úgyhogy nincs mihez
+ * "ragadnia". `min-height: 0` + `overflow-y: auto` a biztonság kedvéért (ha a
+ * vezér-leírás/statisztika mégis magasabb lenne a rendelkezésre álló helynél).
+ */
 .deckMiddleColumn {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   align-items: center;
-  padding: 0.75rem;
-  background: var(--shell-surface, rgba(255, 255, 255, 0.04));
+  padding: 0.6rem;
+  background: rgba(0, 0, 0, 0.22);
   border: 1px solid var(--shell-line, #cbd5e0);
-  border-radius: 0.75rem;
-  position: sticky;
-  top: 1rem;
+  border-radius: 0.6rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
+/**
+ * Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — a két
+ * pakli-hasáb önállóan görgethető legyen, ne az egész oldal. `flex: 1 1 0` +
+ * `min-height: 0` a szülő `.deckColumn`-tól kapott (bounded) magasságon
+ * belül, `overflow-y: auto` maga végzi a görgetést; `align-content: flex-start`,
+ * hogy a csempe-sorok a tetejéről induljanak, ne `stretch`-eljenek szét.
+ */
 .deckGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  align-content: flex-start;
+  gap: 0.4rem;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
 /** Egy Gyűjtemény/Pakliban csempe — a kártyakép maga a fő gomb (hozzáadás/eltávolítás), a bal-alsó darabszám-jelvény és a jobb-felső "i" infógomb ráülő overlay. */
@@ -288,43 +394,46 @@
 .switcher {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
   font-size: 0.9rem;
   font-weight: 600;
-}
-
-.summary {
-  display: flex;
-  gap: 1.5rem;
-  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .errors {
   margin: 0;
   padding-left: 1.25rem;
   color: #c0392b;
+  flex-shrink: 0;
 }
 
 .savedMessage {
   opacity: 0.8;
 }
 
+/** Gwent-0d §4 korrekció (2026-08-06): `flex: 1 1 0` + `min-height: 0` — ez adja tovább a rendelkezésre álló magasságot a `DeckStep`-nek (pontosabban annak `.deckColumns` gridjének), hogy a kártya-hasábok belseje tudjon önállóan görgetni ahelyett, hogy az egész oldalt nyújtaná meg. */
 .builderSection {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.5rem;
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .nameInput {
   /* No real style at all before (Gwent-0c.2 §C, 3. pont) — matches the
-     Hotel/Ramses setup-page .nameInput convention. */
+     Hotel/Ramses setup-page .nameInput convention.
+     Gwent-0d §4 korrekció (2026-08-06): pergamen háttér helyett sötét,
+     félig-áttetsző — lásd .setupPanel/.deckMiddleColumn ugyanerről. */
   font: inherit;
   font-weight: 600;
-  padding: 0.5rem 0.75rem;
+  padding: 0.4rem 0.65rem;
   border: 1px solid var(--shell-line, #cbd5e0);
   border-radius: 0.375rem;
-  background: var(--shell-surface, rgba(255, 255, 255, 0.06));
-  color: var(--shell-ink, inherit);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--shell-ink-parchment, inherit);
+  flex-shrink: 0;
 }
 
 .nameInput:focus-visible {
@@ -336,6 +445,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 1.5rem;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+  flex-shrink: 0;
 }

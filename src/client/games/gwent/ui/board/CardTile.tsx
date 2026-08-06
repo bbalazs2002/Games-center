@@ -14,8 +14,8 @@ export interface CardTileProps {
   selected?: boolean;
   disabled?: boolean;
   onClick?: () => void;
-  /** 'fill' fills its container (100%/100%) instead of a fixed size — used by the card-flight ghost overlay, whose wrapper size is itself animated. 'large' is the mulligan screen only (Gwent-0c.2 §I, 10. pont). */
-  size?: 'small' | 'medium' | 'large' | 'fill';
+  /** 'fill' fills its container (100%/100%) instead of a fixed size — used by the card-flight ghost overlay, whose wrapper size is itself animated. 'large' is the mulligan screen only (Gwent-0c.2 §I, 10. pont). 'deckBuilder' is the same top-cropped look as 'small' (Gwent-0d §1), just bigger — DeckStep's Gyűjtemény/Pakliban grids only, kept separate from 'small' so the match-board row density stays untouched. */
+  size?: 'small' | 'medium' | 'large' | 'fill' | 'deckBuilder';
   /** Only meaningful when the instance is masked (hidden) — picks the owner's faction card-back art. Falls back to the generic back if omitted. */
   faction?: Faction;
   /** Kept mounted (preserves layout + ref registration) but visually invisible — used while a card-flight ghost is covering this exact instance, see cardFlight.tsx. */

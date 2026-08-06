@@ -431,6 +431,14 @@
   object-fit: contain;
 }
 
+/** Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — a pakli-építő Gyűjtemény/Pakliban rácsában legyenek nagyobbak a kártyaképek. Ugyanaz a felül-vágott stílus, mint `size="small"`-nál (1.5×-es méret), külön osztályban, hogy a tábla sortömörsége ne változzon. */
+.deckBuilder .cardImage {
+  width: 4.5rem;
+  height: 5.1rem;
+  object-fit: cover;
+  object-position: top;
+}
+
 .large .cardImage {
   width: 6.5rem;
   height: 10.2rem;

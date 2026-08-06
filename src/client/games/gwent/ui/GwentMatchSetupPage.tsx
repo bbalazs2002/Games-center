@@ -69,9 +69,8 @@ export function GwentMatchSetupPage() {
       <div className={styles.content}>
         <h1>Gwent — mérkőzés előkészítése</h1>
 
-        <div hidden={matchStep !== 'player1'}>
+        <div className={styles.playerStep} hidden={matchStep !== 'player1'}>
           <GwentDeckBuilder
-            title={`${player1Name} paklija`}
             nameInput={<input className={styles.nameInput} value={player1Name} onChange={(event) => setPlayer1Name(event.target.value)} />}
             onValidDraftChange={setPlayer1Draft}
           />
@@ -93,9 +92,8 @@ export function GwentMatchSetupPage() {
           </div>
         </div>
 
-        <div hidden={matchStep !== 'player2'}>
+        <div className={styles.playerStep} hidden={matchStep !== 'player2'}>
           <GwentDeckBuilder
-            title={`${player2Name} paklija`}
             nameInput={<input className={styles.nameInput} value={player2Name} onChange={(event) => setPlayer2Name(event.target.value)} />}
             onValidDraftChange={setPlayer2Draft}
           />

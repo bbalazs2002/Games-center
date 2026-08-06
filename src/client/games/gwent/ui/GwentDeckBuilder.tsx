@@ -2,7 +2,12 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { assetUrl } from '../../../core/assetUrl';
 import { getLeaderDef, LEADER_DEFS } from '../../../../shared/games/gwent/engine/leaderDefs';
 import type { Faction } from '../../../../shared/games/gwent/engine/types';
-import { validateDeckDraft, type DeckCardCounts, type GwentDeckDraft } from '../../../../shared/games/gwent/engine/deckRules';
+import {
+  MIN_NON_HERO_UNIT_CARDS,
+  validateDeckDraft,
+  type DeckCardCounts,
+  type GwentDeckDraft,
+} from '../../../../shared/games/gwent/engine/deckRules';
 import { computeDeckStats } from './cardDisplay';
 import { loadPersistedGwentDeck } from './gwentDeckPersistence';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
@@ -12,7 +17,6 @@ import { LeaderStep } from './LeaderStep';
 import styles from './GwentSetupPage.module.css';
 
 export interface GwentDeckBuilderProps {
-  title: string;
   /** Rendered at the top of `.setupPanel`, above the faction picker — the caller's player-name input (Gwent-0c.4 §A: the name input moves INSIDE the same styled panel as the faction/leader pickers, not a separate loose element above it). */
   nameInput: ReactNode;
   /** Fires on every change with the current draft once faction+leader+a fully valid deck are all chosen, or null the moment any of that stops being true. */
@@ -37,7 +41,7 @@ export interface GwentDeckBuilderProps {
  * saved last. Applies equally to BOTH hot-seat players now, not just
  * "whichever builder is shown first".
  */
-export function GwentDeckBuilder({ title, nameInput, onValidDraftChange }: GwentDeckBuilderProps) {
+export function GwentDeckBuilder({ nameInput, onValidDraftChange }: GwentDeckBuilderProps) {
   const [faction, setFaction] = useState<Faction | null>(null);
   // Keyed by faction (not a single flat value) so switching faction/leader mid-build never
   // discards another faction's already-picked leader/cards (0a-spec §9.5 kérés, 2026-08-01).
@@ -117,9 +121,17 @@ export function GwentDeckBuilder({ title, nameInput, onValidDraftChange }: Gwent
 
       {stats && (
         <dl className={styles.deckStats}>
+          {/*
+            Gwent-0d §4 korrekció (2026-08-06): a "Lapok" sor veszi át a törölt
+            "Nem-Hero egységkártya: X/22" felirat + a "Legalább 22..."
+            hibaüzenet szerepét — nem-Hero egységkártya-szám "X/22" formátumban,
+            pirosra váltva, amíg nem éri el a minimumot (MIN_NON_HERO_UNIT_CARDS).
+          */}
           <div>
             <dt>Lapok</dt>
-            <dd>{stats.totalCardCount}</dd>
+            <dd className={stats.unitCount - stats.heroCount < MIN_NON_HERO_UNIT_CARDS ? styles.deckStatInvalid : undefined}>
+              {stats.unitCount - stats.heroCount}/{MIN_NON_HERO_UNIT_CARDS}
+            </dd>
           </div>
           <div>
             <dt>Egységek</dt>
@@ -149,8 +161,6 @@ export function GwentDeckBuilder({ title, nameInput, onValidDraftChange }: Gwent
 
   return (
     <section className={styles.builderSection}>
-      <h2>{title}</h2>
-
       <div className={styles.setupPanel}>
         {nameInput}
         <FactionStep selectedFaction={faction} onSelect={selectFaction} />
