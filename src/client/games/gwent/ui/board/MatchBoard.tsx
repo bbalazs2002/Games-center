@@ -5,7 +5,7 @@ import { agileAutoOptimizes, medicPicksRandomTarget } from '../../../../../share
 import { canPass, eligibleMedicTargets, getCurrentPlayer, getPlayer } from '../../../../../shared/games/gwent/engine/rules';
 import { getValidActions } from '../../../../../shared/games/gwent/engine/selectors';
 import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
-import type { CardInstance, GwentLogEntry, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
+import type { CardInstance, GwentLogEntry, GwentState, PlayerId, PlayerState } from '../../../../../shared/games/gwent/engine/state';
 import type { CardDef, Row } from '../../../../../shared/games/gwent/engine/types';
 import { ActiveWeatherZone } from './ActiveWeatherZone';
 import { EyeIcon } from './boardIcons';
@@ -89,6 +89,194 @@ function selectableRowsFor(state: GwentState, actingPlayerId: string, defId: str
 function needsMedicStep(state: GwentState, defId: string): boolean {
   const def = getCardDef(defId);
   return def.kind === 'Unit' && def.abilities.includes('Medic') && !medicPicksRandomTarget(state);
+}
+
+interface PendingPlayDetail {
+  pendingInstance: CardInstance | null;
+  isDecoy: boolean;
+  awaitingRowPick: boolean;
+  awaitingMedicPick: boolean;
+  selectableRows: Set<Row> | null;
+  rowPickOwnerId: string;
+}
+
+function resolvePendingInstance(actingPlayer: PlayerState, pendingCardId: string | null): CardInstance | null {
+  return pendingCardId ? (actingPlayer.hand.find((c) => c.instanceId === pendingCardId) ?? null) : null;
+}
+
+function resolvePendingFlags(
+  pendingInstance: CardInstance | null,
+  isDecoy: boolean,
+  pendingChosenRow: Row | null,
+): { awaitingRowPick: boolean; awaitingMedicPick: boolean } {
+  return {
+    awaitingRowPick: !!pendingInstance && !isDecoy && pendingChosenRow === null,
+    awaitingMedicPick: !!pendingInstance && pendingChosenRow !== null,
+  };
+}
+
+function resolveSelectableRows(
+  state: GwentState,
+  actingPlayerId: string,
+  pendingInstance: CardInstance | null,
+  awaitingRowPick: boolean,
+): Set<Row> | null {
+  return awaitingRowPick && pendingInstance ? new Set(selectableRowsFor(state, actingPlayerId, pendingInstance.defId)) : null;
+}
+
+/**
+ * Gwent-0c.4 §G: a Spy card lands on the OPPONENT's board (the engine's
+ * `resolveUnitPlay` already redirects it there regardless of which zone the
+ * row-click happened in) — the row-pick highlight now follows suit, so the
+ * player clicks a row on the side the card is ACTUALLY going to, instead of
+ * their own (which is what used to happen, purely a client bug).
+ */
+function resolveRowPickOwnerId(pendingDef: CardDef | null, opponentId: string, actingPlayerId: string): string {
+  return pendingDef?.abilities.includes('Spy') ? opponentId : actingPlayerId;
+}
+
+/**
+ * Everything derived from the currently-selected-for-play hand card (or lack
+ * thereof) — split across several small pure functions purely to keep
+ * `MatchBoard` (and each of these) under the project's complexity-10 ESLint
+ * limit (a separate function is a separate complexity budget).
+ */
+function resolvePendingPlayDetail(
+  state: GwentState,
+  actingPlayer: PlayerState,
+  opponentId: string,
+  pendingCardId: string | null,
+  pendingChosenRow: Row | null,
+): PendingPlayDetail {
+  const pendingInstance = resolvePendingInstance(actingPlayer, pendingCardId);
+  const pendingDef = pendingInstance ? getCardDef(pendingInstance.defId) : null;
+  const isDecoy = pendingDef?.kind === 'Decoy';
+  const { awaitingRowPick, awaitingMedicPick } = resolvePendingFlags(pendingInstance, isDecoy, pendingChosenRow);
+  const selectableRows = resolveSelectableRows(state, actingPlayer.id, pendingInstance, awaitingRowPick);
+  const rowPickOwnerId = resolveRowPickOwnerId(pendingDef, opponentId, actingPlayer.id);
+  return { pendingInstance, isDecoy, awaitingRowPick, awaitingMedicPick, selectableRows, rowPickOwnerId };
+}
+
+/** Same reasoning as `resolvePendingPlayDetail`. */
+function selectableRowsForZone(rowPickOwnerId: string, zonePlayerId: string, selectableRows: Set<Row> | null): Set<Row> | undefined {
+  return rowPickOwnerId === zonePlayerId ? (selectableRows ?? undefined) : undefined;
+}
+
+/** Same reasoning as `resolvePendingPlayDetail`. */
+function isDecoyTargetSelectable(isDecoy: boolean, actingPlayerId: string, zonePlayerId: string): boolean {
+  return isDecoy && actingPlayerId === zonePlayerId;
+}
+
+interface MatchActionBarProps {
+  state: GwentState;
+  actingPlayer: PlayerState;
+  isMyTurn: boolean;
+  isDecoy: boolean;
+  awaitingMedicPick: boolean;
+  medicChain: string[];
+  onSelectMedicTarget: (instanceId?: string) => void;
+  viewMode: boolean;
+  onToggleViewMode: () => void;
+  onPass: () => void;
+  playableIds: Set<string>;
+  pendingCardId: string | null;
+  onSelectCard: (instanceId: string) => void;
+}
+
+/**
+ * The bottom action bar — turn label, the Decoy/Medic follow-up hint panels,
+ * "Nézegető mód"/"Passz" controls, and the hand itself. Extracted out of
+ * `MatchBoard` for the same complexity-budget reason as `resolvePendingPlayDetail`.
+ */
+function MatchActionBar({
+  state,
+  actingPlayer,
+  isMyTurn,
+  isDecoy,
+  awaitingMedicPick,
+  medicChain,
+  onSelectMedicTarget,
+  viewMode,
+  onToggleViewMode,
+  onPass,
+  playableIds,
+  pendingCardId,
+  onSelectCard,
+}: MatchActionBarProps) {
+  return (
+    <div className={styles.actionBar}>
+      {/*
+        Gwent-0d §3, 5. korrekció: EGYETLEN, mindig ugyanolyan magas sáv —
+        a korábbi "!isMyTurn -> csak egy rövid 'várakozás' felirat, a kéz
+        eltűnik" ág megszűnt (a felhasználó explicit kérése: "a többi lapja
+        ne tűnjön el, és ne legyen várakozás felírat, hogy az alsó sáv
+        mindig ugyan olyan magas maradjon"). A kéz MINDIG látszik (online
+        módban az ellenfél körében ez a saját, maszkolt kéz — a hátlapok is
+        korrekt vizuális visszajelzés); a vezérlők csak nem-a-saját-körben
+        tiltottak, nem tűnnek el.
+      */}
+      <div className={styles.handSection}>
+        <p className={styles.turnLabel}>{isMyTurn ? `${actingPlayer.name} köre` : `${actingPlayer.name} köre — várakozás…`}</p>
+
+        {/*
+          Gwent-0c.4 §N: the "Mégse" button that used to sit in each of
+          these 2 panels is gone — clicking the already-selected hand
+          card again (selectCard, above) does the exact same
+          cancelPending() call, so the extra button was pure
+          redundancy. The Medic panel's "Kihagyás" stays — that means
+          something different (decline the revival, not cancel the play).
+          Gwent-0d §3, 5. korrekció: a sor-választó szöveges panel eltűnt
+          — a kiemelt/pulzáló sor önmagában elég jelzés, a szöveg felesleges volt.
+        */}
+        {isDecoy && (
+          <div className={styles.targetPicker}>
+            <p>Válassz egy saját lapot a táblán, amit visszaveszel a kezedbe.</p>
+          </div>
+        )}
+
+        {awaitingMedicPick && (
+          <div className={styles.targetPicker}>
+            <p>
+              {medicChain.length > 0
+                ? 'A feltámasztott lap maga is Gyógyász — válassz egy lapot a dobott lapjaid közül (vagy hagyd ki):'
+                : 'Válassz egy lapot a dobott lapjaid közül (vagy hagyd ki):'}
+            </p>
+            {eligibleMedicTargets(actingPlayer)
+              .filter((c) => !medicChain.includes(c.instanceId))
+              .map((c) => (
+                <CardTile key={c.instanceId} instance={c} size="medium" onClick={() => onSelectMedicTarget(c.instanceId)} />
+              ))}
+            <Button variant="secondary" onClick={() => onSelectMedicTarget(undefined)}>
+              Kihagyás
+            </Button>
+          </div>
+        )}
+
+        {/*
+          Gwent-0c.3 §5: the hand used to unmount entirely the moment a
+          card was selected (replaced by the follow-up panel above) —
+          a real report ("ne tűnjenek el a lapjaim"). It now always
+          stays visible; only the selected tile itself grows/lifts
+          (`.cardSelected`, matchBoard.module.css) to show what's active.
+        */}
+        <div className={styles.handSectionControls}>
+          <Button variant="secondary" disabled={!isMyTurn} onClick={onToggleViewMode}>
+            <EyeIcon /> {viewMode ? 'Nézegető mód (aktív)' : 'Nézegető mód'}
+          </Button>
+          <Button disabled={!isMyTurn || !canPass(state, actingPlayer.id)} onClick={onPass}>
+            Passz
+          </Button>
+        </div>
+        <HandArea
+          hand={actingPlayer.hand}
+          ownerId={actingPlayer.id}
+          playableInstanceIds={isMyTurn ? playableIds : EMPTY_PLAYABLE_IDS}
+          selectedInstanceId={pendingCardId}
+          onSelectCard={isMyTurn ? onSelectCard : NOOP}
+        />
+      </div>
+    </div>
+  );
 }
 
 /** Orchestrates the ROUND_IN_PROGRESS/ROUND_RESOLVED phases: both board zones, the acting player's hand, the play-flow state machine (row → optional Medic follow-up, or Decoy-target), and pass. Each PlayerBoardZone owns its own leader panel/deck/discard now (Gwent-0c). */
@@ -197,19 +385,14 @@ export function MatchBoard({
     }
   }
 
-  const pendingInstance = pendingCardId ? actingPlayer.hand.find((c) => c.instanceId === pendingCardId) : null;
-  const pendingDef = pendingInstance ? getCardDef(pendingInstance.defId) : null;
-  const isDecoy = pendingDef?.kind === 'Decoy';
-  const awaitingRowPick = !!pendingInstance && !isDecoy && pendingChosenRow === null;
-  const awaitingMedicPick = !!pendingInstance && pendingChosenRow !== null;
-  const selectableRows = awaitingRowPick && pendingInstance ? new Set(selectableRowsFor(state, actingPlayer.id, pendingInstance.defId)) : null;
   const opponent = state.players.find((p) => p.id !== actingPlayer.id)!;
-  // Gwent-0c.4 §G: a Spy card lands on the OPPONENT's board (the engine's
-  // `resolveUnitPlay` already redirects it there regardless of which zone
-  // the row-click happened in) — the row-pick highlight now follows suit, so
-  // the player clicks a row on the side the card is ACTUALLY going to,
-  // instead of their own (which is what used to happen, purely a client bug).
-  const rowPickOwnerId = pendingDef?.abilities.includes('Spy') ? opponent.id : actingPlayer.id;
+  const { pendingInstance, isDecoy, awaitingMedicPick, selectableRows, rowPickOwnerId } = resolvePendingPlayDetail(
+    state,
+    actingPlayer,
+    opponent.id,
+    pendingCardId,
+    pendingChosenRow,
+  );
 
   return (
     <CardFlightProvider log={state.log}>
@@ -239,12 +422,12 @@ export function MatchBoard({
             outer
             viewerId={viewerId}
             requestDeckReveal={requestDeckReveal}
-            decoyTargetSelectable={isDecoy && actingPlayer.id === topPlayer.id}
+            decoyTargetSelectable={isDecoyTargetSelectable(isDecoy, actingPlayer.id, topPlayer.id)}
             onSelectTarget={(instanceId) => {
               dispatch({ type: 'PLAY_CARD', playerId: actingPlayer.id, instanceId: pendingCardId as string, decoyTargetInstanceId: instanceId });
               cancelPending();
             }}
-            selectableRows={rowPickOwnerId === topPlayer.id ? (selectableRows ?? undefined) : undefined}
+            selectableRows={selectableRowsForZone(rowPickOwnerId, topPlayer.id, selectableRows)}
             onSelectRow={selectRow}
             onOpenCardGroup={openCardGroup}
           />
@@ -271,89 +454,32 @@ export function MatchBoard({
             outer={false}
             viewerId={viewerId}
             requestDeckReveal={requestDeckReveal}
-            decoyTargetSelectable={isDecoy && actingPlayer.id === bottomPlayer.id}
+            decoyTargetSelectable={isDecoyTargetSelectable(isDecoy, actingPlayer.id, bottomPlayer.id)}
             onSelectTarget={(instanceId) => {
               dispatch({ type: 'PLAY_CARD', playerId: actingPlayer.id, instanceId: pendingCardId as string, decoyTargetInstanceId: instanceId });
               cancelPending();
             }}
-            selectableRows={rowPickOwnerId === bottomPlayer.id ? (selectableRows ?? undefined) : undefined}
+            selectableRows={selectableRowsForZone(rowPickOwnerId, bottomPlayer.id, selectableRows)}
             onSelectRow={selectRow}
             onOpenCardGroup={openCardGroup}
           />
         </div>
 
-        {/*
-          Gwent-0d §3, 5. korrekció: EGYETLEN, mindig ugyanolyan magas sáv —
-          a korábbi "!isMyTurn -> csak egy rövid 'várakozás' felirat, a kéz
-          eltűnik" ág megszűnt (a felhasználó explicit kérése: "a többi lapja
-          ne tűnjön el, és ne legyen várakozás felírat, hogy az alsó sáv
-          mindig ugyan olyan magas maradjon"). A kéz MINDIG látszik (online
-          módban az ellenfél körében ez a saját, maszkolt kéz — a hátlapok is
-          korrekt vizuális visszajelzés); a vezérlők csak nem-a-saját-körben
-          tiltottak, nem tűnnek el.
-        */}
-        <div className={styles.actionBar}>
-          <div className={styles.handSection}>
-            <p className={styles.turnLabel}>{isMyTurn ? `${actingPlayer.name} köre` : `${actingPlayer.name} köre — várakozás…`}</p>
-
-            {/*
-              Gwent-0c.4 §N: the "Mégse" button that used to sit in each of
-              these 2 panels is gone — clicking the already-selected hand
-              card again (selectCard, above) does the exact same
-              cancelPending() call, so the extra button was pure
-              redundancy. The Medic panel's "Kihagyás" stays — that means
-              something different (decline the revival, not cancel the play).
-              Gwent-0d §3, 5. korrekció: a sor-választó szöveges panel eltűnt
-              — a kiemelt/pulzáló sor önmagában elég jelzés, a szöveg felesleges volt.
-            */}
-            {isDecoy && (
-              <div className={styles.targetPicker}>
-                <p>Válassz egy saját lapot a táblán, amit visszaveszel a kezedbe.</p>
-              </div>
-            )}
-
-            {awaitingMedicPick && (
-              <div className={styles.targetPicker}>
-                <p>
-                  {medicChain.length > 0
-                    ? 'A feltámasztott lap maga is Gyógyász — válassz egy lapot a dobott lapjaid közül (vagy hagyd ki):'
-                    : 'Válassz egy lapot a dobott lapjaid közül (vagy hagyd ki):'}
-                </p>
-                {eligibleMedicTargets(actingPlayer)
-                  .filter((c) => !medicChain.includes(c.instanceId))
-                  .map((c) => (
-                    <CardTile key={c.instanceId} instance={c} size="medium" onClick={() => selectMedicTarget(c.instanceId)} />
-                  ))}
-                <Button variant="secondary" onClick={() => selectMedicTarget(undefined)}>
-                  Kihagyás
-                </Button>
-              </div>
-            )}
-
-            {/*
-              Gwent-0c.3 §5: the hand used to unmount entirely the moment a
-              card was selected (replaced by the follow-up panel above) —
-              a real report ("ne tűnjenek el a lapjaim"). It now always
-              stays visible; only the selected tile itself grows/lifts
-              (`.cardSelected`, matchBoard.module.css) to show what's active.
-            */}
-            <div className={styles.handSectionControls}>
-              <Button variant="secondary" disabled={!isMyTurn} onClick={() => setViewMode((v) => !v)}>
-                <EyeIcon /> {viewMode ? 'Nézegető mód (aktív)' : 'Nézegető mód'}
-              </Button>
-              <Button disabled={!isMyTurn || !canPass(state, actingPlayer.id)} onClick={() => dispatch({ type: 'PASS', playerId: actingPlayer.id })}>
-                Passz
-              </Button>
-            </div>
-            <HandArea
-              hand={actingPlayer.hand}
-              ownerId={actingPlayer.id}
-              playableInstanceIds={isMyTurn ? playableIds : EMPTY_PLAYABLE_IDS}
-              selectedInstanceId={pendingCardId}
-              onSelectCard={isMyTurn ? selectCard : NOOP}
-            />
-          </div>
-        </div>
+        <MatchActionBar
+          state={state}
+          actingPlayer={actingPlayer}
+          isMyTurn={isMyTurn}
+          isDecoy={isDecoy}
+          awaitingMedicPick={awaitingMedicPick}
+          medicChain={medicChain}
+          onSelectMedicTarget={selectMedicTarget}
+          viewMode={viewMode}
+          onToggleViewMode={() => setViewMode((v) => !v)}
+          onPass={() => dispatch({ type: 'PASS', playerId: actingPlayer.id })}
+          playableIds={playableIds}
+          pendingCardId={pendingCardId}
+          onSelectCard={selectCard}
+        />
 
         <CardCarouselModal entries={carousel?.entries ?? null} initialIndex={carousel?.initialIndex} onClose={() => setCarousel(null)} />
 

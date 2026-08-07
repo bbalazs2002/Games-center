@@ -1,20 +1,14 @@
 import { animated, useSpring } from '@react-spring/web';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import type { CardInstance, GwentLogEntry, PlayerId } from '../../../../../shared/games/gwent/engine/state';
 import type { Faction } from '../../../../../shared/games/gwent/engine/types';
 import { CardTile } from './CardTile';
+import { CardFlightContext, useCardFlight, type TrackedCardInfo } from './useCardFlight';
 import styles from './cardFlight.module.css';
 
 const MOVE_DURATION_MS = 420;
 const EXIT_DURATION_MS = 480;
 const RECT_EPSILON_PX = 1;
-
-interface TrackedCardInfo {
-  instance: CardInstance;
-  power?: number;
-  faction?: Faction;
-  ownerId: PlayerId;
-}
 
 interface TrackedCardEntry extends TrackedCardInfo {
   rect: DOMRect;
@@ -26,20 +20,6 @@ interface Ghost {
   from: DOMRect;
   to: DOMRect;
   durationMs: number;
-}
-
-interface CardFlightApi {
-  registerZoneRef: (zoneKey: string) => (el: HTMLElement | null) => void;
-  registerCardRef: (instanceId: string, info: TrackedCardInfo) => (el: HTMLElement | null) => void;
-  isInFlight: (instanceId: string) => boolean;
-}
-
-const CardFlightContext = createContext<CardFlightApi | null>(null);
-
-export function useCardFlight(): CardFlightApi {
-  const ctx = useContext(CardFlightContext);
-  if (!ctx) throw new Error('useCardFlight must be used within a CardFlightProvider');
-  return ctx;
 }
 
 function rectsDiffer(a: DOMRect, b: DOMRect): boolean {
@@ -77,6 +57,53 @@ function resolveExitZone(newLogEntries: GwentLogEntry[], instanceId: string, own
     if (entry.type === 'DECOY_SWAPPED' && entry.decoyInstanceId === instanceId) return `discard:${ownerId}`;
   }
   return null;
+}
+
+/** The "moved to a new spot" or "brand new, but from a resolvable zone" half of the diff — split out of the effect below purely to keep its complexity under the project's ESLint limit. */
+function spawnMoveOrEntryGhosts(
+  current: Map<string, TrackedCardEntry>,
+  previous: Map<string, TrackedCardEntry>,
+  newLogEntries: GwentLogEntry[],
+  zoneRects: Map<string, DOMRect>,
+  nextGhostIdRef: MutableRefObject<number>,
+): { spawned: Ghost[]; nowFlying: Set<string> } {
+  const spawned: Ghost[] = [];
+  const nowFlying = new Set<string>();
+  for (const [instanceId, entry] of current) {
+    const before = previous.get(instanceId);
+    if (before) {
+      if (rectsDiffer(before.rect, entry.rect)) {
+        spawned.push({ id: nextGhostIdRef.current++, info: entry, from: before.rect, to: entry.rect, durationMs: MOVE_DURATION_MS });
+        nowFlying.add(instanceId);
+      }
+      continue;
+    }
+    const originZone = resolveEntryZone(newLogEntries, instanceId, entry.ownerId);
+    const originRect = originZone ? zoneRects.get(originZone) : undefined;
+    if (originRect) {
+      spawned.push({ id: nextGhostIdRef.current++, info: entry, from: originRect, to: entry.rect, durationMs: MOVE_DURATION_MS });
+      nowFlying.add(instanceId);
+    }
+  }
+  return { spawned, nowFlying };
+}
+
+/** The "vanished, but to a resolvable discard zone" half of the diff — see `spawnMoveOrEntryGhosts`. */
+function spawnExitGhosts(
+  current: Map<string, TrackedCardEntry>,
+  previous: Map<string, TrackedCardEntry>,
+  newLogEntries: GwentLogEntry[],
+  zoneRects: Map<string, DOMRect>,
+  nextGhostIdRef: MutableRefObject<number>,
+): Ghost[] {
+  const spawned: Ghost[] = [];
+  for (const [instanceId, entry] of previous) {
+    if (current.has(instanceId)) continue;
+    const destZone = resolveExitZone(newLogEntries, instanceId, entry.ownerId);
+    const destRect = destZone ? zoneRects.get(destZone) : undefined;
+    if (destRect) spawned.push({ id: nextGhostIdRef.current++, info: entry, from: entry.rect, to: destRect, durationMs: EXIT_DURATION_MS });
+  }
+  return spawned;
 }
 
 export interface CardFlightProviderProps {
@@ -134,32 +161,9 @@ export function CardFlightProvider({ log, children }: CardFlightProviderProps) {
 
     const previous = previousRef.current;
     const current = currentRef.current;
-    const spawned: Ghost[] = [];
-    const nowFlying = new Set<string>();
-
-    for (const [instanceId, entry] of current) {
-      const before = previous.get(instanceId);
-      if (before) {
-        if (rectsDiffer(before.rect, entry.rect)) {
-          spawned.push({ id: nextGhostIdRef.current++, info: entry, from: before.rect, to: entry.rect, durationMs: MOVE_DURATION_MS });
-          nowFlying.add(instanceId);
-        }
-      } else {
-        const originZone = resolveEntryZone(newLogEntries, instanceId, entry.ownerId);
-        const originRect = originZone ? zoneRectsRef.current.get(originZone) : undefined;
-        if (originRect) {
-          spawned.push({ id: nextGhostIdRef.current++, info: entry, from: originRect, to: entry.rect, durationMs: MOVE_DURATION_MS });
-          nowFlying.add(instanceId);
-        }
-      }
-    }
-
-    for (const [instanceId, entry] of previous) {
-      if (current.has(instanceId)) continue;
-      const destZone = resolveExitZone(newLogEntries, instanceId, entry.ownerId);
-      const destRect = destZone ? zoneRectsRef.current.get(destZone) : undefined;
-      if (destRect) spawned.push({ id: nextGhostIdRef.current++, info: entry, from: entry.rect, to: destRect, durationMs: EXIT_DURATION_MS });
-    }
+    const { spawned: entrySpawned, nowFlying } = spawnMoveOrEntryGhosts(current, previous, newLogEntries, zoneRectsRef.current, nextGhostIdRef);
+    const exitSpawned = spawnExitGhosts(current, previous, newLogEntries, zoneRectsRef.current, nextGhostIdRef);
+    const spawned = [...entrySpawned, ...exitSpawned];
 
     previousRef.current = new Map(current);
 
@@ -176,7 +180,6 @@ export function CardFlightProvider({ log, children }: CardFlightProviderProps) {
       });
     }, maxDuration + 30);
     return () => clearTimeout(timer);
-     
   }, [log]);
 
   return (

@@ -9,7 +9,7 @@ import type { CardInstance } from '../../../../../shared/games/gwent/engine/stat
 import type { CardDef, LeaderDef } from '../../../../../shared/games/gwent/engine/types';
 import { ABILITY_DESCRIPTIONS_HU, ABILITY_LABELS_HU, CARD_KIND_LABELS_HU, cardMechanicLine, cardMechanicTag, rowLabel } from '../cardDisplay';
 import { factionLabel } from '../factionDisplay';
-import { pickVariant } from './CardTile';
+import { pickVariant } from './cardArtVariant';
 import styles from './CardCarouselModal.module.css';
 
 /**
@@ -72,6 +72,147 @@ function slotStyle(offset: number): CSSProperties {
   };
 }
 
+interface ActiveCarouselDetail {
+  safeIndex: number;
+  activeEntry: CarouselEntry | null;
+  activeCardDef: CardDef | null;
+  flavorHu: string | undefined;
+  mechanicLine: string | null;
+}
+
+/** Every value that depends on `entries`/`activeIndex` computed in one place — extracted purely to keep `CardCarouselModal` itself under the project's complexity-10 ESLint limit (a separate function is a separate complexity budget). */
+function deriveActiveDetail(entries: CarouselEntry[] | null, activeIndex: number): ActiveCarouselDetail {
+  const safeIndex = entries ? Math.min(Math.max(activeIndex, 0), entries.length - 1) : 0;
+  const activeEntry = entries ? entries[safeIndex] : null;
+  const activeCardDef = activeEntry ? cardDefOf(activeEntry) : null;
+  const flavorHu = activeEntry
+    ? activeCardDef
+      ? CARD_TEXT_HU[activeCardDef.id]
+      : LEADER_TEXT_HU[(activeEntry as { leader: LeaderDef }).leader.id]
+    : undefined;
+  const mechanicLine = activeCardDef ? cardMechanicLine(activeCardDef) : null;
+  return { safeIndex, activeEntry, activeCardDef, flavorHu, mechanicLine };
+}
+
+interface CarouselNavProps {
+  count: number;
+  safeIndex: number;
+  onPrev: () => void;
+  onNext: () => void;
+}
+
+/** Degenerates to nothing for a single-entry group (Gwent-0d §4: "egyelemű csoportnál is ugyanez a felület, csak oldal-kártyák nélkül"). */
+function CarouselNav({ count, safeIndex, onPrev, onNext }: CarouselNavProps) {
+  if (count <= 1) return null;
+  return (
+    <div className={styles.navRow}>
+      <button type="button" className={styles.navButton} disabled={safeIndex === 0} onClick={onPrev} aria-label="Előző lap">
+        ‹
+      </button>
+      <span className={styles.navCount}>
+        {safeIndex + 1} / {count}
+      </span>
+      <button type="button" className={styles.navButton} disabled={safeIndex === count - 1} onClick={onNext} aria-label="Következő lap">
+        ›
+      </button>
+    </div>
+  );
+}
+
+/** The `<dl>` facts block (erő/sor/típus/képességek/frakció) — split out of `CarouselInfoPanel` for the same complexity-budget reason as `CarouselNav`. */
+function CarouselFacts({ activeCardDef, activeEntry }: { activeCardDef: CardDef | null; activeEntry: CarouselEntry }) {
+  return (
+    <dl className={styles.factsList}>
+      {activeCardDef && (
+        <>
+          {activeCardDef.basePower !== null && (
+            <div className={styles.fact}>
+              <dt>Erő</dt>
+              <dd>{activeCardDef.basePower}</dd>
+            </div>
+          )}
+          {rowLabel(activeCardDef.row) && (
+            <div className={styles.fact}>
+              <dt>Sor</dt>
+              <dd>{rowLabel(activeCardDef.row)}</dd>
+            </div>
+          )}
+          <div className={styles.fact}>
+            <dt>Típus</dt>
+            <dd>{CARD_KIND_LABELS_HU[activeCardDef.kind]}</dd>
+          </div>
+          {activeCardDef.abilities.length > 0 && (
+            <div className={styles.fact}>
+              <dt>Képességek</dt>
+              <dd>{activeCardDef.abilities.map((a) => ABILITY_LABELS_HU[a]).join(', ')}</dd>
+            </div>
+          )}
+        </>
+      )}
+      {activeEntry.type === 'leader' && (
+        <div className={styles.fact}>
+          <dt>Frakció</dt>
+          <dd>{factionLabel(activeEntry.leader.faction)}</dd>
+        </div>
+      )}
+    </dl>
+  );
+}
+
+interface CarouselInfoPanelProps {
+  activeEntry: CarouselEntry;
+  activeCardDef: CardDef | null;
+  flavorHu: string | undefined;
+  onConfirm?: (entry: CarouselEntry) => void;
+  confirmLabel: string;
+  isConfirmDisabled?: (entry: CarouselEntry) => boolean;
+}
+
+/** The name + facts + ability description + flavor quote + confirm button column — split out of `CardCarouselModal` for the same complexity-budget reason as `CarouselNav`. */
+function CarouselInfoPanel({ activeEntry, activeCardDef, flavorHu, onConfirm, confirmLabel, isConfirmDisabled }: CarouselInfoPanelProps) {
+  return (
+    <div className={styles.info}>
+      <h2 className={styles.name}>{entryName(activeEntry)}</h2>
+      <CarouselFacts activeCardDef={activeCardDef} activeEntry={activeEntry} />
+      {activeEntry.type === 'leader' && <p className={styles.mechanicText}>{activeEntry.leader.abilityDescription}</p>}
+      {flavorHu && (
+        <blockquote className={styles.cardText} lang="hu">
+          {flavorHu}
+        </blockquote>
+      )}
+      {onConfirm && (
+        <div className={styles.footer}>
+          <Button disabled={isConfirmDisabled?.(activeEntry)} onClick={() => onConfirm(activeEntry)}>
+            {confirmLabel}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The right-hand "Képességek magyarázata" panel — only rendered when there's actually something to explain (real abilities or a unique mechanic like RowScorch). Split out for the same complexity-budget reason as `CarouselNav`. */
+function CarouselMechanicsPanel({ activeCardDef, mechanicLine }: { activeCardDef: CardDef | null; mechanicLine: string | null }) {
+  if (!activeCardDef || (activeCardDef.abilities.length === 0 && mechanicLine === null)) return null;
+  return (
+    <div className={styles.abilitiesPanel}>
+      <p className={styles.abilitiesPanelTitle}>Képességek magyarázata</p>
+      {activeCardDef.abilities.map((a) => (
+        <p key={a} className={styles.abilityEntry}>
+          <strong>{ABILITY_LABELS_HU[a]}</strong>
+          {ABILITY_DESCRIPTIONS_HU[a]}
+        </p>
+      ))}
+      {mechanicLine && (
+        <p className={styles.abilityEntry}>
+          <strong>{cardMechanicTag(activeCardDef)}</strong>
+          {mechanicLine}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * Gwent-0d §4/§2 — the ONE reusable "look at a pile of cards" surface,
  * replacing the earlier one-card-at-a-time CardDetailModal, LeaderDetailModal
@@ -95,12 +236,7 @@ export function CardCarouselModal({ entries, initialIndex = 0, onClose, onConfir
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries]);
 
-  const safeIndex = entries ? Math.min(Math.max(activeIndex, 0), entries.length - 1) : 0;
-  const activeEntry = entries ? entries[safeIndex] : null;
-  const activeCardDef = activeEntry ? cardDefOf(activeEntry) : null;
-  const flavorHu = activeEntry ? (activeCardDef ? CARD_TEXT_HU[activeCardDef.id] : LEADER_TEXT_HU[(activeEntry as { leader: LeaderDef }).leader.id]) : undefined;
-  const mechanicLine = activeCardDef ? cardMechanicLine(activeCardDef) : null;
-  const hasMechanicsPanel = !!activeCardDef && (activeCardDef.abilities.length > 0 || mechanicLine !== null);
+  const { safeIndex, activeEntry, activeCardDef, flavorHu, mechanicLine } = deriveActiveDetail(entries, activeIndex);
 
   return (
     <Modal open={entries !== null} onClose={onClose} className={[themeClass, styles.wideModal].filter(Boolean).join(' ')}>
@@ -126,89 +262,23 @@ export function CardCarouselModal({ entries, initialIndex = 0, onClose, onConfir
             })}
           </div>
 
-          {entries.length > 1 && (
-            <div className={styles.navRow}>
-              <button type="button" className={styles.navButton} disabled={safeIndex === 0} onClick={() => setActiveIndex(safeIndex - 1)} aria-label="Előző lap">
-                ‹
-              </button>
-              <span className={styles.navCount}>
-                {safeIndex + 1} / {entries.length}
-              </span>
-              <button type="button" className={styles.navButton} disabled={safeIndex === entries.length - 1} onClick={() => setActiveIndex(safeIndex + 1)} aria-label="Következő lap">
-                ›
-              </button>
-            </div>
-          )}
+          <CarouselNav
+            count={entries.length}
+            safeIndex={safeIndex}
+            onPrev={() => setActiveIndex(safeIndex - 1)}
+            onNext={() => setActiveIndex(safeIndex + 1)}
+          />
 
           <div className={styles.detail}>
-            <div className={styles.info}>
-              <h2 className={styles.name}>{entryName(activeEntry)}</h2>
-              <dl className={styles.factsList}>
-                {activeCardDef && (
-                  <>
-                    {activeCardDef.basePower !== null && (
-                      <div className={styles.fact}>
-                        <dt>Erő</dt>
-                        <dd>{activeCardDef.basePower}</dd>
-                      </div>
-                    )}
-                    {rowLabel(activeCardDef.row) && (
-                      <div className={styles.fact}>
-                        <dt>Sor</dt>
-                        <dd>{rowLabel(activeCardDef.row)}</dd>
-                      </div>
-                    )}
-                    <div className={styles.fact}>
-                      <dt>Típus</dt>
-                      <dd>{CARD_KIND_LABELS_HU[activeCardDef.kind]}</dd>
-                    </div>
-                    {activeCardDef.abilities.length > 0 && (
-                      <div className={styles.fact}>
-                        <dt>Képességek</dt>
-                        <dd>{activeCardDef.abilities.map((a) => ABILITY_LABELS_HU[a]).join(', ')}</dd>
-                      </div>
-                    )}
-                  </>
-                )}
-                {activeEntry.type === 'leader' && (
-                  <div className={styles.fact}>
-                    <dt>Frakció</dt>
-                    <dd>{factionLabel(activeEntry.leader.faction)}</dd>
-                  </div>
-                )}
-              </dl>
-              {activeEntry.type === 'leader' && <p className={styles.mechanicText}>{activeEntry.leader.abilityDescription}</p>}
-              {flavorHu && (
-                <blockquote className={styles.cardText} lang="hu">
-                  {flavorHu}
-                </blockquote>
-              )}
-              {onConfirm && (
-                <div className={styles.footer}>
-                  <Button disabled={isConfirmDisabled?.(activeEntry)} onClick={() => onConfirm(activeEntry)}>
-                    {confirmLabel}
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {hasMechanicsPanel && activeCardDef && (
-              <div className={styles.abilitiesPanel}>
-                <p className={styles.abilitiesPanelTitle}>Képességek magyarázata</p>
-                {activeCardDef.abilities.map((a) => (
-                  <p key={a} className={styles.abilityEntry}>
-                    <strong>{ABILITY_LABELS_HU[a]}</strong>
-                    {ABILITY_DESCRIPTIONS_HU[a]}
-                  </p>
-                ))}
-                {mechanicLine && (
-                  <p className={styles.abilityEntry}>
-                    <strong>{cardMechanicTag(activeCardDef)}</strong>
-                    {mechanicLine}
-                  </p>
-                )}
-              </div>
-            )}
+            <CarouselInfoPanel
+              activeEntry={activeEntry}
+              activeCardDef={activeCardDef}
+              flavorHu={flavorHu}
+              onConfirm={onConfirm}
+              confirmLabel={confirmLabel}
+              isConfirmDisabled={isConfirmDisabled}
+            />
+            <CarouselMechanicsPanel activeCardDef={activeCardDef} mechanicLine={mechanicLine} />
           </div>
         </>
       )}

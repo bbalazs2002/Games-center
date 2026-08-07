@@ -1,9 +1,10 @@
-import { forwardRef, type CSSProperties } from 'react';
+import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import { assetUrl } from '../../../../core/assetUrl';
 import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
 import { HIDDEN_CARD_DEF_ID } from '../../../../../shared/games/gwent/engine/specialCardIds';
 import type { CardInstance } from '../../../../../shared/games/gwent/engine/state';
 import type { Faction } from '../../../../../shared/games/gwent/engine/types';
+import { pickVariant } from './cardArtVariant';
 import { CARD_BACK_PATHS, DEFAULT_CARD_BACK_PATH } from './cardBackPaths';
 import styles from './matchBoard.module.css';
 
@@ -31,12 +32,39 @@ export interface CardTileProps {
   style?: CSSProperties;
 }
 
-/** Deterministic art-variant pick (spec §5.2) — same instanceId always renders the same variant within one session. Exported for DiscardPile's own top-card rendering (Gwent-0c). */
-export function pickVariant(instance: CardInstance, imagePaths: string[]): string {
-  if (imagePaths.length <= 1) return imagePaths[0];
-  let hash = 0;
-  for (let i = 0; i < instance.instanceId.length; i += 1) hash = (hash * 31 + instance.instanceId.charCodeAt(i)) >>> 0;
-  return imagePaths[hash % imagePaths.length];
+type CardTileSize = NonNullable<CardTileProps['size']>;
+
+/** Extracted purely to keep `CardTile` itself under the project's complexity-10 ESLint limit — each `&&` here used to count against that one function. */
+function cardTileClassName(
+  size: CardTileSize,
+  selected: boolean | undefined,
+  disabled: boolean | undefined,
+  targetable: boolean | undefined,
+  hidden: boolean | undefined,
+  clickable: boolean,
+): string {
+  return [
+    styles.cardTile,
+    styles[size],
+    selected && styles.cardSelected,
+    disabled && styles.cardDisabled,
+    targetable && styles.cardTargetable,
+    clickable && styles.cardClickable,
+    hidden && styles.cardFlightHidden,
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+/** Gwent-0d §1/§4: the burned-in power badge on the card art is only reliably legible at "medium"/"large" scale — this supplementary overlay covers "small" (board) and the bigger "deckBuilder" (collection/deck grids) crops, the latter with a bigger badge (`cardPowerLarge`). */
+function PowerBadge({ power, size }: { power: number | undefined; size: CardTileSize }): ReactNode {
+  if (power === undefined || (size !== 'small' && size !== 'deckBuilder')) return null;
+  const className = [styles.cardPower, size === 'deckBuilder' && styles.cardPowerLarge].filter(Boolean).join(' ');
+  return <span className={className}>{power}</span>;
+}
+
+function hiddenCardBackPath(faction: Faction | undefined): string {
+  return faction ? CARD_BACK_PATHS[faction] : DEFAULT_CARD_BACK_PATH;
 }
 
 /**
@@ -50,25 +78,15 @@ export const CardTile = forwardRef<HTMLButtonElement, CardTileProps>(function Ca
   ref,
 ) {
   const isHidden = instance.defId === HIDDEN_CARD_DEF_ID;
-  const className = [
-    styles.cardTile,
-    styles[size],
-    selected && styles.cardSelected,
-    disabled && styles.cardDisabled,
-    targetable && styles.cardTargetable,
-    onClick && styles.cardClickable,
-    hidden && styles.cardFlightHidden,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const className = cardTileClassName(size, selected, disabled, targetable, hidden, !!onClick);
+  const isDisabled = disabled || !onClick;
 
   // A masked CardInstance (Gwent-0b, see toPublicGwentState) — never a real
   // catalog entry, so getCardDef must never be called on it.
   if (isHidden) {
-    const backPath = faction ? CARD_BACK_PATHS[faction] : DEFAULT_CARD_BACK_PATH;
     return (
-      <button ref={ref} type="button" style={style} className={className} onClick={onClick} disabled={disabled || !onClick} title="Rejtett lap">
-        <img className={styles.cardImage} src={backPath} alt="Rejtett lap" />
+      <button ref={ref} type="button" style={style} className={className} onClick={onClick} disabled={isDisabled} title="Rejtett lap">
+        <img className={styles.cardImage} src={hiddenCardBackPath(faction)} alt="Rejtett lap" />
       </button>
     );
   }
@@ -77,12 +95,9 @@ export const CardTile = forwardRef<HTMLButtonElement, CardTileProps>(function Ca
   const imagePath = pickVariant(instance, def.imagePaths);
 
   return (
-    <button ref={ref} type="button" style={style} className={className} onClick={onClick} disabled={disabled || !onClick} title={def.name}>
+    <button ref={ref} type="button" style={style} className={className} onClick={onClick} disabled={isDisabled} title={def.name}>
       <img className={styles.cardImage} src={assetUrl(imagePath)} alt={def.name} />
-      {/* Gwent-0d §1: only at cropped-top scale ("small"/"deckBuilder") — the burned-in power badge is already legible at medium/large. Gwent-0d §4 korrekció (2026-08-07): bigger at "deckBuilder" scale (`cardPowerLarge`) — the felhasználó found the board-sized badge too small in the collection/deck grids. */}
-      {power !== undefined && (size === 'small' || size === 'deckBuilder') && (
-        <span className={[styles.cardPower, size === 'deckBuilder' && styles.cardPowerLarge].filter(Boolean).join(' ')}>{power}</span>
-      )}
+      <PowerBadge power={power} size={size} />
     </button>
   );
 });

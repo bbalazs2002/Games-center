@@ -18,56 +18,59 @@ function cardName(defId: string): string {
   return getCardDef(defId).name;
 }
 
+/** `Extract<GwentLogEntry, {type: K}>` — each formatter below only ever sees its own narrowed entry shape, same as a switch-case would, just split into one small function per case instead of one big branch each. */
+type FormatterMap = {
+  [K in GwentLogEntry['type']]: (entry: Extract<GwentLogEntry, { type: K }>, state: GwentState) => string;
+};
+
+/**
+ * One formatter function per `GwentLogEntry` variant — replaces a single
+ * 20-case switch (previously well past the project's complexity-10 ESLint
+ * limit) with a dispatch table of small, individually-simple functions.
+ * `FormatterMap`'s mapped type still forces this object to cover every
+ * variant, so it's exactly as exhaustive-checked as the old switch's
+ * `(entry satisfies never)` default case.
+ */
+const FORMATTERS: FormatterMap = {
+  MULLIGAN_SWAPPED: (entry, state) => `${playerName(state, entry.playerId)} kicserélt egy lapot a kezdő kezében.`,
+  MULLIGAN_CONFIRMED: (entry, state) => `${playerName(state, entry.playerId)} lezárta a kezdő kezét.`,
+  STARTING_COIN_FLIP: (entry, state) =>
+    `Érmedobás: ${entry.result === 'castle' ? 'kastély' : 'fáklya'} — ${playerName(state, entry.startingPlayerId)} kezd.`,
+  STARTING_PLAYER_CHOSEN: (entry, state) => `${playerName(state, entry.chooserId)} eldöntötte: ${playerName(state, entry.startingPlayerId)} kezd.`,
+  CARD_PLAYED: (entry, state) =>
+    `${playerName(state, entry.playerId)} kijátszotta: ${cardName(entry.defId)} (${rowLabel(entry.row) ?? entry.row}${
+      entry.ownerRowPlayerId !== entry.playerId ? ', az ellenfél oldalára' : ''
+    }).`,
+  CARD_MOVED_TO_OPPONENT: (entry) => `${cardName(entry.defId)} átkerült az ellenfél oldalára (${rowLabel(entry.row) ?? entry.row}).`,
+  CARDS_DRAWN: (entry, state) => `${playerName(state, entry.playerId)} húzott ${entry.count} lapot (${DRAW_REASON_LABELS[entry.reason]}).`,
+  MUSTER_TRIGGERED: (entry, state) => `${playerName(state, entry.playerId)} Muster-képessége ${entry.playedInstanceIds.length} további lapot hozott be.`,
+  MEDIC_REVIVED: (entry, state) =>
+    `${playerName(state, entry.playerId)} Medic-képessége feltámasztotta: ${cardName(entry.defId)}${entry.wasRandom ? ' (véletlenszerű)' : ''}.`,
+  DECOY_SWAPPED: (entry, state) => `${playerName(state, entry.playerId)} Csalit használt: visszavette ${cardName(entry.returnedDefId)} lapját.`,
+  WEATHER_APPLIED: (entry, state) => `${playerName(state, entry.playerId)} időjárás-hatást aktivált (${rowLabel(entry.row) ?? entry.row}).`,
+  WEATHER_CLEARED: (entry, state) => `${playerName(state, entry.playerId)} eltisztította az időjárást.`,
+  SCORCH_RESOLVED: (entry) => `Scorch: ${entry.destroyedInstanceIds.length} lap megsemmisült.`,
+  ROW_SCORCH_RESOLVED: (entry) => `Sor-Scorch (${rowLabel(entry.row) ?? entry.row}): ${entry.destroyedInstanceIds.length} lap megsemmisült.`,
+  COW_REPLACED: (entry) => `A tehén lecserélődött Bovine Defense Force-ra (${rowLabel(entry.row) ?? entry.row}).`,
+  LEADER_ABILITY_ACTIVATED: (entry, state) =>
+    `${playerName(state, entry.playerId)} aktiválta vezér-képességét: ${getLeaderDef(getPlayer(state, entry.playerId).leaderId).name}.`,
+  LEADER_REVEALED_OPPONENT_HAND: (entry, state) => `${playerName(state, entry.playerId)} felfedte az ellenfél kezét.`,
+  LEADER_ABILITY_CANCELED: (entry, state) =>
+    `${playerName(state, entry.playerId)} semlegesítette ${playerName(state, entry.canceledPlayerId)} vezér-képességét.`,
+  CARD_RESTORED_FROM_DISCARD: (entry, state) =>
+    `${playerName(state, entry.playerId)} visszahozott egy lapot a ${entry.fromOpponentDiscard ? 'ellenfél' : 'saját'} dobott lapjai közül: ${cardName(entry.defId)}.`,
+  PASSED: (entry, state) => `${playerName(state, entry.playerId)} passzolt.`,
+  ROUND_RESOLVED: (entry, state) =>
+    entry.tie ? `${entry.round}. kör döntetlen.` : `${entry.round}. kör vége — ${playerName(state, entry.winnerId as string)} nyerte.`,
+  GAME_WON: (entry, state) => `${playerName(state, entry.winnerId)} megnyerte a mérkőzést!`,
+};
+
 /** One readable Hungarian line per `GwentLogEntry` variant — the Gwent equivalent of Hotel's `formatLogEntry.ts` (Gwent-0c.1 §F, 16. pont). */
 export function formatGwentLogEntry(entry: GwentLogEntry, state: GwentState): string {
-  switch (entry.type) {
-    case 'MULLIGAN_SWAPPED':
-      return `${playerName(state, entry.playerId)} kicserélt egy lapot a kezdő kezében.`;
-    case 'MULLIGAN_CONFIRMED':
-      return `${playerName(state, entry.playerId)} lezárta a kezdő kezét.`;
-    case 'STARTING_COIN_FLIP':
-      return `Érmedobás: ${entry.result === 'castle' ? 'kastély' : 'fáklya'} — ${playerName(state, entry.startingPlayerId)} kezd.`;
-    case 'STARTING_PLAYER_CHOSEN':
-      return `${playerName(state, entry.chooserId)} eldöntötte: ${playerName(state, entry.startingPlayerId)} kezd.`;
-    case 'CARD_PLAYED':
-      return `${playerName(state, entry.playerId)} kijátszotta: ${cardName(entry.defId)} (${rowLabel(entry.row) ?? entry.row}${entry.ownerRowPlayerId !== entry.playerId ? ', az ellenfél oldalára' : ''}).`;
-    case 'CARD_MOVED_TO_OPPONENT':
-      return `${cardName(entry.defId)} átkerült az ellenfél oldalára (${rowLabel(entry.row) ?? entry.row}).`;
-    case 'CARDS_DRAWN':
-      return `${playerName(state, entry.playerId)} húzott ${entry.count} lapot (${DRAW_REASON_LABELS[entry.reason]}).`;
-    case 'MUSTER_TRIGGERED':
-      return `${playerName(state, entry.playerId)} Muster-képessége ${entry.playedInstanceIds.length} további lapot hozott be.`;
-    case 'MEDIC_REVIVED':
-      return `${playerName(state, entry.playerId)} Medic-képessége feltámasztotta: ${cardName(entry.defId)}${entry.wasRandom ? ' (véletlenszerű)' : ''}.`;
-    case 'DECOY_SWAPPED':
-      return `${playerName(state, entry.playerId)} Csalit használt: visszavette ${cardName(entry.returnedDefId)} lapját.`;
-    case 'WEATHER_APPLIED':
-      return `${playerName(state, entry.playerId)} időjárás-hatást aktivált (${rowLabel(entry.row) ?? entry.row}).`;
-    case 'WEATHER_CLEARED':
-      return `${playerName(state, entry.playerId)} eltisztította az időjárást.`;
-    case 'SCORCH_RESOLVED':
-      return `Scorch: ${entry.destroyedInstanceIds.length} lap megsemmisült.`;
-    case 'ROW_SCORCH_RESOLVED':
-      return `Sor-Scorch (${rowLabel(entry.row) ?? entry.row}): ${entry.destroyedInstanceIds.length} lap megsemmisült.`;
-    case 'COW_REPLACED':
-      return `A tehén lecserélődött Bovine Defense Force-ra (${rowLabel(entry.row) ?? entry.row}).`;
-    case 'LEADER_ABILITY_ACTIVATED':
-      return `${playerName(state, entry.playerId)} aktiválta vezér-képességét: ${getLeaderDef(getPlayer(state, entry.playerId).leaderId).name}.`;
-    case 'LEADER_REVEALED_OPPONENT_HAND':
-      return `${playerName(state, entry.playerId)} felfedte az ellenfél kezét.`;
-    case 'LEADER_ABILITY_CANCELED':
-      return `${playerName(state, entry.playerId)} semlegesítette ${playerName(state, entry.canceledPlayerId)} vezér-képességét.`;
-    case 'CARD_RESTORED_FROM_DISCARD':
-      return `${playerName(state, entry.playerId)} visszahozott egy lapot a ${entry.fromOpponentDiscard ? 'ellenfél' : 'saját'} dobott lapjai közül: ${cardName(entry.defId)}.`;
-    case 'PASSED':
-      return `${playerName(state, entry.playerId)} passzolt.`;
-    case 'ROUND_RESOLVED':
-      return entry.tie
-        ? `${entry.round}. kör döntetlen.`
-        : `${entry.round}. kör vége — ${playerName(state, entry.winnerId as string)} nyerte.`;
-    case 'GAME_WON':
-      return `${playerName(state, entry.winnerId)} megnyerte a mérkőzést!`;
-    default:
-      return (entry satisfies never) && '';
-  }
+  // The cast is needed because TS can't distribute a discriminated union's
+  // narrowed parameter type through a dynamic `entry.type` index lookup —
+  // the FormatterMap's mapped type already guarantees, at the object-literal
+  // definition above, that every formatter matches its own key's shape.
+  const formatter = FORMATTERS[entry.type] as (entry: GwentLogEntry, state: GwentState) => string;
+  return formatter(entry, state);
 }

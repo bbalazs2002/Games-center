@@ -43,6 +43,101 @@ function PendingRequestsList({ requests, onRespond }: { requests: PendingRequest
   );
 }
 
+interface GwentOnlineRoomScreensProps {
+  ready: boolean;
+  connectedRoomId: string | null;
+  displayPassword: string | null;
+  pendingRequests: PendingRequestView[];
+  respondToJoinRequest: (sessionId: string, accept: boolean) => void;
+  deckSubmitted: boolean;
+  deckRejectionErrors: string[] | null;
+  draft: GwentDeckDraft | null;
+  onDraftChange: (draft: GwentDeckDraft | null) => void;
+  onSubmitDeck: () => void;
+  matchStarted: boolean;
+  onlineTransport: GwentOnlineTransport | null;
+  myPlayer: PlayerId | null;
+  requestDeckReveal: () => Promise<CardInstance[]>;
+  onRequestNewMatch: () => void;
+}
+
+/**
+ * The "connected to the room" half of the online setup flow — split out of
+ * `GwentOnlineGamePage` purely to keep each function under the project's
+ * complexity-10 ESLint limit; the earlier guards there (error/rejected/
+ * awaiting-approval/still-connecting) are a distinct phase (connection
+ * itself) from this component's guards (waiting for the opponent/building a
+ * deck/waiting for the match to start), so the split is also a natural
+ * component boundary, not just an arbitrary complexity dodge.
+ */
+function GwentOnlineRoomScreens({
+  ready,
+  connectedRoomId,
+  displayPassword,
+  pendingRequests,
+  respondToJoinRequest,
+  deckSubmitted,
+  deckRejectionErrors,
+  draft,
+  onDraftChange,
+  onSubmitDeck,
+  matchStarted,
+  onlineTransport,
+  myPlayer,
+  requestDeckReveal,
+  onRequestNewMatch,
+}: GwentOnlineRoomScreensProps) {
+  if (!ready) {
+    return (
+      <OnlineStatusScreen gameId="gwent">
+        <p>
+          Várakozás a másik játékosra… Szoba azonosítója: <strong>{connectedRoomId}</strong>
+        </p>
+        {displayPassword && (
+          <p>
+            Jelszó: <strong>{displayPassword}</strong>
+          </p>
+        )}
+        <PendingRequestsList requests={pendingRequests} onRespond={respondToJoinRequest} />
+      </OnlineStatusScreen>
+    );
+  }
+  if (!deckSubmitted) {
+    return (
+      <div className={styles.page}>
+        <MenuNav backTo="/games/gwent" />
+        <div className={styles.content}>
+          <h1>Állítsd össze a paklidat</h1>
+          {deckRejectionErrors && (
+            <ul>
+              {deckRejectionErrors.map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          )}
+          <GwentDeckBuilder onValidDraftChange={onDraftChange} />
+          <div className={styles.matchActions}>
+            <Button disabled={!draft} onClick={onSubmitDeck}>
+              Kész, csatlakozás a mérkőzéshez
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (!matchStarted || !onlineTransport || !myPlayer) {
+    return (
+      <OnlineStatusScreen gameId="gwent">
+        <p>Várakozás, amíg az ellenfél is elkészül a paklijával…</p>
+      </OnlineStatusScreen>
+    );
+  }
+
+  return (
+    <GwentGamePage transport={onlineTransport} myPlayer={myPlayer} onRequestDeckReveal={requestDeckReveal} onRequestNewMatch={onRequestNewMatch} />
+  );
+}
+
 /**
  * Connects to a Colyseus Gwent room (or creates a new one) and renders the
  * same GwentGamePage as hot-seat mode, once BOTH the connection is ready AND
@@ -179,57 +274,23 @@ export function GwentOnlineGamePage() {
     );
   }
   if (!transport) return <OnlineStatusScreen gameId="gwent"><p>Csatlakozás a szobához…</p></OnlineStatusScreen>;
-  if (!ready) {
-    return (
-      <OnlineStatusScreen gameId="gwent">
-        <p>
-          Várakozás a másik játékosra… Szoba azonosítója: <strong>{connectedRoomId}</strong>
-        </p>
-        {displayPassword && (
-          <p>
-            Jelszó: <strong>{displayPassword}</strong>
-          </p>
-        )}
-        <PendingRequestsList requests={pendingRequests} onRespond={respondToJoinRequest} />
-      </OnlineStatusScreen>
-    );
-  }
-  if (!deckSubmitted) {
-    return (
-      <div className={styles.page}>
-        <MenuNav backTo="/games/gwent" />
-        <div className={styles.content}>
-          <h1>Állítsd össze a paklidat</h1>
-          {deckRejectionErrors && (
-            <ul>
-              {deckRejectionErrors.map((message) => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
-          )}
-          <GwentDeckBuilder onValidDraftChange={setDraft} />
-          <div className={styles.matchActions}>
-            <Button disabled={!draft} onClick={submitDeck}>
-              Kész, csatlakozás a mérkőzéshez
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  if (!matchStarted || !onlineTransport || !myPlayer) {
-    return (
-      <OnlineStatusScreen gameId="gwent">
-        <p>Várakozás, amíg az ellenfél is elkészül a paklijával…</p>
-      </OnlineStatusScreen>
-    );
-  }
 
   return (
-    <GwentGamePage
-      transport={onlineTransport}
+    <GwentOnlineRoomScreens
+      ready={ready}
+      connectedRoomId={connectedRoomId}
+      displayPassword={displayPassword}
+      pendingRequests={pendingRequests}
+      respondToJoinRequest={respondToJoinRequest}
+      deckSubmitted={deckSubmitted}
+      deckRejectionErrors={deckRejectionErrors}
+      draft={draft}
+      onDraftChange={setDraft}
+      onSubmitDeck={submitDeck}
+      matchStarted={matchStarted}
+      onlineTransport={onlineTransport}
       myPlayer={myPlayer}
-      onRequestDeckReveal={requestDeckReveal}
+      requestDeckReveal={requestDeckReveal}
       onRequestNewMatch={() => navigate('/games/gwent/lobby')}
     />
   );

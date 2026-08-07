@@ -1,5 +1,5 @@
 import { CARD_BACK_PATHS } from './cardBackPaths';
-import { useCardFlight } from './cardFlight';
+import { useCardFlight } from './useCardFlight';
 import type { Faction } from '../../../../../shared/games/gwent/engine/types';
 import styles from './DeckPile.module.css';
 

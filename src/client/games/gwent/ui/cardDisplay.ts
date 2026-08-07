@@ -15,6 +15,12 @@ export const ROW_ICON_PATH: Record<Row, string> = {
   Siege: assetUrl('/assets/gwent/icons/siege.png'),
 };
 
+/** DeckStep.tsx's row-icon overlay, bundled as one lookup instead of two separate `def.row ? … : null` branches — icon and label are always in sync (both derive from the same `Row | null`), so callers get a single non-null/null result instead of juggling two independently-nullable values. */
+export function rowBadge(row: Row | null): { icon: string; label: string } | null {
+  if (!row) return null;
+  return { icon: ROW_ICON_PATH[row], label: ROW_LABELS_HU[row] };
+}
+
 /** Gwent-0c.2 §F, 6. pont: CardDetailModal's "Típus" mező magyarul. */
 export const CARD_KIND_LABELS_HU: Record<CardKind, string> = {
   Unit: 'Egység',

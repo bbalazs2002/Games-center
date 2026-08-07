@@ -1,8 +1,8 @@
 import { assetUrl } from '../../../../core/assetUrl';
 import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
 import type { CardInstance } from '../../../../../shared/games/gwent/engine/state';
-import { pickVariant } from './CardTile';
-import { useCardFlight } from './cardFlight';
+import { pickVariant } from './cardArtVariant';
+import { useCardFlight } from './useCardFlight';
 import styles from './DiscardPile.module.css';
 
 const MAX_UNDER_LAYERS = 2;

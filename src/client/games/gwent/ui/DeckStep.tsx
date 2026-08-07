@@ -4,7 +4,7 @@ import { Select } from '../../../ui-kit/Select';
 import type { CardDef, Faction } from '../../../../shared/games/gwent/engine/types';
 import { cardsForFaction, validateDeckDraft, type DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
 import type { CardInstance } from '../../../../shared/games/gwent/engine/state';
-import { CARD_SORT_OPTIONS, ROW_ICON_PATH, rowLabel, sortCards, type CardSortKey } from './cardDisplay';
+import { CARD_SORT_OPTIONS, rowBadge, sortCards, type CardSortKey } from './cardDisplay';
 import { EyeIcon } from './board/boardIcons';
 import { CardTile } from './board/CardTile';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
@@ -68,8 +68,7 @@ function DeckCardTile({ def, count, onAdd, onRemove, onInfo, viewMode }: DeckCar
   // (`isCollectionTile` false) marad a jelenlegi darabszám, ami ott mindig >0
   // (a lista már eleve csak owned lapokat listáz).
   const badgeCount = isCollectionTile ? def.copies : count;
-  const rowIcon = def.row ? ROW_ICON_PATH[def.row] : null;
-  const row = rowLabel(def.row);
+  const badge = rowBadge(def.row);
   return (
     <div className={styles.deckTile}>
       <CardTile
@@ -79,7 +78,7 @@ function DeckCardTile({ def, count, onAdd, onRemove, onInfo, viewMode }: DeckCar
         disabled={!viewMode && atMax}
         onClick={viewMode ? onInfo : (onAdd ?? onRemove)}
       />
-      {rowIcon && <img className={styles.deckTileRow} src={rowIcon} alt={row ?? ''} title={row ?? undefined} />}
+      {badge && <img className={styles.deckTileRow} src={badge.icon} alt={badge.label} title={badge.label} />}
       <span className={styles.deckTileCount}>×{badgeCount}</span>
     </div>
   );
