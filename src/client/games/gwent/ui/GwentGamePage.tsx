@@ -16,6 +16,7 @@ import { MulliganScreen } from './board/MulliganScreen';
 import { PassDeviceScreen } from './board/PassDeviceScreen';
 import { StartingChoiceScreen } from './board/StartingChoiceScreen';
 import { useGwentMatchViewState, type GwentMatchViewState } from './useGwentMatchViewState';
+import { useGwentHotSeatAi, type HotSeatAiSlots } from './useGwentHotSeatAi';
 import styles from './GwentGamePage.module.css';
 
 export interface GwentGamePageProps {
@@ -39,6 +40,8 @@ export interface GwentGamePageProps {
    * from yourself in hot-seat) — see LeaderAbilityPanel's doc comment.
    */
   onRequestDeckReveal?: (playerId: PlayerId) => Promise<CardInstance[]>;
+  /** Local hot-seat only — which slot (if any) is AI-controlled, and at what difficulty. Ignored once `transport` is provided (online AI is server-driven by GwentRoom). See docs/gwent-0e-ai-specifikacio.md §7. */
+  hotSeatAiSlots?: HotSeatAiSlots;
   onRequestNewMatch: () => void;
 }
 
@@ -93,7 +96,14 @@ function GwentMatchPhaseContent({ viewState, dispatch, myPlayer, view }: GwentMa
  * lives in `useGwentMatchViewState` now (see its doc comment) — this
  * component's own job is just picking which screen to render.
  */
-export function GwentGamePage({ initialState, transport: providedTransport, myPlayer, onRequestDeckReveal, onRequestNewMatch }: GwentGamePageProps) {
+export function GwentGamePage({
+  initialState,
+  transport: providedTransport,
+  myPlayer,
+  onRequestDeckReveal,
+  hotSeatAiSlots,
+  onRequestNewMatch,
+}: GwentGamePageProps) {
   const themeClass = useGameTheme('gwent');
   const isLocalMode = providedTransport === undefined;
   const localTransport = useMemo(
@@ -106,6 +116,8 @@ export function GwentGamePage({ initialState, transport: providedTransport, myPl
   const loggedLocalTransport = useLocalGameLogger(localTransport, 'gwent');
   const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
+  const effectiveHotSeatAiSlots = hotSeatAiSlots ?? {};
+  useGwentHotSeatAi(isLocalMode ? transport : null, effectiveHotSeatAiSlots);
 
   // Gwent-0c.3 §7: warm the image cache for the whole match right away —
   // only safe/meaningful in local hot-seat mode, where `initialState` is
@@ -118,7 +130,7 @@ export function GwentGamePage({ initialState, transport: providedTransport, myPl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const view = useGwentMatchViewState(state, isLocalMode, myPlayer, onRequestDeckReveal);
+  const view = useGwentMatchViewState(state, isLocalMode, myPlayer, onRequestDeckReveal, effectiveHotSeatAiSlots);
 
   if (state.phase === 'FINISHED') {
     return <WinnerScreen state={state} themeClass={themeClass} onRequestNewMatch={onRequestNewMatch} />;

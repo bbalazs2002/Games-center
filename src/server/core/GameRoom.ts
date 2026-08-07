@@ -186,6 +186,20 @@ export abstract class GameRoom<
     return 0;
   }
 
+  /**
+   * Optional hook, called right after `slot` is added to `aiSlots` — default
+   * no-op. Dáma/Hotel/Ramses don't need this: their `createInitialState()`
+   * already runs at room creation, so a freshly-registered AI slot has
+   * nothing extra to set up. Gwent does: its real match state only exists
+   * once BOTH sides have submitted a `GwentPlayerConfig` (see
+   * `GwentRoom.registerDeckConfig`), so an AI slot must generate and submit
+   * one of its own right here, the same way a human submits theirs via the
+   * 'submitDeck' message — see docs/gwent-0e-ai-specifikacio.md §6.
+   */
+  protected onAiOpponentRegistered(_slot: TPlayerSlot): void {
+    // Intentionally empty default — most games don't need this.
+  }
+
   /** protected, not private — game-specific `syncState()` implementations need to read the current state to write it into `this.state`. */
   protected gameState!: TState;
   private dbSessionId!: string;
@@ -373,6 +387,7 @@ export abstract class GameRoom<
     const slot = this.assignPlayerSlot(this.joinCount);
     this.joinCount += 1;
     this.aiSlots.add(slot);
+    this.onAiOpponentRegistered(slot);
 
     await prisma.gameSessionPlayer.create({
       data: { gameSessionId: this.dbSessionId, userId: aiUserId, playerSlot: slot },

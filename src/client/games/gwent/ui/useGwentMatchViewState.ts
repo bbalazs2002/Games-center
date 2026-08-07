@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { expectedViewerId, toPublicGwentState } from '@shared/games/gwent/engine/rules';
 import type { CardInstance, GwentLogEntry, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
+import type { HotSeatAiSlots } from './useGwentHotSeatAi';
 
 /**
  * Gwent-0c: a played/drawn/destroyed card's flight animation (cardFlight.tsx,
@@ -34,6 +35,20 @@ function resolveHandReveal(entries: HandRevealEntry[], acknowledgedCount: number
   return latest.playerId === viewerForReveal ? latest : null;
 }
 
+/**
+ * An AI-controlled slot must NEVER trigger a "pass the device" moment —
+ * there's exactly one human physically holding the device in an AI hot-seat
+ * match, nobody to pass it TO, and revealing the AI's own hand to
+ * `activeViewerId` would just spoil it for the human anyway (Gwent-0e real
+ * playtest finding, 2026-08-07). Whenever the raw expected viewer is
+ * AI-controlled, pins the transition target to whichever viewer is already
+ * active (the human) — `transitionPending` then naturally stays false,
+ * exactly as if it were still the human's own turn.
+ */
+function resolveExpectedViewer(rawExpectedViewer: PlayerId | null, activeViewerId: PlayerId | null, hotSeatAiSlots: HotSeatAiSlots): PlayerId | null {
+  return rawExpectedViewer !== null && rawExpectedViewer in hotSeatAiSlots ? activeViewerId : rawExpectedViewer;
+}
+
 export interface GwentMatchViewState {
   /** Local mode: the current viewer's masked view of `state`. Online mode: `state` itself (GwentOnlineTransport already delivers a per-player-masked state). */
   viewState: GwentState;
@@ -60,6 +75,7 @@ export function useGwentMatchViewState(
   isLocalMode: boolean,
   myPlayer: PlayerId | undefined,
   onRequestDeckReveal: ((playerId: PlayerId) => Promise<CardInstance[]>) | undefined,
+  hotSeatAiSlots: HotSeatAiSlots,
 ): GwentMatchViewState {
   // Initialized once, from the very first state — every LATER switch goes
   // through the explicit PassDeviceScreen "Megvan, mehet" button, never
@@ -79,7 +95,7 @@ export function useGwentMatchViewState(
   // is still pending.
   const [acknowledgedRevealCount, setAcknowledgedRevealCount] = useState(0);
 
-  const expectedViewer = expectedViewerId(state);
+  const expectedViewer = resolveExpectedViewer(expectedViewerId(state), activeViewerId, hotSeatAiSlots);
   const transitionPending = isLocalMode && expectedViewer !== null && expectedViewer !== activeViewerId;
   const revealEntries = state.log.filter((entry) => entry.type === 'LEADER_REVEALED_OPPONENT_HAND');
   const viewerForReveal = isLocalMode ? activeViewerId : myPlayer;

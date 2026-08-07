@@ -69,10 +69,9 @@ const ALL_GAMES: GameDescriptor[] = [
     id: 'gwent',
     label: 'Gwent',
     load: () => import('../games/gwent'),
-    // Fixed 2-player, no AI opponent yet (Gwent-0b, 2026-08-03) — so `online`
-    // deliberately sets none of the AI/player-count flags; "Új szoba" shows
-    // only the password fieldset every game gets, same as if no flag existed.
-    online: {},
+    // Fixed 2-player — Dáma's binary Ember/AI pattern, not Hotel/Ramses's
+    // N-fős stepper (see docs/gwent-0e-ai-specifikacio.md §9, implemented 2026-08-07).
+    online: { supportsAiOpponent: true },
     theme: () => import('../games/gwent/ui/gwentTheme.module.css').then((m) => ({ default: m.default.theme })),
     // Still no `rules` — RulesModal falls back gracefully.
     coverImage: assetUrl('/assets/gwent/icons/box.png'),

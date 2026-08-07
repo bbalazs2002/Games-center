@@ -2,6 +2,7 @@ import type { Client } from 'colyseus';
 import type { AuthPayload } from '../../auth/jwt';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 import { OpaqueGameStateSchema } from '@shared/core/OpaqueGameStateSchema';
+import { buildTacticalAiDeckConfig, chooseGwentAiAction, GWENT_AI_MOVE_DELAY_MS, isGwentAiDifficulty, type GwentAiDifficulty } from '@shared/games/gwent/ai';
 import type { GwentAction } from '@shared/games/gwent/engine/actions';
 import { validateDeckDraft } from '@shared/games/gwent/engine/deckRules';
 import { createInitialState, createPlaceholderGwentState, type GwentPlayerConfig } from '@shared/games/gwent/engine/initialState';
@@ -11,6 +12,8 @@ import { reducer } from '@shared/games/gwent/engine/reducer';
 import { getPlayer, toPublicGwentState } from '@shared/games/gwent/engine/rules';
 import type { GwentState, PlayerId } from '@shared/games/gwent/engine/state';
 import type { Row } from '@shared/games/gwent/engine/types';
+
+const DEFAULT_AI_DIFFICULTY: GwentAiDifficulty = 'MEDIUM';
 
 /** The only 2 leader abilities that legitimately need to "search" the deck — see toPublicGwentState's doc comment and GwentRoom.requestDeckReveal. */
 const DECK_SEARCH_ABILITIES = new Set([EREDIN_COMMANDER_OF_THE_RED_RIDERS, EREDIN_BRINGER_OF_DEATH]);
@@ -90,9 +93,11 @@ export class GwentRoom extends GameRoom<GwentState, GwentAction, PlayerId> {
   // 'submitDeck' (see registerDeckConfig) — docs/gwent-0b-multiplayer-specifikacio.md §4.5.
   protected createInitialState = createPlaceholderGwentState;
   private readonly deckConfigsBySlot = new Map<PlayerId, GwentPlayerConfig>();
+  private aiDifficulty: GwentAiDifficulty = DEFAULT_AI_DIFFICULTY;
 
   async onCreate(options: GameRoomCreateOptions): Promise<void> {
     await super.onCreate(options);
+    if (isGwentAiDifficulty(options.aiDifficulty)) this.aiDifficulty = options.aiDifficulty;
 
     this.onMessage('submitDeck', (client: Client, deckConfig: unknown) => {
       const slot = this.clientSlots.get(client.sessionId);
@@ -170,8 +175,29 @@ export class GwentRoom extends GameRoom<GwentState, GwentAction, PlayerId> {
     return isValidPreRoundAction(c) || isValidInRoundAction(c);
   }
 
-  protected computeAiMove(): GwentAction | null {
-    return null; // no AI opponent in Gwent-0b — see docs/gwent-0b-multiplayer-specifikacio.md §1
+  /**
+   * `this.gameState` here is the TRUE, unmasked state (GameRoom's own
+   * contract) — `chooseGwentAiAction` masks it itself (via
+   * `stateForAiDecision`) before making any decision, so this call site
+   * never has to remember to do so. See docs/gwent-0e-ai-specifikacio.md §4.
+   */
+  protected computeAiMove(state: GwentState, slot: PlayerId): GwentAction | null {
+    return chooseGwentAiAction(state, slot, this.aiDifficulty);
+  }
+
+  protected aiMoveDelayMs(): number {
+    return GWENT_AI_MOVE_DELAY_MS;
+  }
+
+  /**
+   * Gwent's real match state only exists once BOTH sides have submitted a
+   * GwentPlayerConfig (see registerDeckConfig) — an AI slot has nobody to do
+   * that for it, so it generates and submits its own here, through the exact
+   * same path a human's 'submitDeck' message uses. See
+   * docs/gwent-0e-ai-specifikacio.md §5/§6.
+   */
+  protected onAiOpponentRegistered(slot: PlayerId): void {
+    this.registerDeckConfig(slot, buildTacticalAiDeckConfig('AI ellenfél'));
   }
 
   protected syncState(): void {
