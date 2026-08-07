@@ -4,6 +4,8 @@ import type { DeckCardCounts } from './deckRules';
 import type { Faction } from './types';
 import { createEmptyBoard, type CardInstance, type GwentState, type PlayerId, type PlayerState } from './state';
 import { FOLTEST_KING_OF_TEMERIA, FRANCESCA_DAISY_OF_THE_VALLEY } from './leaderConstants';
+import { isLeaderAbilityCanceled } from './leaderPassives';
+import { appendLog } from './rules';
 
 const STARTING_HAND_SIZE = 10;
 /** Exported — the UI (LifeTokens, Gwent-0c) needs this to know how many life-token slots to render. */
@@ -27,13 +29,15 @@ function buildDeck(playerId: PlayerId, cardCounts: DeckCardCounts): CardInstance
   return shuffle(pool);
 }
 
-function buildPlayer(playerId: PlayerId, config: GwentPlayerConfig): PlayerState {
+function buildPlayer(playerId: PlayerId, config: GwentPlayerConfig, opponentLeaderId: string): PlayerState {
   const deck = buildDeck(playerId, config.cardCounts);
   // Francesca Findabair: Daisy of the Valley — draws 1 extra starting card (category C
   // leader ability, resolved once here since it's automatic at match start, no player
   // action — see leaderConstants.ts / docs/gwent-0a-specifikacio.md §"Gwent-0a.2").
-  const isDaisyOfTheValley = config.leaderId === FRANCESCA_DAISY_OF_THE_VALLEY;
-  const handSize = isDaisyOfTheValley ? STARTING_HAND_SIZE + 1 : STARTING_HAND_SIZE;
+  // Canceled the same as any other category, if the OPPONENT has Emhyr The White Flame
+  // (real playtest correction, 2026-08-08 — see leaderPassives.ts's isLeaderAbilityCanceled).
+  const daisyBonusApplies = config.leaderId === FRANCESCA_DAISY_OF_THE_VALLEY && !isLeaderAbilityCanceled(config.leaderId, opponentLeaderId);
+  const handSize = daisyBonusApplies ? STARTING_HAND_SIZE + 1 : STARTING_HAND_SIZE;
   const hand = deck.slice(0, handSize);
   const remainingDeck = deck.slice(handSize);
 
@@ -42,13 +46,14 @@ function buildPlayer(playerId: PlayerId, config: GwentPlayerConfig): PlayerState
     name: config.name,
     faction: config.faction,
     leaderId: config.leaderId,
-    // Daisy of the Valley's ability already resolved above (the extra card) —
-    // mark it used immediately so LeaderAbilityPanel shows "elhasználva"
-    // instead of a permanently-disabled "Aktiválás" button for the rest of
-    // the match (she has no LEADER_ABILITIES entry — category C, see
-    // leaderConstants.ts — so canActivateLeaderAbility would never let it be
-    // pressed anyway; this just makes the UI say so).
-    leaderAbilityUsed: isDaisyOfTheValley,
+    // Daisy of the Valley's ability already resolved above (the extra card,
+    // if it wasn't canceled) — mark it used immediately so LeaderAbilityPanel
+    // shows "elhasználva" instead of a permanently-disabled "Aktiválás"
+    // button for the rest of the match (she has no LEADER_ABILITIES entry —
+    // category C, see leaderConstants.ts — so canActivateLeaderAbility would
+    // never let it be pressed anyway; this just makes the UI say so). Stays
+    // false when canceled — she never actually got to use it.
+    leaderAbilityUsed: daisyBonusApplies,
     deck: remainingDeck,
     hand,
     discard: [],
@@ -70,10 +75,10 @@ function validateCardCounts(cardCounts: DeckCardCounts): void {
 export function createInitialState(playerConfigs: [GwentPlayerConfig, GwentPlayerConfig]): GwentState {
   for (const config of playerConfigs) validateCardCounts(config.cardCounts);
   const players: [PlayerState, PlayerState] = [
-    buildPlayer('player-1', playerConfigs[0]),
-    buildPlayer('player-2', playerConfigs[1]),
+    buildPlayer('player-1', playerConfigs[0], playerConfigs[1].leaderId),
+    buildPlayer('player-2', playerConfigs[1], playerConfigs[0].leaderId),
   ];
-  return {
+  let state: GwentState = {
     players,
     currentPlayerIndex: 0,
     round: 1,
@@ -82,6 +87,17 @@ export function createInitialState(playerConfigs: [GwentPlayerConfig, GwentPlaye
     winnerIds: [],
     log: [],
   };
+  // Surface Emhyr The White Flame's always-on cancellation in the log right
+  // from the start — otherwise a player would have no visible explanation
+  // for why their leader ability never seems to do anything (real playtest
+  // report, 2026-08-08).
+  for (const player of players) {
+    const opponent = players.find((p) => p.id !== player.id)!;
+    if (isLeaderAbilityCanceled(player.leaderId, opponent.leaderId)) {
+      state = appendLog(state, { type: 'LEADER_ABILITY_CANCELED', playerId: opponent.id, canceledPlayerId: player.id });
+    }
+  }
+  return state;
 }
 
 /**

@@ -82,7 +82,7 @@ function selectableRowsFor(state: GwentState, actingPlayerId: string, defId: str
   if (def.kind === 'Horn') return ALL_ROWS;
   if (def.kind === 'Scorch') return ALL_ROWS;
   if (def.kind === 'Weather') return def.weatherRow === 'AllRows' || def.weatherRow === null ? ALL_ROWS : [def.weatherRow];
-  if (def.kind === 'Unit' && def.abilities.includes('Agile') && !agileAutoOptimizes(getPlayer(state, actingPlayerId))) return ['Melee', 'Ranged'];
+  if (def.kind === 'Unit' && def.abilities.includes('Agile') && !agileAutoOptimizes(state, actingPlayerId)) return ['Melee', 'Ranged'];
   return def.row ? [def.row] : [];
 }
 

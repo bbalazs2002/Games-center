@@ -188,9 +188,9 @@ function isDecoyChoiceValid(player: PlayerState, def: CardDef, decoyTargetInstan
   return decoyTargetInstanceId !== undefined && findCardOnPlayerBoard(player, decoyTargetInstanceId) !== null;
 }
 
-function isRowChoiceValid(player: PlayerState, def: CardDef, chosenRow: Row | undefined): boolean {
+function isRowChoiceValid(state: GwentState, player: PlayerState, def: CardDef, chosenRow: Row | undefined): boolean {
   const isAgileUnit = def.kind === 'Unit' && def.abilities.includes('Agile');
-  if (isAgileUnit) return agileAutoOptimizes(player) || chosenRow === 'Melee' || chosenRow === 'Ranged';
+  if (isAgileUnit) return agileAutoOptimizes(state, player.id) || chosenRow === 'Melee' || chosenRow === 'Ranged';
   if (def.kind === 'Horn') return chosenRow !== undefined;
   // Gwent-0c.4 §M: Weather/Scorch cards accept a chosenRow (defined OR not) —
   // the UI now always makes the player click a row to confirm play (even a
@@ -254,7 +254,7 @@ export function canPlayCard(
 
   return (
     isDecoyChoiceValid(player, def, decoyTargetInstanceId) &&
-    isRowChoiceValid(player, def, chosenRow) &&
+    isRowChoiceValid(state, player, def, chosenRow) &&
     isMedicChoiceValid(player, def, medicReviveInstanceIds)
   );
 }

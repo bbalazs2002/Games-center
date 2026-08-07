@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from './initialState';
 import { CARD_DEFS } from './cardDefs';
-import { FRANCESCA_DAISY_OF_THE_VALLEY } from './leaderConstants';
+import { EMHYR_THE_WHITE_FLAME, FRANCESCA_DAISY_OF_THE_VALLEY } from './leaderConstants';
 import type { DeckCardCounts } from './deckRules';
 
 const TIGHT_BOND = 'nilfgaard-impera-brigade-guard'; // copies 4
@@ -44,6 +44,29 @@ describe('createInitialState', () => {
       { name: 'Bob', faction: 'Monsters', leaderId: 'test-leader-2', cardCounts: {} },
     ]);
     expect(withDaisy.players[0].hand.length).toBe(withoutDaisy.players[0].hand.length + 1);
+  });
+
+  it('Francesca Daisy of the Valley does NOT draw the extra card when the OPPONENT has Emhyr The White Flame — real playtest correction, 2026-08-08: White Flame cancels every category of the opponent\'s leader ability, including match-start-automatic ones', () => {
+    const bigPool = bigCardPool(15);
+    const withoutDaisy = createInitialState([
+      { name: 'Alice', faction: 'Nilfgaard', leaderId: 'test-leader-1', cardCounts: bigPool },
+      { name: 'Bob', faction: 'Monsters', leaderId: 'test-leader-2', cardCounts: {} },
+    ]);
+    const canceled = createInitialState([
+      { name: 'Alice', faction: 'Scoiatael', leaderId: FRANCESCA_DAISY_OF_THE_VALLEY, cardCounts: bigPool },
+      { name: 'Bob', faction: 'Nilfgaard', leaderId: EMHYR_THE_WHITE_FLAME, cardCounts: {} },
+    ]);
+    expect(canceled.players[0].hand.length).toBe(withoutDaisy.players[0].hand.length); // no +1
+    expect(canceled.players[0].leaderAbilityUsed).toBe(false); // never got to use it, not "elhasznalva"
+  });
+
+  it('logs Emhyr The White Flame\'s cancellation right at match start, so it\'s visible why the opponent\'s leader seems inert', () => {
+    const state = createInitialState([
+      { name: 'Alice', faction: 'Nilfgaard', leaderId: EMHYR_THE_WHITE_FLAME, cardCounts: {} },
+      { name: 'Bob', faction: 'Monsters', leaderId: 'test-leader-2', cardCounts: {} },
+    ]);
+    const entry = state.log.find((e) => e.type === 'LEADER_ABILITY_CANCELED');
+    expect(entry && 'canceledPlayerId' in entry ? entry.canceledPlayerId : null).toBe(state.players[1].id);
   });
 
   it('throws on a stale/unknown card id, instead of failing later mid-game', () => {

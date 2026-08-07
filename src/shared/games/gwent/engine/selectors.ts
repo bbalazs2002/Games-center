@@ -49,7 +49,7 @@ function playableCardOptions(state: GwentState, playerId: PlayerId): PlayableCar
       const isAgile = def.kind === 'Unit' && def.abilities.includes('Agile');
       return {
         instanceId: instance.instanceId,
-        needsRowChoice: (isAgile && !agileAutoOptimizes(player)) || def.kind === 'Horn',
+        needsRowChoice: (isAgile && !agileAutoOptimizes(state, playerId)) || def.kind === 'Horn',
         needsDecoyTarget: def.kind === 'Decoy',
         canDeclineMedic: def.kind === 'Unit' && def.abilities.includes('Medic'),
       };

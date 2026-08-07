@@ -114,8 +114,7 @@ function applyChooseStartingPlayer(state: GwentState, playerId: PlayerId, chosen
 
 function resolvePlacementRow(state: GwentState, playerId: PlayerId, instance: CardInstance, def: CardDef, chosenRow: Row | undefined): Row {
   if (def.row) return def.row;
-  const player = getPlayer(state, playerId);
-  if (agileAutoOptimizes(player)) {
+  if (agileAutoOptimizes(state, playerId)) {
     const meleePower = computeCardPower(state, playerId, 'Melee', instance);
     const rangedPower = computeCardPower(state, playerId, 'Ranged', instance);
     return rangedPower > meleePower ? 'Ranged' : 'Melee';
