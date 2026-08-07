@@ -8,7 +8,7 @@ import {
   type DeckCardCounts,
   type GwentDeckDraft,
 } from '@shared/games/gwent/engine/deckRules';
-import { computeDeckStats } from './cardDisplay';
+import { computeDeckStats } from '@shared/games/gwent/engine/cardDisplay';
 import { loadPersistedGwentDeck } from './gwentDeckPersistence';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
 import { DeckStep } from './DeckStep';

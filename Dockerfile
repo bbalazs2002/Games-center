@@ -41,6 +41,15 @@ COPY src/server ./src/server
 COPY src/shared ./src/shared
 COPY prisma ./prisma
 COPY public ./public
+# `tsx` resolves the `@client`/`@server`/`@shared` path aliases (see
+# tsconfig.json's `paths`) by reading the nearest tsconfig.json at runtime —
+# it does its own resolution pass independent of `tsc`, so this has to be
+# present even though nothing here type-checks in the runtime stage. Without
+# it, every `@shared/...` import in src/server throws "Cannot find package"
+# the moment the container starts. `@client/*` stays defined-but-unreachable
+# here since src/client is never copied into this stage — fine, no
+# src/server file imports from it.
+COPY tsconfig.json ./
 
 EXPOSE 2567
 # `prisma migrate deploy` runs on every container start (idempotent — a

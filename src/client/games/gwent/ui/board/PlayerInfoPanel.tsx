@@ -1,5 +1,5 @@
 import type { PlayerState } from '@shared/games/gwent/engine/state';
-import { factionLabel } from '../factionDisplay';
+import { factionLabel } from '@shared/games/gwent/engine/factionDisplay';
 import { HandCardsIcon, LaurelWreathIcon, PersonIcon } from './boardIcons';
 import { FactionIcon } from './factionIcons';
 import { LifeTokens } from './LifeTokens';

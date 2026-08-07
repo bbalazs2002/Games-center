@@ -7,8 +7,8 @@ import { CARD_TEXT_HU, LEADER_TEXT_HU } from '@shared/games/gwent/engine/cardTex
 import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
 import type { CardInstance } from '@shared/games/gwent/engine/state';
 import type { CardDef, LeaderDef } from '@shared/games/gwent/engine/types';
-import { ABILITY_DESCRIPTIONS_HU, ABILITY_LABELS_HU, CARD_KIND_LABELS_HU, cardMechanicLine, cardMechanicTag, rowLabel } from '../cardDisplay';
-import { factionLabel } from '../factionDisplay';
+import { ABILITY_DESCRIPTIONS_HU, ABILITY_LABELS_HU, CARD_KIND_LABELS_HU, cardMechanicLine, cardMechanicTag, rowLabel } from '@shared/games/gwent/engine/cardDisplay';
+import { factionLabel } from '@shared/games/gwent/engine/factionDisplay';
 import { pickVariant } from './cardArtVariant';
 import styles from './CardCarouselModal.module.css';
 
