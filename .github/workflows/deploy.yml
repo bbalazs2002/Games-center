@@ -10,7 +10,7 @@ env:
   # Melyik játékok legyenek élesen elérhetők — lásd
   # docs/deployment-specifikacio.md §4. Egy új játék készre válásakor csak
   # ezt az egy sort kell bővíteni, nem kell kódot módosítani.
-  ENABLED_GAMES: dama,hotel,ramses
+  ENABLED_GAMES: dama,hotel,ramses,gwent
   VITE_BASE_PATH: /game-center/
   VITE_SERVER_URL: https://balazs.gyserver.domenet.info/game-center
 
