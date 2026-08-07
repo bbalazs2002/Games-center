@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useAuth } from '../../shell/auth/AuthContext';
+import { useAuth } from '../../shell/auth/useAuth';
 import type { GameTransport } from './GameTransport';
 import { LoggingGameTransport } from './LoggingGameTransport';
 

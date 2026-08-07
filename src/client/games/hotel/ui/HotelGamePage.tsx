@@ -10,7 +10,7 @@ import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
 import { useNewItemsSince } from '../../../core/useNewItemsSince';
 import { Button } from '../../../ui-kit/Button';
-import { useReportFeedbackContext } from '../../../ui-kit/FeedbackContext';
+import { useReportFeedbackContext } from '../../../ui-kit/useFeedbackContext';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { Modal } from '../../../ui-kit/Modal';
 import { useGameTheme } from '../../../shell/useGameTheme';
@@ -841,6 +841,53 @@ export interface HotelGamePageProps {
   onRequestNewGame?: () => void;
 }
 
+function resolveInitialHotelState(initialGameState: HotelState | undefined, playerNames: string[] | undefined): HotelState {
+  return initialGameState ?? createInitialState(playerNames ?? []);
+}
+
+// Resuming across a reload (see hotelLocalGamePersistence.ts) — a real
+// playtest request (2026-07-27): reloading used to always drop back to
+// HotelSetupPage's blank form, losing the game in progress. Re-saves on
+// every dispatch; once the game actually ends, clears it instead — a
+// finished game has nothing left to resume into.
+function useHotelLocalPersistence(isLocalMode: boolean, state: HotelState, hotSeatAiSlots: HotSeatAiSlots, winner: Player | null): void {
+  useEffect(() => {
+    if (!isLocalMode) return;
+    if (winner) {
+      clearPersistedHotelLocalGame();
+    } else {
+      saveHotelLocalGame({ state, hotSeatAiSlots });
+    }
+  }, [isLocalMode, state, hotSeatAiSlots, winner]);
+}
+
+function HotelWinnerScreen({
+  themeClass,
+  winner,
+  showNewGameButton,
+  onRequestNewGame,
+  onNavigateHome,
+}: {
+  themeClass: string | undefined;
+  winner: Player;
+  showNewGameButton: boolean;
+  onRequestNewGame?: () => void;
+  onNavigateHome: () => void;
+}) {
+  return (
+    <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
+      <h1>Vége a játéknak!</h1>
+      <p>Győztes: {winner.name}</p>
+      <div className={styles.winnerActions}>
+        {showNewGameButton && <Button onClick={onRequestNewGame}>Új játék</Button>}
+        <Button variant="secondary" onClick={onNavigateHome}>
+          Főmenü
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Hotel-0a local (hot-seat) vertical, generalized for Hotel-0b online play —
  * mirrors DamaGamePage's role: wires the shared reducer to a transport (local
@@ -867,7 +914,7 @@ export function HotelGamePage({
   // the persistence effect and LocalGameControls below.
   const isLocalMode = providedTransport === undefined;
   const localTransport = useMemo(
-    () => new LocalGameTransport<HotelState, HotelAction>(reducer, initialGameState ?? createInitialState(playerNames ?? [])),
+    () => new LocalGameTransport<HotelState, HotelAction>(reducer, resolveInitialHotelState(initialGameState, playerNames)),
     // Deliberately NOT keyed on initialGameState — that's only ever meant to
     // seed the transport once, at mount (a resumed game), same as playerNames
     // for a fresh one; re-keying on it would just restart the reducer's own
@@ -906,20 +953,21 @@ export function HotelGamePage({
   const recentPurchases = useRecentLotPurchases(state.log);
   const recentPurchaseColors = buildRecentPurchaseColors(recentPurchases, state.players);
 
+  const effectiveHotSeatAiSlots = hotSeatAiSlots ?? {};
   const winner = getWinner(state);
   const currentPlayer = state.players[state.currentPlayerIndex];
   // Hot-seat only (hotSeatAiSlots is empty in online mode) — used by
   // StatusChip's "AI gondolkodik…" label. NOT used for the wheel's own
   // interactivity — see isWheelInteractive for why that needs to be a
   // separate, auction-aware check.
-  const isCurrentPlayerAi = (hotSeatAiSlots ?? {})[currentPlayer.id] !== undefined;
+  const isCurrentPlayerAi = effectiveHotSeatAiSlots[currentPlayer.id] !== undefined;
   // While ANY token is still mid-slide, the wheel locks entirely — a real
   // playtest request (2026-07-28): clicking ahead of the animation looked
   // like nothing happened, but was really queuing an action against a board
   // that hadn't caught up yet.
   const [isTokenAnimating, setIsTokenAnimating] = useState(false);
-  const wheelInteractive = isWheelInteractive(state, myPlayer, hotSeatAiSlots ?? {}, currentPlayer) && !isTokenAnimating;
-  useHotSeatAi(transport, hotSeatAiSlots ?? {}, isTokenAnimating);
+  const wheelInteractive = isWheelInteractive(state, myPlayer, effectiveHotSeatAiSlots, currentPlayer) && !isTokenAnimating;
+  useHotSeatAi(transport, effectiveHotSeatAiSlots, isTokenAnimating);
 
   // Which player's full detail is currently open (via PlayerRoster or a
   // board-token click) — see PlayerInfoModal's doc comment.
@@ -953,32 +1001,17 @@ export function HotelGamePage({
     setStaircasePlacement(null);
   }
 
-  // Resuming across a reload (see hotelLocalGamePersistence.ts) — a real
-  // playtest request (2026-07-27): reloading used to always drop back to
-  // HotelSetupPage's blank form, losing the game in progress. Re-saves on
-  // every dispatch; once the game actually ends, clears it instead — a
-  // finished game has nothing left to resume into.
-  useEffect(() => {
-    if (!isLocalMode) return;
-    if (winner) {
-      clearPersistedHotelLocalGame();
-    } else {
-      saveHotelLocalGame({ state, hotSeatAiSlots: hotSeatAiSlots ?? {} });
-    }
-  }, [isLocalMode, state, hotSeatAiSlots, winner]);
+  useHotelLocalPersistence(isLocalMode, state, effectiveHotSeatAiSlots, winner);
 
   if (winner) {
     return (
-      <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
-        <h1>Vége a játéknak!</h1>
-        <p>Győztes: {winner.name}</p>
-        <div className={styles.winnerActions}>
-          {isLocalMode && onRequestNewGame && <Button onClick={onRequestNewGame}>Új játék</Button>}
-          <Button variant="secondary" onClick={() => navigate('/')}>
-            Főmenü
-          </Button>
-        </div>
-      </div>
+      <HotelWinnerScreen
+        themeClass={themeClass}
+        winner={winner}
+        showNewGameButton={isLocalMode && onRequestNewGame !== undefined}
+        onRequestNewGame={onRequestNewGame}
+        onNavigateHome={() => navigate('/')}
+      />
     );
   }
 

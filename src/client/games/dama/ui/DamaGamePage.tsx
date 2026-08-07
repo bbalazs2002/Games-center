@@ -3,7 +3,7 @@ import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
-import { useReportFeedbackContext } from '../../../ui-kit/FeedbackContext';
+import { useReportFeedbackContext } from '../../../ui-kit/useFeedbackContext';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { GridBoard2D, type GridPosition } from '../../../renderers/grid-2d/GridBoard2D';
 import theme from '../../../renderers/grid-2d/clusterBTheme.module.css';
@@ -82,6 +82,12 @@ function playerRoleLabel(player: Player, myPlayer: Player | undefined, hotSeatAi
   return hotSeatAiSlots[player] !== undefined ? ' — AI' : '';
 }
 
+function turnReadoutText(winner: Player | null, currentPlayer: Player, isCurrentPlayerAi: boolean): string {
+  if (winner) return `Győztes: ${PLAYER_LABEL[winner]}`;
+  const aiSuffix = isCurrentPlayerAi ? ' (AI gondolkodik…)' : '';
+  return `Soron van: ${PLAYER_LABEL[currentPlayer]}${aiSuffix}`;
+}
+
 function ScoreCard({
   state,
   winner,
@@ -140,7 +146,8 @@ export function DamaGamePage({
   const loggedLocalTransport = useLocalGameLogger(localTransport, 'dama');
   const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
-  useDamaHotSeatAi(transport, hotSeatAiSlots ?? {});
+  const effectiveHotSeatAiSlots = hotSeatAiSlots ?? {};
+  useDamaHotSeatAi(transport, effectiveHotSeatAiSlots);
   useReportFeedbackContext('dama', state);
   const [selected, setSelected] = useState<GridPosition | null>(null);
 
@@ -149,7 +156,7 @@ export function DamaGamePage({
   // Hot-seat only (hotSeatAiSlots is empty in online mode) — the board simply
   // doesn't react while an AI-controlled slot's turn is being decided/applied,
   // same "no reaction, no extra message" principle as the online !isMyTurn gate.
-  const isCurrentPlayerAi = (hotSeatAiSlots ?? {})[state.currentPlayer] !== undefined;
+  const isCurrentPlayerAi = effectiveHotSeatAiSlots[state.currentPlayer] !== undefined;
   const effectiveSelected = state.chainCaptureFrom ?? selected;
   const validMoves = computeValidMoves(state, isMyTurn, isCurrentPlayerAi, effectiveSelected);
   const highlightedSquares = computeHighlightedSquares(
@@ -186,9 +193,7 @@ export function DamaGamePage({
             <h1>Dáma</h1>
             <p className={styles.turnReadout}>
               <span className={[styles.turnDot, state.currentPlayer === 'LIGHT' ? styles.lightPiece : styles.darkPiece].join(' ')} />
-              {winner
-                ? `Győztes: ${PLAYER_LABEL[winner]}`
-                : `Soron van: ${PLAYER_LABEL[state.currentPlayer]}${isCurrentPlayerAi ? ' (AI gondolkodik…)' : ''}`}
+              {turnReadoutText(winner, state.currentPlayer, isCurrentPlayerAi)}
             </p>
           </div>
           <GridBoard2D<Piece>
@@ -202,7 +207,7 @@ export function DamaGamePage({
           />
         </div>
         <div className={styles.rail}>
-          <ScoreCard state={state} winner={winner} myPlayer={myPlayer} hotSeatAiSlots={hotSeatAiSlots ?? {}} />
+          <ScoreCard state={state} winner={winner} myPlayer={myPlayer} hotSeatAiSlots={effectiveHotSeatAiSlots} />
         </div>
       </div>
       {isLocalMode && <LocalGameControls gameId="dama" onRequestNewGame={onRequestNewGame} resumable={false} />}

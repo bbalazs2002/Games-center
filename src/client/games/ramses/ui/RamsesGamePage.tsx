@@ -8,7 +8,7 @@ import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
 import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
 import { Button } from '../../../ui-kit/Button';
-import { useReportFeedbackContext } from '../../../ui-kit/FeedbackContext';
+import { useReportFeedbackContext } from '../../../ui-kit/useFeedbackContext';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { Modal } from '../../../ui-kit/Modal';
 import { CELL_SIZE, GridBoard3D, type GridBoard3DCell } from '../../../renderers/grid-3d/GridBoard3D';
@@ -30,7 +30,7 @@ import {
   getWinners,
   type PlayerScore,
 } from '@shared/games/ramses/engine/selectors';
-import type { Player, PlayerId, RamsesCell, RamsesState } from '@shared/games/ramses/engine/state';
+import type { Player, PlayerId, RamsesCell, RamsesState, TreasureCard } from '@shared/games/ramses/engine/state';
 import { cardImagePath, getTreasureConfig, TREASURE_CONFIGS } from '@shared/games/ramses/engine/treasureConfigs';
 import styles from './RamsesGamePage.module.css';
 
@@ -217,6 +217,37 @@ function useSpecialCardAnnouncement(state: RamsesState): string | null {
  * A normal draw-pile win only ever ADDS a card (never removes one from
  * anyone), so it never false-positives here.
  */
+/** Player id each cardId disappeared from between `prev` and `current`'s wonCards snapshots. */
+function findRemovedFromPlayerId(players: RamsesState['players'], prev: Map<PlayerId, Set<string>>, current: Map<PlayerId, Set<string>>): Map<string, PlayerId> {
+  const removedFromPlayerId = new Map<string, PlayerId>();
+  for (const player of players) {
+    const prevIds = prev.get(player.id);
+    if (!prevIds) continue;
+    for (const cardId of prevIds) {
+      if (!current.get(player.id)!.has(cardId)) removedFromPlayerId.set(cardId, player.id);
+    }
+  }
+  return removedFromPlayerId;
+}
+
+/** Human-readable "X drew a card from Y's cards" messages for every cross-player card move this update. */
+function buildCardTransferMessages(players: RamsesState['players'], prev: Map<PlayerId, Set<string>>, removedFromPlayerId: Map<string, PlayerId>): string[] {
+  const messages: string[] = [];
+  for (const player of players) {
+    const prevIds = prev.get(player.id) ?? new Set<string>();
+    for (const card of player.wonCards) {
+      if (prevIds.has(card.id)) continue; // not newly added this update
+      const fromPlayerId = removedFromPlayerId.get(card.id);
+      if (!fromPlayerId || fromPlayerId === player.id) continue; // not a cross-player move
+      const fromPlayer = players.find((p) => p.id === fromPlayerId);
+      if (!fromPlayer) continue;
+      const treasure = getTreasureConfig(card.treasureId);
+      messages.push(`🃏 ${player.name} lapot húzott ${fromPlayer.name} kártyái közül: ${treasure.label} (${card.points} pont)`);
+    }
+  }
+  return messages;
+}
+
 function useCardTransferAnnouncement(state: RamsesState): string | null {
   const [announcement, setAnnouncement] = useState<{ id: number; text: string } | null>(null);
   const prevWonCardIdsRef = useRef<Map<PlayerId, Set<string>> | null>(null);
@@ -228,28 +259,8 @@ function useCardTransferAnnouncement(state: RamsesState): string | null {
     prevWonCardIdsRef.current = current;
     if (!prev) return; // first render — nothing to compare against yet
 
-    const removedFromPlayerId = new Map<string, PlayerId>();
-    for (const player of state.players) {
-      const prevIds = prev.get(player.id);
-      if (!prevIds) continue;
-      for (const cardId of prevIds) {
-        if (!current.get(player.id)!.has(cardId)) removedFromPlayerId.set(cardId, player.id);
-      }
-    }
-
-    const messages: string[] = [];
-    for (const player of state.players) {
-      const prevIds = prev.get(player.id) ?? new Set<string>();
-      for (const card of player.wonCards) {
-        if (prevIds.has(card.id)) continue; // not newly added this update
-        const fromPlayerId = removedFromPlayerId.get(card.id);
-        if (!fromPlayerId || fromPlayerId === player.id) continue; // not a cross-player move
-        const fromPlayer = state.players.find((p) => p.id === fromPlayerId);
-        if (!fromPlayer) continue;
-        const treasure = getTreasureConfig(card.treasureId);
-        messages.push(`🃏 ${player.name} lapot húzott ${fromPlayer.name} kártyái közül: ${treasure.label} (${card.points} pont)`);
-      }
-    }
+    const removedFromPlayerId = findRemovedFromPlayerId(state.players, prev, current);
+    const messages = buildCardTransferMessages(state.players, prev, removedFromPlayerId);
     if (messages.length === 0) return;
 
     idRef.current += 1;
@@ -542,6 +553,62 @@ export interface RamsesGamePageProps {
   includeSpecialCards?: boolean;
 }
 
+// Real playtest report (2026-07-30): "Szeretném, ha a Ramses-ben lenne egy
+// feladás gomb." Only offered during a normal turn (see rules.ts's
+// canForfeit) — never mid-special-card-decision, and never for a spot that
+// isn't actually the local/hot-seat player's own right now.
+function computeCanForfeitNow(state: RamsesState, isMyTurn: boolean, isCurrentPlayerAi: boolean): boolean {
+  return isMyTurn && !isCurrentPlayerAi && canForfeit(state);
+}
+
+function RamsesAnnouncements({
+  special,
+  transfer,
+  turn,
+}: {
+  special: string | null;
+  transfer: string | null;
+  turn: string | null;
+}) {
+  return (
+    <>
+      {special && (
+        <div className={styles.specialAnnouncement} key={special}>
+          {special}
+        </div>
+      )}
+      {transfer && (
+        <div className={styles.transferAnnouncement} key={transfer}>
+          {transfer}
+        </div>
+      )}
+      {turn && (
+        <div className={styles.turnAnnouncement} key={turn}>
+          {turn}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * The normal activeCard OR a special card's own in-progress target (Ajándék/
+ * Kockázat/Sivatagi póker/Fata Morgana) — see getCurrentSearchTarget's doc comment.
+ */
+function RamsesSearchTargetDisplay({ searchTargetId, activeCardObject }: { searchTargetId: string | null; activeCardObject: TreasureCard | null }) {
+  if (!searchTargetId) return null;
+  const config = getTreasureConfig(searchTargetId);
+  return (
+    <RamsesActiveCardDisplay
+      treasureId={config.id}
+      label={config.label}
+      color={config.color}
+      imagePath={config.imagePath}
+      points={activeCardObject?.points ?? null}
+    />
+  );
+}
+
 /**
  * Ramses-0a hot-seat vertical, generalized for Ramses-0b online play,
  * Ramses-0c AI opponents, and the Ramses-0a §8 speciális kártyák kiegészítés
@@ -584,7 +651,8 @@ export function RamsesGamePage({
     [providedTransport, loggedLocalTransport],
   );
   const [state, dispatch] = useGameTransport(transport);
-  useRamsesHotSeatAi(transport, hotSeatAiSlots ?? {});
+  const effectiveHotSeatAiSlots = hotSeatAiSlots ?? {};
+  useRamsesHotSeatAi(transport, effectiveHotSeatAiSlots);
   // `state` here is already MaskedRamsesTransport's output (masked) — safe to
   // publish as-is, same guarantee the rest of this page already relies on.
   useReportFeedbackContext('ramses', state);
@@ -592,7 +660,7 @@ export function RamsesGamePage({
   const slideAnimation = useSlideAnimationOffset(state);
   const specialAnnouncement = useSpecialCardAnnouncement(state);
   const transferAnnouncement = useCardTransferAnnouncement(state);
-  const turnAnnouncement = useTurnStartAnnouncement(state, hotSeatAiSlots ?? {});
+  const turnAnnouncement = useTurnStartAnnouncement(state, effectiveHotSeatAiSlots);
 
   const winners = getWinners(state);
   const scoreboard = getScoreboard(state);
@@ -613,7 +681,6 @@ export function RamsesGamePage({
   // The normal activeCard OR a special card's own in-progress target (Ajándék/
   // Kockázat/Sivatagi póker/Fata Morgana) — see getCurrentSearchTarget's doc comment.
   const searchTargetId = getCurrentSearchTarget(state);
-  const searchTargetConfig = searchTargetId ? getTreasureConfig(searchTargetId) : null;
   const activeCardObject = getCurrentActiveCard(state);
   const drawPileCount = getDrawPileCount(state);
   // Online only (myPlayer is undefined in hot-seat, where it's always "your" turn locally).
@@ -621,12 +688,8 @@ export function RamsesGamePage({
   // Hot-seat only (hotSeatAiSlots is empty in online mode) — the board simply
   // doesn't react while an AI-controlled slot's turn is being decided/applied,
   // same "no reaction, no extra message" principle as the online !isMyTurn gate.
-  const isCurrentPlayerAi = (hotSeatAiSlots ?? {})[currentPlayer.id] !== undefined;
-  // Real playtest report (2026-07-30): "Szeretném, ha a Ramses-ben lenne egy
-  // feladás gomb." Only offered during a normal turn (see rules.ts's
-  // canForfeit) — never mid-special-card-decision, and never for a spot that
-  // isn't actually the local/hot-seat player's own right now.
-  const canForfeitNow = isMyTurn && !isCurrentPlayerAi && canForfeit(state);
+  const isCurrentPlayerAi = effectiveHotSeatAiSlots[currentPlayer.id] !== undefined;
+  const canForfeitNow = computeCanForfeitNow(state, isMyTurn, isCurrentPlayerAi);
 
   const cells: GridBoard3DCell<RamsesCellViewData>[] = state.board.map((cell) => ({
     id: cell.id,
@@ -657,32 +720,10 @@ export function RamsesGamePage({
           background={<RamsesBoardFrame />}
           topDownCamera
         />
-        {specialAnnouncement && (
-          <div className={styles.specialAnnouncement} key={specialAnnouncement}>
-            {specialAnnouncement}
-          </div>
-        )}
-        {transferAnnouncement && (
-          <div className={styles.transferAnnouncement} key={transferAnnouncement}>
-            {transferAnnouncement}
-          </div>
-        )}
-        {turnAnnouncement && (
-          <div className={styles.turnAnnouncement} key={turnAnnouncement}>
-            {turnAnnouncement}
-          </div>
-        )}
+        <RamsesAnnouncements special={specialAnnouncement} transfer={transferAnnouncement} turn={turnAnnouncement} />
         <div className={styles.hud}>
           <p className={styles.turnIndicator}>{currentPlayer.name} köre</p>
-          {searchTargetConfig && (
-            <RamsesActiveCardDisplay
-              treasureId={searchTargetConfig.id}
-              label={searchTargetConfig.label}
-              color={searchTargetConfig.color}
-              imagePath={searchTargetConfig.imagePath}
-              points={activeCardObject?.points ?? null}
-            />
-          )}
+          <RamsesSearchTargetDisplay searchTargetId={searchTargetId} activeCardObject={activeCardObject} />
           <p className={styles.drawPileCount}>{drawPileCount} lap maradt a pakliban</p>
           <ScoreboardList scoreboard={scoreboard} />
           <RamsesForfeitControl canForfeit={canForfeitNow} onForfeit={() => dispatch({ type: 'FORFEIT' })} />

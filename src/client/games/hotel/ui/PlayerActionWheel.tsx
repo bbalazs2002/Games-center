@@ -306,6 +306,77 @@ function AuctionBidPanel({
   );
 }
 
+function lotOrNull(state: HotelState, lotId: string | null | undefined): HotelLot | null {
+  return lotId ? getLot(state, lotId) : null;
+}
+
+function ConstructionSelectionPanel({
+  state,
+  interactive,
+  pending,
+  totalCost,
+  currentPlayerId,
+  onRemove,
+  onCancel,
+  onBuildWithoutPermit,
+  onConfirm,
+}: {
+  state: HotelState;
+  interactive: boolean;
+  pending: ConstructionPlanItem[];
+  totalCost: number;
+  currentPlayerId: string;
+  onRemove: (lotId: string) => void;
+  onCancel: () => void;
+  onBuildWithoutPermit: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className={[styles.selectionPanel, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
+      <h3>Kiválasztott építkezések</h3>
+      <ul>
+        {pending.map((item) => (
+          <li key={item.lotId}>
+            <span>
+              {getLot(state, item.lotId).name}: {describeSelection(item)}
+            </span>
+            <button onClick={() => onRemove(item.lotId)} aria-label="Törlés">
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className={styles.selectionCost}>
+        Össz. költség: {totalCost} (dupla dobásnál: {totalCost * 2})
+      </p>
+      <div className={styles.selectionActions}>
+        <Button variant="secondary" onClick={onCancel}>
+          Mégse
+        </Button>
+        {canBuildWithoutPermit(state, currentPlayerId, pending) && (
+          <Button variant="secondary" onClick={onBuildWithoutPermit}>
+            Építés dobás nélkül
+          </Button>
+        )}
+        <Button onClick={onConfirm}>Építési engedélyt kér</Button>
+      </div>
+    </div>
+  );
+}
+
+function AuctionFactsModal({ lot, open, onClose }: { lot: HotelLot | null; open: boolean; onClose: () => void }) {
+  return (
+    <Modal open={open && lot !== null} onClose={onClose} className={modalTheme.hotelModal}>
+      {lot && (
+        <div className={styles.purchaseConfirm}>
+          <h2>{lot.name}</h2>
+          <HotelLotFacts lot={lot} />
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 /**
  * Floating, collapsible radial action menu for the active player — see
  * docs/hotel-0a-specifikacio.md §5/§9 and assets/Hotel/UI-menu.png for the
@@ -433,13 +504,13 @@ export function PlayerActionWheel({
   // DOUBLE permit-die roll charges this amount twice (a RED roll charges nothing).
   const totalCost = pending.reduce((sum, item) => sum + computeConstructionCost(getLot(state, item.lotId), item), 0);
 
-  const auctionLot = state.pendingAuction ? getLot(state, state.pendingAuction.lotId) : null;
+  const auctionLot = lotOrNull(state, state.pendingAuction?.lotId);
   // Shown BEFORE rolling, so the player can gauge the risk (a fixed die
   // means a fixed range, but which exact outcome charges what wasn't
   // visible before) — a real playtest request (2026-07-30). The final
   // charged amount, AFTER rolling, is covered by DiceHUD's own caption
   // instead (it already shows the roll result itself).
-  const nightsPreviewLot = state.pendingNightsRollLotId ? getLot(state, state.pendingNightsRollLotId) : null;
+  const nightsPreviewLot = lotOrNull(state, state.pendingNightsRollLotId);
 
   return (
     <>
@@ -468,35 +539,17 @@ export function PlayerActionWheel({
           internal scrolling, so a long plan can never grow the PAGE taller
           than the canvas and force a page-level scrollbar. */}
       {pending.length > 0 && (
-        <div className={[styles.selectionPanel, !interactive && styles.readOnly].filter(Boolean).join(' ')}>
-          <h3>Kiválasztott építkezések</h3>
-          <ul>
-            {pending.map((item) => (
-              <li key={item.lotId}>
-                <span>
-                  {getLot(state, item.lotId).name}: {describeSelection(item)}
-                </span>
-                <button onClick={() => removeFromPending(item.lotId)} aria-label="Törlés">
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className={styles.selectionCost}>
-            Össz. költség: {totalCost} (dupla dobásnál: {totalCost * 2})
-          </p>
-          <div className={styles.selectionActions}>
-            <Button variant="secondary" onClick={cancelConstruction}>
-              Mégse
-            </Button>
-            {canBuildWithoutPermit(state, currentPlayer.id, pending) && (
-              <Button variant="secondary" onClick={confirmWithoutPermit}>
-                Építés dobás nélkül
-              </Button>
-            )}
-            <Button onClick={confirmConstruction}>Építési engedélyt kér</Button>
-          </div>
-        </div>
+        <ConstructionSelectionPanel
+          state={state}
+          interactive={interactive}
+          pending={pending}
+          totalCost={totalCost}
+          currentPlayerId={currentPlayer.id}
+          onRemove={removeFromPending}
+          onCancel={cancelConstruction}
+          onBuildWithoutPermit={confirmWithoutPermit}
+          onConfirm={confirmConstruction}
+        />
       )}
       <Modal
         open={forfeitConfirmOpen}
@@ -518,14 +571,7 @@ export function PlayerActionWheel({
         onConfirm={confirmPurchase}
         onCancel={() => setPendingPurchaseLotId(null)}
       />
-      <Modal open={auctionFactsOpen && auctionLot !== null} onClose={() => setAuctionFactsOpen(false)} className={modalTheme.hotelModal}>
-        {auctionLot && (
-          <div className={styles.purchaseConfirm}>
-            <h2>{auctionLot.name}</h2>
-            <HotelLotFacts lot={auctionLot} />
-          </div>
-        )}
-      </Modal>
+      <AuctionFactsModal lot={auctionLot} open={auctionFactsOpen} onClose={() => setAuctionFactsOpen(false)} />
     </>
   );
 }

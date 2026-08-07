@@ -11,7 +11,7 @@ import { MenuNav } from '../../ui-kit/MenuNav';
 import { Modal } from '../../ui-kit/Modal';
 import { Select } from '../../ui-kit/Select';
 import themedModal from '../../ui-kit/themedModalContent.module.css';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth/useAuth';
 import { GAMES_REGISTRY, type GameDescriptor } from '../gamesRegistry';
 import { useGameTheme } from '../useGameTheme';
 import styles from './LobbyPage.module.css';
@@ -199,13 +199,29 @@ function applyBinaryAiOpponentParams(params: URLSearchParams, values: CreateRoom
   if (values.opponentType === 'AI') params.set('aiDifficulty', values.aiDifficulty);
 }
 
+// Each split out to its own function purely to stay under the project's
+// ESLint complexity limit — optional chaining counts toward it same as any
+// other branch, and applyOpponentParams needs one per GameDescriptor.online flag.
+function gameSupportsAiOpponent(game: GameDescriptor | undefined): boolean {
+  return Boolean(game?.online?.supportsAiOpponent);
+}
+function gameSupportsPlayerCount(game: GameDescriptor | undefined): boolean {
+  return Boolean(game?.online?.playerCountRange);
+}
+function gameSupportsAiOpponentCount(game: GameDescriptor | undefined): boolean {
+  return Boolean(game?.online?.supportsAiOpponentCount);
+}
+function gameSupportsSpecialCardsToggle(game: GameDescriptor | undefined): boolean {
+  return Boolean(game?.online?.supportsSpecialCardsToggle);
+}
+
 function applyOpponentParams(params: URLSearchParams, game: GameDescriptor | undefined, values: CreateRoomValues): void {
-  if (game?.online?.supportsAiOpponent) applyBinaryAiOpponentParams(params, values);
-  if (game?.online?.playerCountRange) params.set('playerCount', String(values.playerCount));
-  if (game?.online?.supportsAiOpponentCount) applyAiOpponentCountParams(params, values);
+  if (gameSupportsAiOpponent(game)) applyBinaryAiOpponentParams(params, values);
+  if (gameSupportsPlayerCount(game)) params.set('playerCount', String(values.playerCount));
+  if (gameSupportsAiOpponentCount(game)) applyAiOpponentCountParams(params, values);
   // Only sent when the value deviates from the server's own default (true) —
   // keeps the URL clean for every OTHER game, which doesn't have this concept.
-  if (game?.online?.supportsSpecialCardsToggle && !values.includeSpecialCards) params.set('specialCards', '0');
+  if (gameSupportsSpecialCardsToggle(game) && !values.includeSpecialCards) params.set('specialCards', '0');
 }
 
 function applyPasswordParams(params: URLSearchParams, values: CreateRoomValues): void {

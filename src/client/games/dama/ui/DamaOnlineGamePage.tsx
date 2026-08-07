@@ -11,7 +11,7 @@ import { Button } from '../../../ui-kit/Button';
 import { MenuNav } from '../../../ui-kit/MenuNav';
 import { OnlineStatusScreen } from '../../../ui-kit/OnlineStatusScreen';
 import onlineStatusStyles from '../../../ui-kit/OnlineStatusScreen.module.css';
-import { useAuth } from '../../../shell/auth/AuthContext';
+import { useAuth } from '../../../shell/auth/useAuth';
 import type { DamaAction } from '@shared/games/dama/engine/actions';
 import { createInitialState } from '@shared/games/dama/engine/initialState';
 import type { DamaState, Player } from '@shared/games/dama/engine/state';

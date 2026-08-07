@@ -39,6 +39,27 @@ function placeholderPlayerNames(count: number): string[] {
   return Array.from({ length: count }, (_, i) => `${i + 1}. játékos`);
 }
 
+function isValidRamsesActionShape(candidate: Record<string, unknown>): boolean {
+  switch (candidate.type) {
+    case 'SLIDE_PYRAMID':
+      return typeof candidate.fromCellId === 'string';
+    case 'NAME_GIFT_TARGET':
+      return typeof candidate.treasureId === 'string';
+    case 'NAME_RISK_TREASURES':
+      return (
+        Array.isArray(candidate.treasureIds) &&
+        candidate.treasureIds.length === 2 &&
+        candidate.treasureIds.every((id) => typeof id === 'string')
+      );
+    case 'NAME_POKER_CHALLENGE':
+      return typeof candidate.treasureId === 'string' && typeof candidate.targetPlayerId === 'string';
+    case 'FORFEIT':
+      return true;
+    default:
+      return false;
+  }
+}
+
 export class RamsesRoom extends GameRoom<RamsesState, RamsesAction, PlayerId, RamsesStateSchema> {
   protected readonly gameType = 'ramses';
   protected reducer = reducer;
@@ -83,25 +104,7 @@ export class RamsesRoom extends GameRoom<RamsesState, RamsesAction, PlayerId, Ra
 
   protected isValidAction(action: unknown): action is RamsesAction {
     if (typeof action !== 'object' || action === null) return false;
-    const candidate = action as Record<string, unknown>;
-    switch (candidate.type) {
-      case 'SLIDE_PYRAMID':
-        return typeof candidate.fromCellId === 'string';
-      case 'NAME_GIFT_TARGET':
-        return typeof candidate.treasureId === 'string';
-      case 'NAME_RISK_TREASURES':
-        return (
-          Array.isArray(candidate.treasureIds) &&
-          candidate.treasureIds.length === 2 &&
-          candidate.treasureIds.every((id) => typeof id === 'string')
-        );
-      case 'NAME_POKER_CHALLENGE':
-        return typeof candidate.treasureId === 'string' && typeof candidate.targetPlayerId === 'string';
-      case 'FORFEIT':
-        return true;
-      default:
-        return false;
-    }
+    return isValidRamsesActionShape(action as Record<string, unknown>);
   }
 
   /**

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../../ui-kit/Button';
 import { MenuNav } from '../../ui-kit/MenuNav';
-import { useAuth } from './AuthContext';
+import { useAuth } from './useAuth';
 import styles from './LoginPage.module.css';
 
 export function LoginPage() {

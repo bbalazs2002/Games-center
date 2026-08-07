@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { DEFAULT_SERVER_URL } from '../core/serverUrl';
-import { useAuth } from '../shell/auth/AuthContext';
+import { useAuth } from '../shell/auth/useAuth';
 import { useGameTheme } from '../shell/useGameTheme';
 import { Button } from './Button';
-import { useFeedbackGameContext } from './FeedbackContext';
+import { useFeedbackGameContext } from './useFeedbackContext';
 import { Modal } from './Modal';
 import styles from './FeedbackModal.module.css';
 import themedModal from './themedModalContent.module.css';

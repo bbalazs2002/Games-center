@@ -41,15 +41,24 @@ export interface DeckValidationResult {
  * from" separation as every other game on this platform.
  */
 export function validateDeckDraft(draft: GwentDeckDraft): DeckValidationResult {
-  const errors: string[] = [];
+  const errors: string[] = [...validateLeaderChoice(draft)];
+  const { nonHeroUnitCount, totalCardCount } = tallyCardCounts(draft, errors);
 
-  const leader = tryGetLeaderDef(draft.leaderId);
-  if (!leader) {
-    errors.push('Nincs kiválasztott vezér.');
-  } else if (leader.faction !== draft.faction) {
-    errors.push('A választott vezér nem a választott frakcióhoz tartozik.');
+  if (nonHeroUnitCount < MIN_NON_HERO_UNIT_CARDS) {
+    errors.push(`Legalább ${MIN_NON_HERO_UNIT_CARDS} nem-Hero egységkártya szükséges (jelenleg: ${nonHeroUnitCount}).`);
   }
 
+  return { valid: errors.length === 0, nonHeroUnitCount, totalCardCount, errors };
+}
+
+function validateLeaderChoice(draft: GwentDeckDraft): string[] {
+  const leader = tryGetLeaderDef(draft.leaderId);
+  if (!leader) return ['Nincs kiválasztott vezér.'];
+  if (leader.faction !== draft.faction) return ['A választott vezér nem a választott frakcióhoz tartozik.'];
+  return [];
+}
+
+function tallyCardCounts(draft: GwentDeckDraft, errors: string[]): { nonHeroUnitCount: number; totalCardCount: number } {
   let nonHeroUnitCount = 0;
   let totalCardCount = 0;
   for (const [cardId, count] of Object.entries(draft.cardCounts)) {
@@ -69,12 +78,7 @@ export function validateDeckDraft(draft: GwentDeckDraft): DeckValidationResult {
     totalCardCount += count;
     if (def.kind === 'Unit' && !isHeroCard(def)) nonHeroUnitCount += count;
   }
-
-  if (nonHeroUnitCount < MIN_NON_HERO_UNIT_CARDS) {
-    errors.push(`Legalább ${MIN_NON_HERO_UNIT_CARDS} nem-Hero egységkártya szükséges (jelenleg: ${nonHeroUnitCount}).`);
-  }
-
-  return { valid: errors.length === 0, nonHeroUnitCount, totalCardCount, errors };
+  return { nonHeroUnitCount, totalCardCount };
 }
 
 export function cardsForFaction(faction: Faction): CardDef[] {

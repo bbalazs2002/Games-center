@@ -281,21 +281,29 @@ function applyPlayCard(state: GwentState, action: Extract<GwentAction, { type: '
     next = updateBoardRow(next, playerId, chosenRow as Row, { hornActive: true });
     next = placeCardOnRow(next, playerId, chosenRow as Row, instance);
   } else if (def.kind === 'Scorch') {
-    const targets: RowTarget[] = next.players.flatMap((p) => ROWS.map((row) => ({ playerId: p.id, row })));
-    const result = destroyStrongestAcross(next, targets);
-    next = appendLog(result.state, { type: 'SCORCH_RESOLVED', playerId, destroyedInstanceIds: result.destroyedInstanceIds });
-    for (const replacement of result.cowReplacements) {
-      next = appendLog(next, { type: 'COW_REPLACED', playerId: replacement.playerId, row: replacement.row, newInstanceId: replacement.newInstanceId });
-    }
-    next = updatePlayer(next, playerId, { discard: [...getPlayer(next, playerId).discard, instance] });
+    next = resolveScorchCard(next, playerId, instance);
   } else if (def.kind === 'Weather') {
-    const weatherRow = def.weatherRow ?? 'AllRows';
-    next = applyWeatherEffect(next, weatherRow);
-    next = appendLog(next, weatherRow === 'AllRows' ? { type: 'WEATHER_CLEARED', playerId } : { type: 'WEATHER_APPLIED', playerId, row: weatherRow });
-    next = updatePlayer(next, playerId, { discard: [...getPlayer(next, playerId).discard, instance] });
+    next = resolveWeatherCard(next, playerId, def, instance);
   }
 
   return advanceTurnUnlessRoundOver(next, playerId);
+}
+
+function resolveScorchCard(state: GwentState, playerId: PlayerId, instance: CardInstance): GwentState {
+  const targets: RowTarget[] = state.players.flatMap((p) => ROWS.map((row) => ({ playerId: p.id, row })));
+  const result = destroyStrongestAcross(state, targets);
+  let next = appendLog(result.state, { type: 'SCORCH_RESOLVED', playerId, destroyedInstanceIds: result.destroyedInstanceIds });
+  for (const replacement of result.cowReplacements) {
+    next = appendLog(next, { type: 'COW_REPLACED', playerId: replacement.playerId, row: replacement.row, newInstanceId: replacement.newInstanceId });
+  }
+  return updatePlayer(next, playerId, { discard: [...getPlayer(next, playerId).discard, instance] });
+}
+
+function resolveWeatherCard(state: GwentState, playerId: PlayerId, def: CardDef, instance: CardInstance): GwentState {
+  const weatherRow = def.weatherRow ?? 'AllRows';
+  let next = applyWeatherEffect(state, weatherRow);
+  next = appendLog(next, weatherRow === 'AllRows' ? { type: 'WEATHER_CLEARED', playerId } : { type: 'WEATHER_APPLIED', playerId, row: weatherRow });
+  return updatePlayer(next, playerId, { discard: [...getPlayer(next, playerId).discard, instance] });
 }
 
 // --- Pass / round resolution ---
