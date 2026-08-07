@@ -1,6 +1,6 @@
 import { assetUrl } from '../../../core/assetUrl';
-import { cardsForFaction, isHeroCard, type DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
-import type { CardDef, CardKind, Faction, Row, UnitAbility } from '../../../../shared/games/gwent/engine/types';
+import { cardsForFaction, isHeroCard, type DeckCardCounts } from '@shared/games/gwent/engine/deckRules';
+import type { CardDef, CardKind, Faction, Row, UnitAbility } from '@shared/games/gwent/engine/types';
 
 export const ROW_LABELS_HU: Record<Row, string> = {
   Melee: 'Közelharc',

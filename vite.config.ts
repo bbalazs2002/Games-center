@@ -1,5 +1,9 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 // Production deploys serve the app under a subpath (e.g. domain.hu/game-center/,
 // see docs/deployment-specifikacio.md §8) — `base` makes every built asset URL
@@ -11,6 +15,18 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     base: env.VITE_BASE_PATH || '/',
+    // Mirrors the tsconfig.json/tsconfig.server.json `paths` — Vite doesn't
+    // read tsconfig `paths` itself, so the mapping is duplicated here. Also
+    // picked up by Vitest (no separate vitest.config.ts, so it inherits this
+    // file's `resolve`), which is why @server is defined even though the
+    // client bundle itself never reaches into it.
+    resolve: {
+      alias: {
+        '@client': path.resolve(rootDir, 'src/client'),
+        '@server': path.resolve(rootDir, 'src/server'),
+        '@shared': path.resolve(rootDir, 'src/shared'),
+      },
+    },
     define: {
       // Bridges the plain (non-VITE_-prefixed) `ENABLED_GAMES` build-time env
       // var into the client bundle — deliberately a single source of truth

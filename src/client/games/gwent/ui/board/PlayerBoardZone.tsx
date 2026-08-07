@@ -1,7 +1,7 @@
-import { computeSideTotal, getCurrentPlayer } from '../../../../../shared/games/gwent/engine/rules';
-import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
-import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
-import type { Row } from '../../../../../shared/games/gwent/engine/types';
+import { computeSideTotal, getCurrentPlayer } from '@shared/games/gwent/engine/rules';
+import type { GwentAction } from '@shared/games/gwent/engine/actions';
+import type { CardInstance, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
+import type { Row } from '@shared/games/gwent/engine/types';
 import { BoardRow } from './BoardRow';
 import { DeckPile } from './DeckPile';
 import { DiscardPile } from './DiscardPile';

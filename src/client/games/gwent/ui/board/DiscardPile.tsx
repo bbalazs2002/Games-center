@@ -1,6 +1,6 @@
 import { assetUrl } from '../../../../core/assetUrl';
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
-import type { CardInstance } from '../../../../../shared/games/gwent/engine/state';
+import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
+import type { CardInstance } from '@shared/games/gwent/engine/state';
 import { pickVariant } from './cardArtVariant';
 import { useCardFlight } from './useCardFlight';
 import styles from './DiscardPile.module.css';

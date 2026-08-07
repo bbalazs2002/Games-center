@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { Room, RoomAvailable } from 'colyseus.js';
-import { generateRoomPassword } from '../../../shared/core/generateRoomPassword';
-import type { RoomMetadata } from '../../../shared/core/RoomMetadata';
+import { generateRoomPassword } from '@shared/core/generateRoomPassword';
+import type { RoomMetadata } from '@shared/core/RoomMetadata';
 import { colyseusClient } from '../../core/transport/colyseusClient';
 import { NEW_ROOM_PARAM } from '../../core/transport/onlineRoomConstants';
 import { Button } from '../../ui-kit/Button';

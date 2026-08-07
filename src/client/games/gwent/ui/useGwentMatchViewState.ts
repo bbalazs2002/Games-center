@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { expectedViewerId, toPublicGwentState } from '../../../../shared/games/gwent/engine/rules';
-import type { CardInstance, GwentLogEntry, GwentState, PlayerId } from '../../../../shared/games/gwent/engine/state';
+import { expectedViewerId, toPublicGwentState } from '@shared/games/gwent/engine/rules';
+import type { CardInstance, GwentLogEntry, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
 
 /**
  * Gwent-0c: a played/drawn/destroyed card's flight animation (cardFlight.tsx,

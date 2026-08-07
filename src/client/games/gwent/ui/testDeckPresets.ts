@@ -1,5 +1,5 @@
-import { cardsForFaction, type DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
-import type { Faction } from '../../../../shared/games/gwent/engine/types';
+import { cardsForFaction, type DeckCardCounts } from '@shared/games/gwent/engine/deckRules';
+import type { Faction } from '@shared/games/gwent/engine/types';
 
 /**
  * Dev/teszt-kényelmi funkció (2026-08-05, a felhasználó kérésére): egy

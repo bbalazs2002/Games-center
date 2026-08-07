@@ -4,7 +4,7 @@ import formControls from '../../../ui-kit/FormControls.module.css';
 import { MenuNav } from '../../../ui-kit/MenuNav';
 import { Select } from '../../../ui-kit/Select';
 import { useGameTheme } from '../../../shell/useGameTheme';
-import type { RamsesAiDifficulty } from '../../../../shared/games/ramses/ai';
+import type { RamsesAiDifficulty } from '@shared/games/ramses/ai';
 import { RamsesGamePage } from './RamsesGamePage';
 import type { HotSeatAiSlots } from './useRamsesHotSeatAi';
 import styles from './RamsesSetupPage.module.css';

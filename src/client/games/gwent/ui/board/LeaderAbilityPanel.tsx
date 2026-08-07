@@ -3,19 +3,19 @@ import { assetUrl } from '../../../../core/assetUrl';
 import { Button } from '../../../../ui-kit/Button';
 import { CardCarouselModal, type CarouselEntry } from './CardCarouselModal';
 import { CardTile } from './CardTile';
-import { getLeaderDef } from '../../../../../shared/games/gwent/engine/leaderDefs';
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
-import { canActivateLeaderAbility } from '../../../../../shared/games/gwent/engine/leaderAbilities';
-import { getOpponent, getPlayer } from '../../../../../shared/games/gwent/engine/rules';
+import { getLeaderDef } from '@shared/games/gwent/engine/leaderDefs';
+import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
+import { canActivateLeaderAbility } from '@shared/games/gwent/engine/leaderAbilities';
+import { getOpponent, getPlayer } from '@shared/games/gwent/engine/rules';
 import {
   EMHYR_THE_RELENTLESS,
   EREDIN_BRINGER_OF_DEATH,
   EREDIN_COMMANDER_OF_THE_RED_RIDERS,
   EREDIN_DESTROYER_OF_WORLDS,
-} from '../../../../../shared/games/gwent/engine/leaderConstants';
-import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
-import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
-import type { LeaderDef } from '../../../../../shared/games/gwent/engine/types';
+} from '@shared/games/gwent/engine/leaderConstants';
+import type { GwentAction } from '@shared/games/gwent/engine/actions';
+import type { CardInstance, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
+import type { LeaderDef } from '@shared/games/gwent/engine/types';
 import styles from './matchBoard.module.css';
 
 export interface LeaderAbilityPanelProps {

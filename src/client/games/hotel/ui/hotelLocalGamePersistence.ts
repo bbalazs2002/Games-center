@@ -1,4 +1,4 @@
-import type { HotelState } from '../../../../shared/games/hotel/engine/state';
+import type { HotelState } from '@shared/games/hotel/engine/state';
 import type { HotSeatAiSlots } from './useHotSeatAi';
 
 /**

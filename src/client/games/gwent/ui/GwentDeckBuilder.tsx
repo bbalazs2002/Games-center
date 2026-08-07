@@ -1,13 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { assetUrl } from '../../../core/assetUrl';
-import { getLeaderDef, LEADER_DEFS } from '../../../../shared/games/gwent/engine/leaderDefs';
-import type { Faction } from '../../../../shared/games/gwent/engine/types';
+import { getLeaderDef, LEADER_DEFS } from '@shared/games/gwent/engine/leaderDefs';
+import type { Faction } from '@shared/games/gwent/engine/types';
 import {
   MIN_NON_HERO_UNIT_CARDS,
   validateDeckDraft,
   type DeckCardCounts,
   type GwentDeckDraft,
-} from '../../../../shared/games/gwent/engine/deckRules';
+} from '@shared/games/gwent/engine/deckRules';
 import { computeDeckStats } from './cardDisplay';
 import { loadPersistedGwentDeck } from './gwentDeckPersistence';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';

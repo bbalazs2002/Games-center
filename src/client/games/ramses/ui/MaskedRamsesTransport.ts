@@ -1,7 +1,7 @@
 import type { GameTransport } from '../../../core/transport/GameTransport';
-import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
-import { toPublicRamsesState } from '../../../../shared/games/ramses/engine/rules';
-import type { RamsesState } from '../../../../shared/games/ramses/engine/state';
+import type { RamsesAction } from '@shared/games/ramses/engine/actions';
+import { toPublicRamsesState } from '@shared/games/ramses/engine/rules';
+import type { RamsesState } from '@shared/games/ramses/engine/state';
 
 /**
  * Wraps ANY RamsesState transport (local or networked) so getState()/subscribe()

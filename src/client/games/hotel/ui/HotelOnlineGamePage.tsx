@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { HotelStateSchema } from '../../../../shared/games/hotel/colyseus/HotelStateSchema';
-import { decodeHotelStateSchema } from '../../../../shared/games/hotel/colyseus/hotelStateCodec';
-import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
-import { createInitialState } from '../../../../shared/games/hotel/engine/initialState';
-import type { HotelState, PlayerId } from '../../../../shared/games/hotel/engine/state';
+import { HotelStateSchema } from '@shared/games/hotel/colyseus/HotelStateSchema';
+import { decodeHotelStateSchema } from '@shared/games/hotel/colyseus/hotelStateCodec';
+import type { HotelAction } from '@shared/games/hotel/engine/actions';
+import { createInitialState } from '@shared/games/hotel/engine/initialState';
+import type { HotelState, PlayerId } from '@shared/games/hotel/engine/state';
 import { NEW_ROOM_PARAM } from '../../../core/transport/onlineRoomConstants';
 import {
   useOnlineGameRoom,

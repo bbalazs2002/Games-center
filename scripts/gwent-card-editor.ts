@@ -34,12 +34,12 @@ import { networkInterfaces } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type Request, type Response } from 'express';
-import { CARD_DEFS } from '../src/shared/games/gwent/engine/cardDefs';
-import { CARD_TEXT_HU, LEADER_TEXT_HU } from '../src/shared/games/gwent/engine/cardTextTranslations';
-import { LEADER_DEFS } from '../src/shared/games/gwent/engine/leaderDefs';
-import type { CardDef, Faction, LeaderDef } from '../src/shared/games/gwent/engine/types';
-import { ABILITY_LABELS_HU, CARD_KIND_LABELS_HU, cardMechanicLine, cardMechanicTag, rowLabel } from '../src/client/games/gwent/ui/cardDisplay';
-import { factionLabel } from '../src/client/games/gwent/ui/factionDisplay';
+import { CARD_DEFS } from '@shared/games/gwent/engine/cardDefs';
+import { CARD_TEXT_HU, LEADER_TEXT_HU } from '@shared/games/gwent/engine/cardTextTranslations';
+import { LEADER_DEFS } from '@shared/games/gwent/engine/leaderDefs';
+import type { CardDef, Faction, LeaderDef } from '@shared/games/gwent/engine/types';
+import { ABILITY_LABELS_HU, CARD_KIND_LABELS_HU, cardMechanicLine, cardMechanicTag, rowLabel } from '@client/games/gwent/ui/cardDisplay';
+import { factionLabel } from '@client/games/gwent/ui/factionDisplay';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ENGINE_DIR = join(repoRoot, 'src/shared/games/gwent/engine');

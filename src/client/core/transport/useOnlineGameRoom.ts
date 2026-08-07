@@ -8,7 +8,7 @@ import type { Room } from 'colyseus.js';
 // param stays structurally assignable to what Client.create/joinById/reconnect expect.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SchemaConstructor<T> = new (...args: any[]) => T;
-import type { GameRoomState } from '../../../shared/core/GameRoomState';
+import type { GameRoomState } from '@shared/core/GameRoomState';
 import { ColyseusGameTransport } from './ColyseusGameTransport';
 import { colyseusClient } from './colyseusClient';
 import { NEW_ROOM_PARAM } from './onlineRoomConstants';

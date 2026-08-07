@@ -1,16 +1,16 @@
 import type { Client } from 'colyseus';
 import type { AuthPayload } from '../../auth/jwt';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
-import { OpaqueGameStateSchema } from '../../../shared/core/OpaqueGameStateSchema';
-import type { GwentAction } from '../../../shared/games/gwent/engine/actions';
-import { validateDeckDraft } from '../../../shared/games/gwent/engine/deckRules';
-import { createInitialState, createPlaceholderGwentState, type GwentPlayerConfig } from '../../../shared/games/gwent/engine/initialState';
-import { canActivateLeaderAbility } from '../../../shared/games/gwent/engine/leaderAbilities';
-import { EREDIN_BRINGER_OF_DEATH, EREDIN_COMMANDER_OF_THE_RED_RIDERS } from '../../../shared/games/gwent/engine/leaderConstants';
-import { reducer } from '../../../shared/games/gwent/engine/reducer';
-import { getPlayer, toPublicGwentState } from '../../../shared/games/gwent/engine/rules';
-import type { GwentState, PlayerId } from '../../../shared/games/gwent/engine/state';
-import type { Row } from '../../../shared/games/gwent/engine/types';
+import { OpaqueGameStateSchema } from '@shared/core/OpaqueGameStateSchema';
+import type { GwentAction } from '@shared/games/gwent/engine/actions';
+import { validateDeckDraft } from '@shared/games/gwent/engine/deckRules';
+import { createInitialState, createPlaceholderGwentState, type GwentPlayerConfig } from '@shared/games/gwent/engine/initialState';
+import { canActivateLeaderAbility } from '@shared/games/gwent/engine/leaderAbilities';
+import { EREDIN_BRINGER_OF_DEATH, EREDIN_COMMANDER_OF_THE_RED_RIDERS } from '@shared/games/gwent/engine/leaderConstants';
+import { reducer } from '@shared/games/gwent/engine/reducer';
+import { getPlayer, toPublicGwentState } from '@shared/games/gwent/engine/rules';
+import type { GwentState, PlayerId } from '@shared/games/gwent/engine/state';
+import type { Row } from '@shared/games/gwent/engine/types';
 
 /** The only 2 leader abilities that legitimately need to "search" the deck — see toPublicGwentState's doc comment and GwentRoom.requestDeckReveal. */
 const DECK_SEARCH_ABILITIES = new Set([EREDIN_COMMANDER_OF_THE_RED_RIDERS, EREDIN_BRINGER_OF_DEATH]);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { HotelState } from '../../../../shared/games/hotel/engine/state';
+import type { HotelState } from '@shared/games/hotel/engine/state';
 import { formatLogEntry } from './formatLogEntry';
 import styles from './GameLogPanel.module.css';
 

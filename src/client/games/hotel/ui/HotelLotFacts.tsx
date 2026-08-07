@@ -1,5 +1,5 @@
-import type { HotelLot } from '../../../../shared/games/hotel/engine/state';
-import { computeLotPurchasePrice } from '../../../../shared/games/hotel/engine/rules';
+import type { HotelLot } from '@shared/games/hotel/engine/state';
+import { computeLotPurchasePrice } from '@shared/games/hotel/engine/rules';
 import { propertyCardUrl } from './hotelModelAssets';
 import styles from './HotelLotFacts.module.css';
 

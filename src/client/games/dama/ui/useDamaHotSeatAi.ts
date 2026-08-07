@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { chooseDamaAiAction, DAMA_AI_MIN_THINK_DELAY_MS, type DamaAiDifficulty } from '../../../../shared/games/dama/ai';
-import type { DamaAction } from '../../../../shared/games/dama/engine/actions';
-import type { DamaState, Player } from '../../../../shared/games/dama/engine/state';
+import { chooseDamaAiAction, DAMA_AI_MIN_THINK_DELAY_MS, type DamaAiDifficulty } from '@shared/games/dama/ai';
+import type { DamaAction } from '@shared/games/dama/engine/actions';
+import type { DamaState, Player } from '@shared/games/dama/engine/state';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 
 /** Which of the two fixed LIGHT/DARK slots (if any) is AI-controlled, and at what difficulty — built once at game start in DamaSetupPage, empty for an all-human game. */

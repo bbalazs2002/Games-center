@@ -3,7 +3,7 @@ import { Button } from '../../../ui-kit/Button';
 import { MenuNav } from '../../../ui-kit/MenuNav';
 import { Select } from '../../../ui-kit/Select';
 import theme from '../../../renderers/grid-2d/clusterBTheme.module.css';
-import type { DamaAiDifficulty } from '../../../../shared/games/dama/ai';
+import type { DamaAiDifficulty } from '@shared/games/dama/ai';
 import { DamaGamePage } from './DamaGamePage';
 import type { HotSeatAiSlots } from './useDamaHotSeatAi';
 import styles from './DamaSetupPage.module.css';

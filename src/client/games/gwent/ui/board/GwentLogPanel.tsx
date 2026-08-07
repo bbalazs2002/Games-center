@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { GwentState } from '../../../../../shared/games/gwent/engine/state';
+import type { GwentState } from '@shared/games/gwent/engine/state';
 import { formatGwentLogEntry } from './formatGwentLogEntry';
 import styles from './GwentLogPanel.module.css';
 

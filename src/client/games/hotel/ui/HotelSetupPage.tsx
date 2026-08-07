@@ -4,7 +4,7 @@ import formControls from '../../../ui-kit/FormControls.module.css';
 import { MenuNav } from '../../../ui-kit/MenuNav';
 import { Select } from '../../../ui-kit/Select';
 import { useGameTheme } from '../../../shell/useGameTheme';
-import type { HotelAiDifficulty } from '../../../../shared/games/hotel/ai';
+import type { HotelAiDifficulty } from '@shared/games/hotel/ai';
 import { HotelGamePage } from './HotelGamePage';
 import { clearPersistedHotelLocalGame, loadPersistedHotelLocalGame, type PersistedHotelLocalGame } from './hotelLocalGamePersistence';
 import type { HotSeatAiSlots } from './useHotSeatAi';

@@ -1,5 +1,5 @@
 import { assetUrl } from '../../../../core/assetUrl';
-import { STARTING_LIVES } from '../../../../../shared/games/gwent/engine/initialState';
+import { STARTING_LIVES } from '@shared/games/gwent/engine/initialState';
 import styles from './LifeTokens.module.css';
 
 const CRYSTAL_ICON_PATH = assetUrl('/assets/gwent/icons/token-crystal.png');

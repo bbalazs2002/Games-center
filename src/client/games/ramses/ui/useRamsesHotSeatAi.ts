@@ -7,9 +7,9 @@ import {
   RAMSES_AI_MOVE_DELAY_MS,
   type RamsesAiDifficulty,
   type RevealMemory,
-} from '../../../../shared/games/ramses/ai';
-import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
-import type { PlayerId, RamsesState } from '../../../../shared/games/ramses/engine/state';
+} from '@shared/games/ramses/ai';
+import type { RamsesAction } from '@shared/games/ramses/engine/actions';
+import type { PlayerId, RamsesState } from '@shared/games/ramses/engine/state';
 
 /** Which hot-seat player slots are AI-controlled, and at what difficulty — built once at game start in RamsesSetupPage, empty for an all-human game. */
 export type HotSeatAiSlots = Partial<Record<PlayerId, RamsesAiDifficulty>>;

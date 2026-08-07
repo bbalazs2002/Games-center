@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { Button } from '../../../ui-kit/Button';
 import { Select } from '../../../ui-kit/Select';
-import type { CardDef, Faction } from '../../../../shared/games/gwent/engine/types';
-import { cardsForFaction, validateDeckDraft, type DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
-import type { CardInstance } from '../../../../shared/games/gwent/engine/state';
+import type { CardDef, Faction } from '@shared/games/gwent/engine/types';
+import { cardsForFaction, validateDeckDraft, type DeckCardCounts } from '@shared/games/gwent/engine/deckRules';
+import type { CardInstance } from '@shared/games/gwent/engine/state';
 import { CARD_SORT_OPTIONS, rowBadge, sortCards, type CardSortKey } from './cardDisplay';
 import { EyeIcon } from './board/boardIcons';
 import { CardTile } from './board/CardTile';

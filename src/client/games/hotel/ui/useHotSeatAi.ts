@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
-import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
-import type { HotelState, PlayerId } from '../../../../shared/games/hotel/engine/state';
-import { chooseHotelAiAction, HOTEL_AI_MOVE_DELAY_MS, type HotelAiDifficulty } from '../../../../shared/games/hotel/ai';
+import type { HotelAction } from '@shared/games/hotel/engine/actions';
+import type { HotelState, PlayerId } from '@shared/games/hotel/engine/state';
+import { chooseHotelAiAction, HOTEL_AI_MOVE_DELAY_MS, type HotelAiDifficulty } from '@shared/games/hotel/ai';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 
 /** Which hot-seat player slots are AI-controlled, and at what difficulty — built once at game start in HotelSetupPage, empty for an all-human game. */

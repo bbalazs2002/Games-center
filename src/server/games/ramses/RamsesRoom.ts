@@ -8,15 +8,15 @@ import {
   RAMSES_AI_MOVE_DELAY_MS,
   type RamsesAiDifficulty,
   type RevealMemory,
-} from '../../../shared/games/ramses/ai';
-import { RamsesStateSchema } from '../../../shared/games/ramses/colyseus/RamsesStateSchema';
-import { applyRamsesStateToSchema } from '../../../shared/games/ramses/colyseus/ramsesStateCodec';
-import type { RamsesAction } from '../../../shared/games/ramses/engine/actions';
-import { createInitialState } from '../../../shared/games/ramses/engine/initialState';
-import { reducer } from '../../../shared/games/ramses/engine/reducer';
-import { renamePlayer, toPublicRamsesState } from '../../../shared/games/ramses/engine/rules';
-import { getCurrentPlayer } from '../../../shared/games/ramses/engine/selectors';
-import type { PlayerId, RamsesState } from '../../../shared/games/ramses/engine/state';
+} from '@shared/games/ramses/ai';
+import { RamsesStateSchema } from '@shared/games/ramses/colyseus/RamsesStateSchema';
+import { applyRamsesStateToSchema } from '@shared/games/ramses/colyseus/ramsesStateCodec';
+import type { RamsesAction } from '@shared/games/ramses/engine/actions';
+import { createInitialState } from '@shared/games/ramses/engine/initialState';
+import { reducer } from '@shared/games/ramses/engine/reducer';
+import { renamePlayer, toPublicRamsesState } from '@shared/games/ramses/engine/rules';
+import { getCurrentPlayer } from '@shared/games/ramses/engine/selectors';
+import type { PlayerId, RamsesState } from '@shared/games/ramses/engine/state';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 5;

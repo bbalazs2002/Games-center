@@ -7,15 +7,15 @@ import { useReportFeedbackContext } from '../../../ui-kit/FeedbackContext';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { GridBoard2D, type GridPosition } from '../../../renderers/grid-2d/GridBoard2D';
 import theme from '../../../renderers/grid-2d/clusterBTheme.module.css';
-import type { DamaAction } from '../../../../shared/games/dama/engine/actions';
-import { createInitialState } from '../../../../shared/games/dama/engine/initialState';
-import { reducer } from '../../../../shared/games/dama/engine/reducer';
+import type { DamaAction } from '@shared/games/dama/engine/actions';
+import { createInitialState } from '@shared/games/dama/engine/initialState';
+import { reducer } from '@shared/games/dama/engine/reducer';
 import {
   getMovablePositions,
   getValidMoves,
   getWinner,
-} from '../../../../shared/games/dama/engine/selectors';
-import type { DamaState, Piece, Player } from '../../../../shared/games/dama/engine/state';
+} from '@shared/games/dama/engine/selectors';
+import type { DamaState, Piece, Player } from '@shared/games/dama/engine/state';
 import { useDamaHotSeatAi, type HotSeatAiSlots } from './useDamaHotSeatAi';
 import styles from './DamaGamePage.module.css';
 

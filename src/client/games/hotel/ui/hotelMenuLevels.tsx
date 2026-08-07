@@ -1,14 +1,14 @@
 import { Banknote, Dice5, Flag, Gavel, Hammer, Milestone, Moon, ShoppingCart, Trees } from 'lucide-react';
-import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
+import type { HotelAction } from '@shared/games/hotel/engine/actions';
 import {
   computeAuctionOpeningBid,
   computeLotPurchasePrice,
   getConstructionEligibleLots,
   getCurrentPlayer,
   getNextConstructionStep,
-} from '../../../../shared/games/hotel/engine/rules';
-import { getValidActions } from '../../../../shared/games/hotel/engine/selectors';
-import type { ConstructionPlanItem, HotelLot, HotelState } from '../../../../shared/games/hotel/engine/state';
+} from '@shared/games/hotel/engine/rules';
+import { getValidActions } from '@shared/games/hotel/engine/selectors';
+import type { ConstructionPlanItem, HotelLot, HotelState } from '@shared/games/hotel/engine/state';
 import type { WheelMenuSlice } from '../../../ui-kit/WheelMenu';
 
 export type Dispatch = (action: HotelAction) => void;

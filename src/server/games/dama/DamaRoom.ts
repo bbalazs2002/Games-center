@@ -1,14 +1,14 @@
-import { OpaqueGameStateSchema } from '../../../shared/core/OpaqueGameStateSchema';
+import { OpaqueGameStateSchema } from '@shared/core/OpaqueGameStateSchema';
 import {
   chooseDamaAiAction,
   DAMA_AI_MIN_THINK_DELAY_MS,
   isDamaAiDifficulty,
   type DamaAiDifficulty,
-} from '../../../shared/games/dama/ai';
-import type { DamaAction } from '../../../shared/games/dama/engine/actions';
-import { createInitialState } from '../../../shared/games/dama/engine/initialState';
-import { reducer } from '../../../shared/games/dama/engine/reducer';
-import type { DamaState, Player, Position } from '../../../shared/games/dama/engine/state';
+} from '@shared/games/dama/ai';
+import type { DamaAction } from '@shared/games/dama/engine/actions';
+import { createInitialState } from '@shared/games/dama/engine/initialState';
+import { reducer } from '@shared/games/dama/engine/reducer';
+import type { DamaState, Player, Position } from '@shared/games/dama/engine/state';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 
 function isPosition(value: unknown): value is Position {

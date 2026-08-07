@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNewItemsSince } from '../../../core/useNewItemsSince';
-import type { LogEntry, PlayerId } from '../../../../shared/games/hotel/engine/state';
+import type { LogEntry, PlayerId } from '@shared/games/hotel/engine/state';
 
 export const FLOURISH_LIFETIME_MS = 1200;
 

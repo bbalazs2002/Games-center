@@ -8,8 +8,8 @@
 // See docs/dama-0d-ai-specifikacio.md §13 (Dáma-0d.2). No lobby UI, no
 // GameRoom/Colyseus, no database — standalone, and (for the same reason) no
 // artificial "AI gondolkodik" delay, see simulate.ts's own note.
-import type { DamaAiDifficulty } from '../src/shared/games/dama/ai';
-import { simulateDamaGame, type SimulationConfig, type SimulationResult } from '../src/shared/games/dama/ai/simulate';
+import type { DamaAiDifficulty } from '@shared/games/dama/ai';
+import { simulateDamaGame, type SimulationConfig, type SimulationResult } from '@shared/games/dama/ai/simulate';
 
 interface Matchup {
   label: string;

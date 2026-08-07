@@ -1,7 +1,7 @@
 import { assetUrl } from '../../../../core/assetUrl';
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
-import { BITING_FROST_CARD_ID, IMPENETRABLE_FOG_CARD_ID, TORRENTIAL_RAIN_CARD_ID } from '../../../../../shared/games/gwent/engine/specialCardIds';
-import type { CardDef, Row } from '../../../../../shared/games/gwent/engine/types';
+import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
+import { BITING_FROST_CARD_ID, IMPENETRABLE_FOG_CARD_ID, TORRENTIAL_RAIN_CARD_ID } from '@shared/games/gwent/engine/specialCardIds';
+import type { CardDef, Row } from '@shared/games/gwent/engine/types';
 import styles from './ActiveWeatherZone.module.css';
 
 const WEATHER_CARD_ID_BY_ROW: Record<Row, string> = {

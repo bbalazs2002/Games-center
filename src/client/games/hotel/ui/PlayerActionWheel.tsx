@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
+import type { HotelAction } from '@shared/games/hotel/engine/actions';
 import {
   canBuildWithoutPermit,
   canPassBid,
@@ -9,8 +9,8 @@ import {
   computeNightlyRent,
   getCurrentPlayer,
   getLot,
-} from '../../../../shared/games/hotel/engine/rules';
-import type { ConstructionPlanItem, HotelLot, HotelState } from '../../../../shared/games/hotel/engine/state';
+} from '@shared/games/hotel/engine/rules';
+import type { ConstructionPlanItem, HotelLot, HotelState } from '@shared/games/hotel/engine/state';
 import { Button } from '../../../ui-kit/Button';
 import { Modal } from '../../../ui-kit/Modal';
 import { WheelMenu, type WheelMenuSlice } from '../../../ui-kit/WheelMenu';

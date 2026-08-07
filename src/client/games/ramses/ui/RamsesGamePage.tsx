@@ -16,10 +16,10 @@ import { MaskedRamsesTransport } from './MaskedRamsesTransport';
 import { RamsesActionWheel } from './RamsesActionWheel';
 import ramsesModalTheme from './ramsesModalTheme.module.css';
 import { useRamsesHotSeatAi, type HotSeatAiSlots } from './useRamsesHotSeatAi';
-import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
-import { createInitialState } from '../../../../shared/games/ramses/engine/initialState';
-import { reducer } from '../../../../shared/games/ramses/engine/reducer';
-import { BOARD_COLS, BOARD_ROWS, canForfeit } from '../../../../shared/games/ramses/engine/rules';
+import type { RamsesAction } from '@shared/games/ramses/engine/actions';
+import { createInitialState } from '@shared/games/ramses/engine/initialState';
+import { reducer } from '@shared/games/ramses/engine/reducer';
+import { BOARD_COLS, BOARD_ROWS, canForfeit } from '@shared/games/ramses/engine/rules';
 import {
   getCurrentActiveCard,
   getCurrentPlayer,
@@ -29,9 +29,9 @@ import {
   getSlidableCellIds,
   getWinners,
   type PlayerScore,
-} from '../../../../shared/games/ramses/engine/selectors';
-import type { Player, PlayerId, RamsesCell, RamsesState } from '../../../../shared/games/ramses/engine/state';
-import { cardImagePath, getTreasureConfig, TREASURE_CONFIGS } from '../../../../shared/games/ramses/engine/treasureConfigs';
+} from '@shared/games/ramses/engine/selectors';
+import type { Player, PlayerId, RamsesCell, RamsesState } from '@shared/games/ramses/engine/state';
+import { cardImagePath, getTreasureConfig, TREASURE_CONFIGS } from '@shared/games/ramses/engine/treasureConfigs';
 import styles from './RamsesGamePage.module.css';
 
 // Purely decorative — pyramid color has no rule meaning in the base game

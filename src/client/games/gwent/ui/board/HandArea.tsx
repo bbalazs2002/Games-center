@@ -1,6 +1,6 @@
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
-import { HIDDEN_CARD_DEF_ID } from '../../../../../shared/games/gwent/engine/specialCardIds';
-import type { CardInstance, PlayerId } from '../../../../../shared/games/gwent/engine/state';
+import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
+import { HIDDEN_CARD_DEF_ID } from '@shared/games/gwent/engine/specialCardIds';
+import type { CardInstance, PlayerId } from '@shared/games/gwent/engine/state';
 import { TrackedCardTile } from './cardFlight';
 import { useHandFan } from './useHandFan';
 import styles from './matchBoard.module.css';

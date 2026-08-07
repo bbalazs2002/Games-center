@@ -1,9 +1,9 @@
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
 import { assetUrl } from '../../../../core/assetUrl';
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
-import { HIDDEN_CARD_DEF_ID } from '../../../../../shared/games/gwent/engine/specialCardIds';
-import type { CardInstance } from '../../../../../shared/games/gwent/engine/state';
-import type { Faction } from '../../../../../shared/games/gwent/engine/types';
+import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
+import { HIDDEN_CARD_DEF_ID } from '@shared/games/gwent/engine/specialCardIds';
+import type { CardInstance } from '@shared/games/gwent/engine/state';
+import type { Faction } from '@shared/games/gwent/engine/types';
 import { pickVariant } from './cardArtVariant';
 import { CARD_BACK_PATHS, DEFAULT_CARD_BACK_PATH } from './cardBackPaths';
 import styles from './matchBoard.module.css';

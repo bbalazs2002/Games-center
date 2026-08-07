@@ -35,17 +35,17 @@ import { type StaircasePlacementMode } from './hotelMenuLevels';
 import modalTheme from './hotelModalTheme.module.css';
 import { useHotelParkingPositions, type HotelParkingTransform } from './useHotelParkingPositions';
 import { useHotelSpacePositions } from './useHotelSpacePositions';
-import type { HotelAction } from '../../../../shared/games/hotel/engine/actions';
-import { createInitialState } from '../../../../shared/games/hotel/engine/initialState';
-import { reducer } from '../../../../shared/games/hotel/engine/reducer';
+import type { HotelAction } from '@shared/games/hotel/engine/actions';
+import { createInitialState } from '@shared/games/hotel/engine/initialState';
+import { reducer } from '@shared/games/hotel/engine/reducer';
 import {
   getFreeStaircaseCandidates,
   getLot,
   getStaircaseSpaceOptions,
   type FreeStaircaseCandidate,
-} from '../../../../shared/games/hotel/engine/rules';
-import { getOwnedLots, getWinner } from '../../../../shared/games/hotel/engine/selectors';
-import type { HotelLot, HotelState, Player, PlayerId } from '../../../../shared/games/hotel/engine/state';
+} from '@shared/games/hotel/engine/rules';
+import { getOwnedLots, getWinner } from '@shared/games/hotel/engine/selectors';
+import type { HotelLot, HotelState, Player, PlayerId } from '@shared/games/hotel/engine/state';
 import { GameLogPanel } from './GameLogPanel';
 import { PlayerActionWheel } from './PlayerActionWheel';
 import {

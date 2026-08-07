@@ -1,11 +1,11 @@
-import { getLot, getPlayer } from '../../../../shared/games/hotel/engine/rules';
+import { getLot, getPlayer } from '@shared/games/hotel/engine/rules';
 import type {
   BuildingPermitResult,
   ConstructionPlanItem,
   HotelState,
   LogEntry,
   SpaceType,
-} from '../../../../shared/games/hotel/engine/state';
+} from '@shared/games/hotel/engine/state';
 
 const SPACE_TYPE_LABELS: Record<SpaceType, string> = {
   START: 'Start',

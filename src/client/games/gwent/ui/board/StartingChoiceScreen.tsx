@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { assetUrl } from '../../../../core/assetUrl';
 import { Button } from '../../../../ui-kit/Button';
-import { canChooseStartingPlayer, canFlipStartingCoin, scoiaTaelDecisivePlayerId } from '../../../../../shared/games/gwent/engine/rules';
-import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
-import type { GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
+import { canChooseStartingPlayer, canFlipStartingCoin, scoiaTaelDecisivePlayerId } from '@shared/games/gwent/engine/rules';
+import type { GwentAction } from '@shared/games/gwent/engine/actions';
+import type { GwentState, PlayerId } from '@shared/games/gwent/engine/state';
 import styles from './matchBoard.module.css';
 
 export interface StartingChoiceScreenProps {

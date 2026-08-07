@@ -1,6 +1,6 @@
 import type { GameTransport } from '../../../core/transport/GameTransport';
-import type { GwentAction } from '../../../../shared/games/gwent/engine/actions';
-import type { CardInstance, GwentState, PlayerId } from '../../../../shared/games/gwent/engine/state';
+import type { GwentAction } from '@shared/games/gwent/engine/actions';
+import type { CardInstance, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
 
 export interface PrivateGwentHandPayload {
   hand: CardInstance[];

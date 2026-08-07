@@ -1,7 +1,7 @@
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
-import { getLeaderDef } from '../../../../../shared/games/gwent/engine/leaderDefs';
-import { getPlayer } from '../../../../../shared/games/gwent/engine/rules';
-import type { GwentLogEntry, GwentState } from '../../../../../shared/games/gwent/engine/state';
+import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
+import { getLeaderDef } from '@shared/games/gwent/engine/leaderDefs';
+import { getPlayer } from '@shared/games/gwent/engine/rules';
+import type { GwentLogEntry, GwentState } from '@shared/games/gwent/engine/state';
 import { rowLabel } from '../cardDisplay';
 
 const DRAW_REASON_LABELS: Record<'SPY' | 'ROUND_WON_BONUS' | 'MULLIGAN', string> = {

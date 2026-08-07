@@ -1,4 +1,4 @@
-import type { Faction } from '../../../../shared/games/gwent/engine/types';
+import type { Faction } from '@shared/games/gwent/engine/types';
 
 // Hivatalos szabály (docs/gwent-0a-specifikacio.md §2) — a frakció-bónusz szövege
 // csak megjelenítés, a tényleges kikényszerítés Gwent-0a.2 (a parti-motor) feladata.

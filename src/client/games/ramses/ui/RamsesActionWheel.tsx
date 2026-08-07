@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
-import { getHiddenTreasureIds } from '../../../../shared/games/ramses/engine/selectors';
-import type { RamsesState } from '../../../../shared/games/ramses/engine/state';
+import type { RamsesAction } from '@shared/games/ramses/engine/actions';
+import { getHiddenTreasureIds } from '@shared/games/ramses/engine/selectors';
+import type { RamsesState } from '@shared/games/ramses/engine/state';
 import { WheelMenu } from '../../../ui-kit/WheelMenu';
 import { initialLevelFor, levelTitle, slicesFor, type MenuLevel } from './ramsesMenuLevels';
 import styles from './RamsesActionWheel.module.css';

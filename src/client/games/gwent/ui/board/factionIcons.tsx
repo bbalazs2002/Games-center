@@ -1,4 +1,4 @@
-import type { Faction } from '../../../../../shared/games/gwent/engine/types';
+import type { Faction } from '@shared/games/gwent/engine/types';
 
 /**
  * Gwent-0d §3: the player-info panel's faction emblem — no faction-crest

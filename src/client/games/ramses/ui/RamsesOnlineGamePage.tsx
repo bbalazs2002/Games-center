@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { RamsesStateSchema } from '../../../../shared/games/ramses/colyseus/RamsesStateSchema';
-import { decodeRamsesStateSchema } from '../../../../shared/games/ramses/colyseus/ramsesStateCodec';
-import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
-import { createInitialState } from '../../../../shared/games/ramses/engine/initialState';
-import type { PlayerId, RamsesState } from '../../../../shared/games/ramses/engine/state';
+import { RamsesStateSchema } from '@shared/games/ramses/colyseus/RamsesStateSchema';
+import { decodeRamsesStateSchema } from '@shared/games/ramses/colyseus/ramsesStateCodec';
+import type { RamsesAction } from '@shared/games/ramses/engine/actions';
+import { createInitialState } from '@shared/games/ramses/engine/initialState';
+import type { PlayerId, RamsesState } from '@shared/games/ramses/engine/state';
 import { NEW_ROOM_PARAM } from '../../../core/transport/onlineRoomConstants';
 import {
   useOnlineGameRoom,

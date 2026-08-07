@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Button } from '../../../../ui-kit/Button';
-import { canConfirmMulligan, canMulliganSwap, expectedViewerId } from '../../../../../shared/games/gwent/engine/rules';
-import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
-import type { GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
+import { canConfirmMulligan, canMulliganSwap, expectedViewerId } from '@shared/games/gwent/engine/rules';
+import type { GwentAction } from '@shared/games/gwent/engine/actions';
+import type { GwentState, PlayerId } from '@shared/games/gwent/engine/state';
 import { CardCarouselModal, type CarouselEntry } from './CardCarouselModal';
 import { CardTile } from './CardTile';
 import { useHandFan } from './useHandFan';

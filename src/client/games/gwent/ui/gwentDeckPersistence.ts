@@ -1,5 +1,5 @@
-import type { DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
-import type { Faction } from '../../../../shared/games/gwent/engine/types';
+import type { DeckCardCounts } from '@shared/games/gwent/engine/deckRules';
+import type { Faction } from '@shared/games/gwent/engine/types';
 
 /**
  * Gwent-0a.1 has no match engine yet (see docs/gwent-0a-specifikacio.md §1) — a

@@ -1,5 +1,5 @@
 import { assetUrl } from '../../../../core/assetUrl';
-import type { Faction } from '../../../../../shared/games/gwent/engine/types';
+import type { Faction } from '@shared/games/gwent/engine/types';
 
 /**
  * Fixed output paths from `scripts/build-gwent-assets.mjs`'s `processCardBacks()`

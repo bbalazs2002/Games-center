@@ -1,8 +1,8 @@
 import { assetUrl } from '../../../../core/assetUrl';
-import { computeCardPower, computeRowTotal } from '../../../../../shared/games/gwent/engine/rules';
-import { getCardDef } from '../../../../../shared/games/gwent/engine/cardDefs';
-import type { CardInstance, GwentState, PlayerId } from '../../../../../shared/games/gwent/engine/state';
-import type { Row } from '../../../../../shared/games/gwent/engine/types';
+import { computeCardPower, computeRowTotal } from '@shared/games/gwent/engine/rules';
+import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
+import type { CardInstance, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
+import type { Row } from '@shared/games/gwent/engine/types';
 import { METAL_TEXTURE_PATH } from '../gwentTextures';
 import { TrackedCardTile } from './cardFlight';
 import styles from './matchBoard.module.css';

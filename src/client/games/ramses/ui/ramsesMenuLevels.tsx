@@ -1,8 +1,8 @@
 import type { ReactElement } from 'react';
 import { assetUrl } from '../../../core/assetUrl';
-import type { RamsesAction } from '../../../../shared/games/ramses/engine/actions';
-import type { PlayerId, RamsesState } from '../../../../shared/games/ramses/engine/state';
-import { getTreasureConfig } from '../../../../shared/games/ramses/engine/treasureConfigs';
+import type { RamsesAction } from '@shared/games/ramses/engine/actions';
+import type { PlayerId, RamsesState } from '@shared/games/ramses/engine/state';
+import { getTreasureConfig } from '@shared/games/ramses/engine/treasureConfigs';
 import type { WheelMenuSlice } from '../../../ui-kit/WheelMenu';
 import styles from './RamsesActionWheel.module.css';
 

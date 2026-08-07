@@ -1,7 +1,7 @@
 import { animated, useSpring } from '@react-spring/web';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
-import type { CardInstance, GwentLogEntry, PlayerId } from '../../../../../shared/games/gwent/engine/state';
-import type { Faction } from '../../../../../shared/games/gwent/engine/types';
+import type { CardInstance, GwentLogEntry, PlayerId } from '@shared/games/gwent/engine/state';
+import type { Faction } from '@shared/games/gwent/engine/types';
 import { CardTile } from './CardTile';
 import { CardFlightContext, useCardFlight, type TrackedCardInfo } from './useCardFlight';
 import styles from './cardFlight.module.css';

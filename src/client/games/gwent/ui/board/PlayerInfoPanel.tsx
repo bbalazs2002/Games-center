@@ -1,4 +1,4 @@
-import type { PlayerState } from '../../../../../shared/games/gwent/engine/state';
+import type { PlayerState } from '@shared/games/gwent/engine/state';
 import { factionLabel } from '../factionDisplay';
 import { HandCardsIcon, LaurelWreathIcon, PersonIcon } from './boardIcons';
 import { FactionIcon } from './factionIcons';

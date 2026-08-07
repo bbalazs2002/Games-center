@@ -1,4 +1,4 @@
-import type { CardInstance } from '../../../../../shared/games/gwent/engine/state';
+import type { CardInstance } from '@shared/games/gwent/engine/state';
 
 /**
  * Deterministic art-variant pick (spec §5.2) — same instanceId always renders

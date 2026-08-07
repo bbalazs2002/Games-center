@@ -1,5 +1,5 @@
 import { useLayoutEffect } from 'react';
-import type { Faction } from '../../../../shared/games/gwent/engine/types';
+import type { Faction } from '@shared/games/gwent/engine/types';
 import { FactionIcon } from './board/factionIcons';
 import { FACTION_OPTIONS } from './factionDisplay';
 import styles from './GwentSetupPage.module.css';

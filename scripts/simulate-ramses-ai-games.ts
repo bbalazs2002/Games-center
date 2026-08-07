@@ -9,8 +9,8 @@
 // GameRoom/Colyseus, no database — standalone, and (for the same reason) no
 // artificial "AI gondolkodik" delay: that pacing only exists on the
 // GameRoom/hot-seat-hook path, see simulate.ts's own note.
-import type { RamsesAiDifficulty } from '../src/shared/games/ramses/ai';
-import { simulateRamsesGame, type SimulationPlayerConfig, type SimulationResult } from '../src/shared/games/ramses/ai/simulate';
+import type { RamsesAiDifficulty } from '@shared/games/ramses/ai';
+import { simulateRamsesGame, type SimulationPlayerConfig, type SimulationResult } from '@shared/games/ramses/ai/simulate';
 
 interface Matchup {
   label: string;

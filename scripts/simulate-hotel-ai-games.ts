@@ -9,9 +9,9 @@
 // Colyseus, no database — a standalone module per your instruction, and (for
 // the same reason) no artificial "AI gondolkodik" delay: that pacing only
 // exists on the GameRoom path, see simulate.ts's own note.
-import type { HotelAiDifficulty } from '../src/shared/games/hotel/ai';
-import type { PlayerId } from '../src/shared/games/hotel/engine/state';
-import { simulateHotelGame, type SimulationPlayerConfig, type SimulationResult } from '../src/shared/games/hotel/ai/simulate';
+import type { HotelAiDifficulty } from '@shared/games/hotel/ai';
+import type { PlayerId } from '@shared/games/hotel/engine/state';
+import { simulateHotelGame, type SimulationPlayerConfig, type SimulationResult } from '@shared/games/hotel/ai/simulate';
 
 interface Matchup {
   label: string;

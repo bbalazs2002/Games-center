@@ -1,8 +1,8 @@
 import { assetUrl } from '../../../core/assetUrl';
-import { getCardDef } from '../../../../shared/games/gwent/engine/cardDefs';
-import { getLeaderDef } from '../../../../shared/games/gwent/engine/leaderDefs';
-import { HIDDEN_CARD_DEF_ID } from '../../../../shared/games/gwent/engine/specialCardIds';
-import type { CardInstance, GwentState } from '../../../../shared/games/gwent/engine/state';
+import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
+import { getLeaderDef } from '@shared/games/gwent/engine/leaderDefs';
+import { HIDDEN_CARD_DEF_ID } from '@shared/games/gwent/engine/specialCardIds';
+import type { CardInstance, GwentState } from '@shared/games/gwent/engine/state';
 import { CARD_BACK_PATHS } from './board/cardBackPaths';
 import { pickVariant } from './board/cardArtVariant';
 

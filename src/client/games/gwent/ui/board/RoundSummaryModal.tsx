@@ -1,9 +1,9 @@
 import { Modal } from '../../../../ui-kit/Modal';
 import { Button } from '../../../../ui-kit/Button';
 import { useGameTheme } from '../../../../shell/useGameTheme';
-import { getPlayer } from '../../../../../shared/games/gwent/engine/rules';
-import type { GwentAction } from '../../../../../shared/games/gwent/engine/actions';
-import type { GwentState } from '../../../../../shared/games/gwent/engine/state';
+import { getPlayer } from '@shared/games/gwent/engine/rules';
+import type { GwentAction } from '@shared/games/gwent/engine/actions';
+import type { GwentState } from '@shared/games/gwent/engine/state';
 import styles from './matchBoard.module.css';
 import themedModal from '../../../../ui-kit/themedModalContent.module.css';
 

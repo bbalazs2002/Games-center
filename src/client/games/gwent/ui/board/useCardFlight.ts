@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
-import type { CardInstance, PlayerId } from '../../../../../shared/games/gwent/engine/state';
-import type { Faction } from '../../../../../shared/games/gwent/engine/types';
+import type { CardInstance, PlayerId } from '@shared/games/gwent/engine/state';
+import type { Faction } from '@shared/games/gwent/engine/types';
 
 export interface TrackedCardInfo {
   instance: CardInstance;

@@ -1,14 +1,14 @@
 import type { AuthPayload } from '../../auth/jwt';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
-import { HotelStateSchema } from '../../../shared/games/hotel/colyseus/HotelStateSchema';
-import { applyHotelStateToSchema } from '../../../shared/games/hotel/colyseus/hotelStateCodec';
-import { chooseHotelAiAction, isHotelAiDifficulty, HOTEL_AI_MOVE_DELAY_MS, type HotelAiDifficulty } from '../../../shared/games/hotel/ai';
-import { rollBuildingPermit, rollD6 } from '../../../shared/games/hotel/dice';
-import type { HotelAction } from '../../../shared/games/hotel/engine/actions';
-import { createInitialState as createHotelInitialState } from '../../../shared/games/hotel/engine/initialState';
-import { reducer } from '../../../shared/games/hotel/engine/reducer';
-import { getCurrentPlayer, updatePlayer } from '../../../shared/games/hotel/engine/rules';
-import type { ConstructionPlanItem, HotelState, PlayerId } from '../../../shared/games/hotel/engine/state';
+import { HotelStateSchema } from '@shared/games/hotel/colyseus/HotelStateSchema';
+import { applyHotelStateToSchema } from '@shared/games/hotel/colyseus/hotelStateCodec';
+import { chooseHotelAiAction, isHotelAiDifficulty, HOTEL_AI_MOVE_DELAY_MS, type HotelAiDifficulty } from '@shared/games/hotel/ai';
+import { rollBuildingPermit, rollD6 } from '@shared/games/hotel/dice';
+import type { HotelAction } from '@shared/games/hotel/engine/actions';
+import { createInitialState as createHotelInitialState } from '@shared/games/hotel/engine/initialState';
+import { reducer } from '@shared/games/hotel/engine/reducer';
+import { getCurrentPlayer, updatePlayer } from '@shared/games/hotel/engine/rules';
+import type { ConstructionPlanItem, HotelState, PlayerId } from '@shared/games/hotel/engine/state';
 
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 4;

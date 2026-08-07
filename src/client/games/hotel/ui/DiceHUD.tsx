@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { AnimatedDie } from '../../../renderers/models/AnimatedDie';
 import { assetUrl } from '../../../core/assetUrl';
-import type { BuildingPermitResult, HotelState } from '../../../../shared/games/hotel/engine/state';
+import type { BuildingPermitResult, HotelState } from '@shared/games/hotel/engine/state';
 import styles from './DiceHUD.module.css';
 
 const PERMIT_ROLL_LABELS: Record<BuildingPermitResult, string> = {
