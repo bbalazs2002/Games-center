@@ -242,6 +242,8 @@
  * helyet sem a sorok alatt/fölött.
  */
 .boardRow {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: stretch;
   gap: 0.5rem;
@@ -252,6 +254,103 @@
   padding: 0.25rem 0.4rem 0.25rem 0;
   border-radius: 0.35rem;
   transition: background-color 0.15s ease;
+}
+
+/* `.weatherOverlay*` is `position: absolute` (z-index: auto) — without this, it would
+   paint ABOVE every plain in-flow child regardless of DOM order (any positioned descendant
+   of a stacking context paints after the non-positioned ones). Keeps the real content
+   (cards, horn icon, row total) always on top of the purely decorative weather effect. */
+.boardRow > *:not(.weatherOverlay) {
+  position: relative;
+  z-index: 1;
+}
+
+/**
+ * Gwent-0e korrekció (2026-08-07): a korábbi apró hópehely-ikon helyett a
+ * TELJES sor kap egy hangulati réteget, amíg az adott sorra időjárás-hatás
+ * aktív — felhasználói kérés szerint soronként más karakterrel (fagy/felhő/
+ * eső). Tisztán CSS (nincs hozzá kép-asset), `pointer-events: none` (a
+ * lapokra kattintás sosem sérül), és visszafogott opacitású, hogy a lapok
+ * jól olvashatók maradjanak fölötte.
+ */
+.weatherOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+@keyframes gwentFrostShimmer {
+  0%,
+  100% {
+    background-position:
+      0% 0%,
+      0 0;
+  }
+  50% {
+    background-position:
+      100% 40%,
+      0 0;
+  }
+}
+
+.weatherOverlayMelee {
+  background:
+    repeating-conic-gradient(from 0deg at 16% 22%, rgba(255, 255, 255, 0.18) 0deg 6deg, transparent 6deg 26deg),
+    repeating-conic-gradient(from 35deg at 84% 76%, rgba(255, 255, 255, 0.14) 0deg 6deg, transparent 6deg 30deg),
+    linear-gradient(160deg, rgba(150, 210, 255, 0.16) 0%, rgba(200, 235, 255, 0.04) 60%);
+  background-size:
+    220% 220%,
+    260% 260%,
+    100% 100%;
+  animation: gwentFrostShimmer 6s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes gwentCloudDrift {
+  0% {
+    background-position:
+      0% 50%,
+      30% 40%;
+  }
+  100% {
+    background-position:
+      130% 50%,
+      -70% 60%;
+  }
+}
+
+.weatherOverlayRanged {
+  background:
+    radial-gradient(ellipse 55% 70% at 20% 40%, rgba(222, 227, 232, 0.24) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 60% at 70% 60%, rgba(202, 207, 214, 0.2) 0%, transparent 70%);
+  background-size:
+    180% 180%,
+    200% 200%;
+  animation: gwentCloudDrift 16s linear infinite;
+}
+
+@keyframes gwentRainFall {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -1.3rem 2.1rem;
+  }
+}
+
+.weatherOverlaySiege {
+  background:
+    repeating-linear-gradient(70deg, rgba(190, 210, 230, 0.3) 0px, rgba(190, 210, 230, 0.3) 1px, transparent 1px, transparent 10px),
+    linear-gradient(160deg, rgba(60, 90, 120, 0.14) 0%, rgba(30, 50, 70, 0.05) 100%);
+  animation: gwentRainFall 0.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weatherOverlayMelee,
+  .weatherOverlayRanged,
+  .weatherOverlaySiege {
+    animation: none;
+  }
 }
 
 .rowHinge {
@@ -323,10 +422,6 @@
   font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
-.rowFlags {
-  font-size: 0.9rem;
 }
 
 .hornColumn {

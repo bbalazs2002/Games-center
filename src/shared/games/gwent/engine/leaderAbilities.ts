@@ -8,6 +8,7 @@ import {
   getOpponent,
   getPlayer,
   getCurrentPlayer,
+  updateBoardRow,
   updatePlayer,
 } from './rules';
 import {
@@ -17,12 +18,15 @@ import {
   EREDIN_BRINGER_OF_DEATH,
   EREDIN_COMMANDER_OF_THE_RED_RIDERS,
   EREDIN_DESTROYER_OF_WORLDS,
+  EREDIN_KING_OF_THE_WILD_HUNT,
   FOLTEST_KING_OF_TEMERIA,
   FOLTEST_LORD_COMMANDER_OF_THE_NORTH,
   FOLTEST_SON_OF_MEDELL,
+  FOLTEST_THE_SIEGEMASTER,
   FOLTEST_THE_STEEL_FORGED,
   FRANCESCA_PUREBLOOD_ELF,
   FRANCESCA_QUEEN_OF_DOL_BLATHANNA,
+  FRANCESCA_THE_BEAUTIFUL,
 } from './leaderConstants';
 import { leaderAbilityCanceledByOpponent } from './leaderPassives';
 import { BITING_FROST_CARD_ID, IMPENETRABLE_FOG_CARD_ID, TORRENTIAL_RAIN_CARD_ID } from './specialCardIds';
@@ -79,6 +83,19 @@ function playWeatherCardFromDeckById(state: GwentState, playerId: PlayerId, weat
   if (!card) return { state, succeeded: false };
   const next = updatePlayer(state, playerId, { deck: player.deck.filter((c) => c.instanceId !== card.instanceId) });
   return { state: applyWeatherEffect(next, getCardDef(weatherCardId).weatherRow ?? 'AllRows'), succeeded: true };
+}
+
+/**
+ * Foltest The Siegemaster (Siege) / Eredin King of the Wild Hunt (Melee) /
+ * Francesca The Beautiful (Ranged) — felhasználói korrekció (2026-08-07):
+ * ugyanaz az effektus, mint egy valódi Kürt-lap lejátszása a saját, fix
+ * sorra, csak vezér-képességként, kártya nélkül — EGYSZERI aktiválás, nem
+ * meccs eleje óta néma automatikus dupláz (lásd leaderConstants.ts). Mindig
+ * sikeres — nincs hiányzó CÉL, csak egy board-effektus, ugyanúgy, mint
+ * Foltest Lord Commander of the North időjárás-tisztítása.
+ */
+function hornDoubleOwnRow(state: GwentState, playerId: PlayerId, row: 'Melee' | 'Ranged' | 'Siege'): LeaderAbilityResult {
+  return alwaysSucceeds(updateBoardRow(state, playerId, row, { hornActive: true }));
 }
 
 /** Row-scorch leader abilities always succeed even below the threshold — a board-state THRESHOLD, not a missing TARGET (see file doc comment). */
@@ -167,6 +184,10 @@ export const LEADER_ABILITIES: Record<string, LeaderAbilityHandler> = {
 
   [FRANCESCA_PUREBLOOD_ELF]: (state, playerId) => playWeatherCardFromDeckById(state, playerId, BITING_FROST_CARD_ID),
   [FRANCESCA_QUEEN_OF_DOL_BLATHANNA]: (state, playerId) => rowScorchIfThreshold(state, playerId, 'Melee'),
+
+  [FOLTEST_THE_SIEGEMASTER]: (state, playerId) => hornDoubleOwnRow(state, playerId, 'Siege'),
+  [EREDIN_KING_OF_THE_WILD_HUNT]: (state, playerId) => hornDoubleOwnRow(state, playerId, 'Melee'),
+  [FRANCESCA_THE_BEAUTIFUL]: (state, playerId) => hornDoubleOwnRow(state, playerId, 'Ranged'),
 };
 
 /**

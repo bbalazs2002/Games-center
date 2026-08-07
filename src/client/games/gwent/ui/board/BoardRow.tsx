@@ -1,5 +1,5 @@
 import { assetUrl } from '../../../../core/assetUrl';
-import { computeCardPower, computeRowTotal } from '@shared/games/gwent/engine/rules';
+import { computeCardPower, computeRowTotal, effectiveHornActive } from '@shared/games/gwent/engine/rules';
 import { getCardDef } from '@shared/games/gwent/engine/cardDefs';
 import type { CardInstance, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
 import type { Row } from '@shared/games/gwent/engine/types';
@@ -38,7 +38,9 @@ export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelect
   // Horn now has its own dedicated column (below) — no longer duplicated as a flag icon here (Gwent-0c.2 §R).
   // Gwent-0c.4 §J: the Dandelion 🌼 flag removed — the felhasználó found it redundant next to the
   // Dandelion unit card itself already sitting visibly on the board (no separate marker needed).
-  const flags = [state.activeWeatherRows.includes(row) && '❄️'].filter(Boolean).join(' ');
+  // Gwent-0e korrekció (2026-08-07): a korábbi apró ❄️-ikon helyett a teljes sor kap
+  // hangulati réteget, amíg időjárás-hatás aktív rajta — lásd `.weatherOverlay*` (matchBoard.module.css).
+  const isWeatherActive = state.activeWeatherRows.includes(row);
   // Gwent-0c.2 §R, kiegészítő kérés: azonos nevű lapok mindig egymás mellett — a meglévő
   // cardFlight FLIP-mechanizmus automatikusan animálja az emiatti pozícióváltást is.
   // Gwent-0c.4 §K: a Kürt-lap(ok) mostantól a `cards`-ban is ott ülnek (nem tűnnek el
@@ -49,41 +51,55 @@ export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelect
     getCardDef(a.defId).name.localeCompare(getCardDef(b.defId).name),
   );
   const sortedCards = [...hornCards, ...otherCards];
+  // Gwent-0e korrekció (2026-08-07, real playtest report): a `rowState.hornActive` flag CSAK
+  // a valódi Kürt-lapot jelezte — egy vezér-automata-duplázás (pl. Eredin, King of the Wild
+  // Hunt a Közelharc soron) így néma maradt, a lapok láthatóan duplázva, de semmi a képernyőn
+  // nem indokolta miért. `effectiveHornActive` (rules.ts) mindkettőt lefedi, ugyanaz, amit
+  // `computeCardPower` is használ a tényleges duplázáshoz — most már az ikon is ezt követi.
+  const hornDoublingActive = effectiveHornActive(state, playerId, row);
 
   return (
     <div
       className={[styles.boardRow, rowSelectable && styles.boardRowSelectable].filter(Boolean).join(' ')}
       onClick={rowSelectable ? onSelectRow : undefined}
     >
+      {isWeatherActive && (
+        <div className={[styles.weatherOverlay, styles[`weatherOverlay${row}`]].join(' ')} aria-hidden="true" />
+      )}
       <div className={styles.rowHinge} style={{ backgroundImage: `url(${METAL_TEXTURE_PATH})` }} />
       <div className={styles.rowLabel}>
         <span className={styles.rowTotal}>{total}</span>
         <img className={styles.rowMedallion} src={ROW_MEDALLION_PATH[row]} alt={ROW_LABELS[row]} title={ROW_LABELS[row]} />
-        {flags && <span className={styles.rowFlags}>{flags}</span>}
       </div>
-      <div className={styles.hornColumn} title={rowState.hornActive ? 'Kürt aktív ezen a soron' : undefined}>
-        {rowState.hornActive && <img className={styles.hornIcon} src={HORN_ICON_PATH} alt="Kürt aktív" />}
+      <div className={styles.hornColumn} title={hornDoublingActive ? 'Duplázás aktív ezen a soron (Kürt vagy vezér-képesség)' : undefined}>
+        {hornDoublingActive && <img className={styles.hornIcon} src={HORN_ICON_PATH} alt="Duplázás aktív" />}
       </div>
       <div className={styles.rowCards}>
-        {sortedCards.map((instance) => (
-          <TrackedCardTile
-            key={instance.instanceId}
-            instance={instance}
-            ownerId={playerId}
-            // Horn cards live here now too (Gwent-0c.4 §K) but never show a power badge
-            // (basePower: null) — matches CardTile's own documented non-unit convention.
-            power={getCardDef(instance.defId).kind === 'Unit' ? computeCardPower(state, playerId, row, instance) : undefined}
-            selected={false}
-            targetable={decoyTargetSelectable}
-            onClick={
-              decoyTargetSelectable
-                ? () => onSelectTarget?.(instance.instanceId)
-                : onOpenGroup
-                  ? () => onOpenGroup(sortedCards, sortedCards.findIndex((c) => c.instanceId === instance.instanceId))
-                  : undefined
-            }
-          />
-        ))}
+        {sortedCards.map((instance) => {
+          // Heroes are immune to Decoy (rules.ts's isDecoyChoiceValid) — never offered as a target.
+          const isDecoyableTarget = decoyTargetSelectable && !getCardDef(instance.defId).abilities.includes('Hero');
+          return (
+            <TrackedCardTile
+              key={instance.instanceId}
+              instance={instance}
+              ownerId={playerId}
+              // Horn cards live here now too (Gwent-0c.4 §K) but never show a power badge
+              // (basePower: null) — matches CardTile's own documented non-unit convention.
+              power={getCardDef(instance.defId).kind === 'Unit' ? computeCardPower(state, playerId, row, instance) : undefined}
+              selected={false}
+              targetable={isDecoyableTarget}
+              onClick={
+                isDecoyableTarget
+                  ? () => onSelectTarget?.(instance.instanceId)
+                  : decoyTargetSelectable
+                    ? undefined
+                    : onOpenGroup
+                      ? () => onOpenGroup(sortedCards, sortedCards.findIndex((c) => c.instanceId === instance.instanceId))
+                      : undefined
+              }
+            />
+          );
+        })}
       </div>
     </div>
   );

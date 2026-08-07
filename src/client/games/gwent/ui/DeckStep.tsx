@@ -1,15 +1,13 @@
 import { useState, type ReactNode } from 'react';
-import { Button } from '../../../ui-kit/Button';
 import { Select } from '../../../ui-kit/Select';
 import type { CardDef, Faction } from '@shared/games/gwent/engine/types';
 import { cardsForFaction, validateDeckDraft, type DeckCardCounts } from '@shared/games/gwent/engine/deckRules';
 import type { CardInstance } from '@shared/games/gwent/engine/state';
 import { CARD_SORT_OPTIONS, sortCards, type CardSortKey } from '@shared/games/gwent/engine/cardDisplay';
 import { rowBadge } from './cardDisplay';
-import { EyeIcon } from './board/boardIcons';
 import { CardTile } from './board/CardTile';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
-import { buildTestDeckCounts } from './testDeckPresets';
+import { ViewModeToggleButton } from './board/ViewModeToggleButton';
 import styles from './GwentSetupPage.module.css';
 
 /**
@@ -130,13 +128,7 @@ export function DeckStep({ faction, leaderId, cardCounts, onCardCountsChange, mi
           onChange={(value) => setSortKey(value as CardSortKey)}
           options={CARD_SORT_OPTIONS.map((option) => ({ value: option.key, label: option.label }))}
         />
-        <Button variant="secondary" onClick={() => setViewMode((v) => !v)}>
-          <EyeIcon /> {viewMode ? 'Nézegető mód (aktív)' : 'Nézegető mód'}
-        </Button>
-        {/* Dev/teszt-kényelmi gomb (2026-08-05): egy kattintással kitölt egy garantáltan érvényes teszt-paklit, hogy ne kelljen minden teszt-parti előtt végigkattintani az építést. */}
-        <Button variant="secondary" onClick={() => onCardCountsChange(buildTestDeckCounts(faction))}>
-          Teszt pakli kitöltése
-        </Button>
+        <ViewModeToggleButton active={viewMode} onClick={() => setViewMode((v) => !v)} />
       </div>
 
       <div className={styles.deckColumns}>

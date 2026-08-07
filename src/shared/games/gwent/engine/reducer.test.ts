@@ -171,6 +171,14 @@ describe('reducer — PLAY_CARD', () => {
     expect(getPlayer(next, PLAYER_1).discard.map((c) => c.instanceId)).toEqual(['decoy']);
   });
 
+  it('Decoy cannot target a Hero card — Heroes are immune, same as Scorch', () => {
+    let state = readyState();
+    state = updatePlayer(state, PLAYER_1, { hand: [card('decoy', DECOY_CARD_ID)] });
+    state = updateBoardRow(state, PLAYER_1, 'Melee', { cards: [card('hero', HERO)] });
+    const next = reducer(state, { type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'decoy', decoyTargetInstanceId: 'hero' });
+    expect(next).toBe(state); // rejected — canPlayCard returns false, reducer is a no-op
+  });
+
   it('a Horn card sets the chosen row\'s flag AND stays visible on that row (Gwent-0c.4 §10 — not discarded anymore)', () => {
     let state = readyState();
     state = updatePlayer(state, PLAYER_1, { hand: [card('horn', HORN_CARD_ID)] });

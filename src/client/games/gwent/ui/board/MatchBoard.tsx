@@ -8,9 +8,9 @@ import type { GwentAction } from '@shared/games/gwent/engine/actions';
 import type { CardInstance, GwentLogEntry, GwentState, PlayerId, PlayerState } from '@shared/games/gwent/engine/state';
 import type { CardDef, Row } from '@shared/games/gwent/engine/types';
 import { ActiveWeatherZone } from './ActiveWeatherZone';
-import { EyeIcon } from './boardIcons';
+import { ViewModeToggleButton } from './ViewModeToggleButton';
 import { CardCarouselModal, type CarouselEntry } from './CardCarouselModal';
-import { CardFlightProvider } from './cardFlight';
+import { CardFlightProvider, ScorchFloatZone } from './cardFlight';
 import { CardTile } from './CardTile';
 import { GwentLogPanel } from './GwentLogPanel';
 import { HandArea } from './HandArea';
@@ -260,9 +260,7 @@ function MatchActionBar({
           (`.cardSelected`, matchBoard.module.css) to show what's active.
         */}
         <div className={styles.handSectionControls}>
-          <Button variant="secondary" disabled={!isMyTurn} onClick={onToggleViewMode}>
-            <EyeIcon /> {viewMode ? 'Nézegető mód (aktív)' : 'Nézegető mód'}
-          </Button>
+          <ViewModeToggleButton active={viewMode} disabled={!isMyTurn} onClick={onToggleViewMode} />
           <Button disabled={!isMyTurn || !canPass(state, actingPlayer.id)} onClick={onPass}>
             Passz
           </Button>
@@ -414,6 +412,7 @@ export function MatchBoard({
             garantáltan folytonos vonal.
           */}
           <div className={styles.boardMetalRail} />
+          <ScorchFloatZone />
 
           <PlayerBoardZone
             state={state}

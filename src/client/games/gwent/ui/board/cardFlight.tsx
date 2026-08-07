@@ -8,6 +8,10 @@ import styles from './cardFlight.module.css';
 
 const MOVE_DURATION_MS = 420;
 const EXIT_DURATION_MS = 480;
+/** How long a played Scorch card visibly hovers over `ScorchFloatZone` before continuing on to the discard pile — felhasználói kérés, 2026-08-07. */
+const SCORCH_FLOAT_HOLD_MS = 450;
+/** Same idea for a played Clear Weather card hovering next to `ActiveWeatherZone`'s `weather-zone` anchor — same kérés. */
+const WEATHER_FLOAT_HOLD_MS = 450;
 const RECT_EPSILON_PX = 1;
 
 interface TrackedCardEntry extends TrackedCardInfo {
@@ -20,6 +24,8 @@ interface Ghost {
   from: DOMRect;
   to: DOMRect;
   durationMs: number;
+  /** A Scorch-destroyed card flashing mid-flight (felhasználói kérés, 2026-08-07) — see `spawnExitGhosts`/`FlyingCard`. */
+  flash?: boolean;
 }
 
 function rectsDiffer(a: DOMRect, b: DOMRect): boolean {
@@ -49,14 +55,41 @@ function resolveEntryZone(newLogEntries: GwentLogEntry[], instanceId: string, ow
   return null;
 }
 
-/** Scorch/RowScorch destructions and a played Decoy card itself — the confirmed "this exact card is discarded now" cases, per the user's request that this animation be precise (not a generic catch-all for every disappearance, e.g. a mulligan swap-out must NOT fly to discard — it's only set aside). */
-function resolveExitZone(newLogEntries: GwentLogEntry[], instanceId: string, ownerId: PlayerId): string | null {
+interface ExitResolution {
+  zone: string;
+  /** True only for an actual Scorch/RowScorch kill — the flash reads as "destroyed", so a returned Decoy card must NOT get it. */
+  flash: boolean;
+}
+
+/**
+ * Scorch/RowScorch destructions, a played Decoy card itself, and a played
+ * (non-Clear) Weather card's own 1-leg flight to `ActiveWeatherZone` —
+ * the confirmed "this exact card is discarded/placed now" cases, per the
+ * user's request that this animation be precise (not a generic catch-all for
+ * every disappearance, e.g. a mulligan swap-out must NOT fly to discard —
+ * it's only set aside). A Clear Weather card is deliberately EXCLUDED here —
+ * it needs the 2-leg float-then-discard flight below instead (WEATHER_CLEARED,
+ * not WEATHER_APPLIED — the two log entry types are mutually exclusive per
+ * play, see reducer.ts's resolveWeatherCard).
+ */
+function resolveExitZone(newLogEntries: GwentLogEntry[], instanceId: string, ownerId: PlayerId): ExitResolution | null {
   for (const entry of newLogEntries) {
-    if (entry.type === 'SCORCH_RESOLVED' && entry.destroyedInstanceIds.includes(instanceId)) return `discard:${ownerId}`;
-    if (entry.type === 'ROW_SCORCH_RESOLVED' && entry.destroyedInstanceIds.includes(instanceId)) return `discard:${ownerId}`;
-    if (entry.type === 'DECOY_SWAPPED' && entry.decoyInstanceId === instanceId) return `discard:${ownerId}`;
+    if (entry.type === 'SCORCH_RESOLVED' && entry.destroyedInstanceIds.includes(instanceId)) return { zone: `discard:${ownerId}`, flash: true };
+    if (entry.type === 'ROW_SCORCH_RESOLVED' && entry.destroyedInstanceIds.includes(instanceId)) return { zone: `discard:${ownerId}`, flash: true };
+    if (entry.type === 'DECOY_SWAPPED' && entry.decoyInstanceId === instanceId) return { zone: `discard:${ownerId}`, flash: false };
+    if (entry.type === 'WEATHER_APPLIED' && entry.instanceId === instanceId) return { zone: 'weather-zone', flash: false };
   }
   return null;
+}
+
+/** The played Scorch card's OWN instanceId (not its victims) — routed through `spawnFloatThenDiscardFlight`'s float-then-discard flight instead of the plain 1-leg exit above. */
+function resolveScorchPlayedInstanceId(newLogEntries: GwentLogEntry[], instanceId: string): boolean {
+  return newLogEntries.some((entry) => entry.type === 'SCORCH_RESOLVED' && entry.instanceId === instanceId);
+}
+
+/** The played Clear Weather card's OWN instanceId — see `resolveScorchPlayedInstanceId`'s doc comment. */
+function resolveWeatherClearedInstanceId(newLogEntries: GwentLogEntry[], instanceId: string): boolean {
+  return newLogEntries.some((entry) => entry.type === 'WEATHER_CLEARED' && entry.instanceId === instanceId);
 }
 
 /** The "moved to a new spot" or "brand new, but from a resolvable zone" half of the diff — split out of the effect below purely to keep its complexity under the project's ESLint limit. */
@@ -88,7 +121,13 @@ function spawnMoveOrEntryGhosts(
   return { spawned, nowFlying };
 }
 
-/** The "vanished, but to a resolvable discard zone" half of the diff — see `spawnMoveOrEntryGhosts`. */
+/**
+ * The "vanished, but to a resolvable discard zone" half of the diff — see
+ * `spawnMoveOrEntryGhosts`. Skips a played Scorch card's own instanceId
+ * (`resolveExitZone` already returns null for it — it's never in its own
+ * `destroyedInstanceIds` — so no explicit exclusion is needed here); that one
+ * goes through `spawnScorchCardFlight`'s separate float-then-discard flight.
+ */
 function spawnExitGhosts(
   current: Map<string, TrackedCardEntry>,
   previous: Map<string, TrackedCardEntry>,
@@ -99,11 +138,74 @@ function spawnExitGhosts(
   const spawned: Ghost[] = [];
   for (const [instanceId, entry] of previous) {
     if (current.has(instanceId)) continue;
-    const destZone = resolveExitZone(newLogEntries, instanceId, entry.ownerId);
-    const destRect = destZone ? zoneRects.get(destZone) : undefined;
-    if (destRect) spawned.push({ id: nextGhostIdRef.current++, info: entry, from: entry.rect, to: destRect, durationMs: EXIT_DURATION_MS });
+    const resolution = resolveExitZone(newLogEntries, instanceId, entry.ownerId);
+    const destRect = resolution ? zoneRects.get(resolution.zone) : undefined;
+    if (destRect) {
+      spawned.push({ id: nextGhostIdRef.current++, info: entry, from: entry.rect, to: destRect, durationMs: EXIT_DURATION_MS, flash: resolution!.flash });
+    }
   }
   return spawned;
+}
+
+/**
+ * A played card's OWN 2-leg flight — hand (or wherever it was) to a named
+ * float zone, holds for `holdMs`, then continues on to the discard pile.
+ * Used for a Scorch card (`floatZoneKey: 'scorch-float'`, felhasználói kérés,
+ * 2026-08-07: "a scorch kártya lebegjen a játéktér fölött") and a Clear
+ * Weather card (`floatZoneKey: 'weather-zone'`, same kérés: "a tiszta idő
+ * kártya is lebegjen az aktív időjárási kártyák mellé, majd onnan a dobó
+ * pakliba"). Unlike every other spawn function here, this one is inherently
+ * impure — it has to schedule the SECOND leg itself once the first leg's
+ * hold elapses, which the shared "one batch timer per effect run" cleanup
+ * (see `CardFlightProvider`'s main effect) can't express. Every timer it
+ * creates (including the one scheduled from inside another timer's callback)
+ * is added to `pendingTimersRef` so the provider's unmount effect can still
+ * clear all of them, however deep.
+ */
+function spawnFloatThenDiscardFlight(
+  previous: Map<string, TrackedCardEntry>,
+  current: Map<string, TrackedCardEntry>,
+  newLogEntries: GwentLogEntry[],
+  zoneRects: Map<string, DOMRect>,
+  nextGhostIdRef: MutableRefObject<number>,
+  pendingTimersRef: MutableRefObject<Set<ReturnType<typeof setTimeout>>>,
+  setGhosts: (updater: (prev: Ghost[]) => Ghost[]) => void,
+  setInFlightIds: (updater: (prev: ReadonlySet<string>) => ReadonlySet<string>) => void,
+  floatZoneKey: string,
+  holdMs: number,
+  matchesTrigger: (newLogEntries: GwentLogEntry[], instanceId: string) => boolean,
+): void {
+  const floatRect = zoneRects.get(floatZoneKey);
+  if (!floatRect) return;
+
+  for (const [instanceId, entry] of previous) {
+    if (current.has(instanceId)) continue;
+    if (!matchesTrigger(newLogEntries, instanceId)) continue;
+    const discardRect = zoneRects.get(`discard:${entry.ownerId}`);
+    if (!discardRect) continue;
+
+    const leg1Id = nextGhostIdRef.current++;
+    setGhosts((prev) => [...prev, { id: leg1Id, info: entry, from: entry.rect, to: floatRect, durationMs: MOVE_DURATION_MS }]);
+    setInFlightIds((prev) => new Set([...prev, instanceId]));
+
+    const holdTimer = setTimeout(() => {
+      const leg2Id = nextGhostIdRef.current++;
+      setGhosts((prev) => [...prev.filter((g) => g.id !== leg1Id), { id: leg2Id, info: entry, from: floatRect, to: discardRect, durationMs: EXIT_DURATION_MS }]);
+
+      const settleTimer = setTimeout(() => {
+        setGhosts((prev) => prev.filter((g) => g.id !== leg2Id));
+        setInFlightIds((prev) => {
+          const next = new Set(prev);
+          next.delete(instanceId);
+          return next;
+        });
+        pendingTimersRef.current.delete(settleTimer);
+      }, EXIT_DURATION_MS + 30);
+      pendingTimersRef.current.add(settleTimer);
+      pendingTimersRef.current.delete(holdTimer);
+    }, MOVE_DURATION_MS + holdMs);
+    pendingTimersRef.current.add(holdTimer);
+  }
 }
 
 export interface CardFlightProviderProps {
@@ -135,8 +237,15 @@ export function CardFlightProvider({ log, children }: CardFlightProviderProps) {
   const previousRef = useRef(new Map<string, TrackedCardEntry>());
   const previousLogLengthRef = useRef(log.length);
   const nextGhostIdRef = useRef(0);
+  /** Every live timer `spawnFloatThenDiscardFlight` has scheduled (including ones scheduled from inside another timer) — cleared wholesale on unmount, since its 2-leg sequencing can't fit the single "one batch timer per effect run" cleanup below. */
+  const pendingFloatTimersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
   const [ghosts, setGhosts] = useState<Ghost[]>([]);
   const [inFlightIds, setInFlightIds] = useState<ReadonlySet<string>>(new Set());
+
+  useEffect(() => {
+    const timers = pendingFloatTimersRef.current;
+    return () => timers.forEach((timer) => clearTimeout(timer));
+  }, []);
 
   const registerZoneRef = useCallback(
     (zoneKey: string) => (el: HTMLElement | null) => {
@@ -163,6 +272,9 @@ export function CardFlightProvider({ log, children }: CardFlightProviderProps) {
     const current = currentRef.current;
     const { spawned: entrySpawned, nowFlying } = spawnMoveOrEntryGhosts(current, previous, newLogEntries, zoneRectsRef.current, nextGhostIdRef);
     const exitSpawned = spawnExitGhosts(current, previous, newLogEntries, zoneRectsRef.current, nextGhostIdRef);
+    const floatArgs = [previous, current, newLogEntries, zoneRectsRef.current, nextGhostIdRef, pendingFloatTimersRef, setGhosts, setInFlightIds] as const;
+    spawnFloatThenDiscardFlight(...floatArgs, 'scorch-float', SCORCH_FLOAT_HOLD_MS, resolveScorchPlayedInstanceId);
+    spawnFloatThenDiscardFlight(...floatArgs, 'weather-zone', WEATHER_FLOAT_HOLD_MS, resolveWeatherClearedInstanceId);
     const spawned = [...entrySpawned, ...exitSpawned];
 
     previousRef.current = new Map(current);
@@ -192,6 +304,19 @@ export function CardFlightProvider({ log, children }: CardFlightProviderProps) {
       </div>
     </CardFlightContext.Provider>
   );
+}
+
+/**
+ * Invisible anchor rect, centered over the board — where a played Scorch
+ * card's flight pauses for a beat before continuing on to the discard pile
+ * (felhasználói kérés, 2026-08-07: "a scorch kártya lebegjen a játéktér
+ * fölött"). Must be rendered INSIDE `CardFlightProvider` (a child, not the
+ * component that creates the provider) since it calls `useCardFlight` itself
+ * — see `MatchBoard`'s `ScorchFloatZone` call site.
+ */
+export function ScorchFloatZone() {
+  const { registerZoneRef } = useCardFlight();
+  return <div ref={registerZoneRef('scorch-float')} className={styles.scorchFloatZone} />;
 }
 
 export interface TrackedCardTileProps {
@@ -234,13 +359,14 @@ function FlyingCard({ ghost }: { ghost: Ghost }) {
   });
   return (
     <animated.div
-      className={styles.ghost}
+      className={[styles.ghost, ghost.flash && styles.flash].filter(Boolean).join(' ')}
       style={{
         left: spring.left,
         top: spring.top,
         width: spring.width,
         height: spring.height,
         transform: spring.progress.to((p) => `scale(${1 + Math.sin(p * Math.PI) * 0.12})`),
+        animationDuration: ghost.flash ? `${ghost.durationMs}ms` : undefined,
       }}
     >
       <CardTile instance={ghost.info.instance} power={ghost.info.power} faction={ghost.info.faction} size="fill" />

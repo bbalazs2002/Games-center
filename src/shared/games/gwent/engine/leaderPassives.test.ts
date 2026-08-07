@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   agileAutoOptimizes,
   isLeaderAbilityCanceled,
-  isLeaderAutoHornRow,
   leaderAbilityCanceledByOpponent,
   medicPicksRandomTarget,
   spyPowerMultiplier,
@@ -42,17 +41,6 @@ describe('isLeaderAbilityCanceled / leaderAbilityCanceledByOpponent', () => {
     state = updatePlayer(state, PLAYER_2, { leaderId: EMHYR_THE_WHITE_FLAME });
     expect(leaderAbilityCanceledByOpponent(state, PLAYER_1)).toBe(true);
     expect(leaderAbilityCanceledByOpponent(state, PLAYER_2)).toBe(false); // White Flame's own owner isn't self-canceled
-  });
-});
-
-describe('isLeaderAutoHornRow — canceled by the opponent\'s White Flame', () => {
-  it('grants the auto-Horn row normally, but not when the opponent has White Flame', () => {
-    let state = baseTestState();
-    state = updatePlayer(state, PLAYER_1, { leaderId: FOLTEST_THE_SIEGEMASTER }); // auto-Horn on Siege
-    expect(isLeaderAutoHornRow(state, PLAYER_1, 'Siege')).toBe(true);
-
-    const canceled = updatePlayer(state, PLAYER_2, { leaderId: EMHYR_THE_WHITE_FLAME });
-    expect(isLeaderAutoHornRow(canceled, PLAYER_1, 'Siege')).toBe(false);
   });
 });
 

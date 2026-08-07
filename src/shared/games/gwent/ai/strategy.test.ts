@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { chooseGwentAiAction, stateForAiDecision } from './strategy';
 import { EMHYR_THE_WHITE_FLAME, FRANCESCA_PUREBLOOD_ELF } from '../engine/leaderConstants';
-import { updatePlayer } from '../engine/rules';
+import { updateBoardRow, updatePlayer } from '../engine/rules';
 import { HIDDEN_CARD_DEF_ID } from '../engine/specialCardIds';
 import { baseTestState, card, PLAYER_1, PLAYER_2 } from '../engine/testHelpers';
 import type { GwentState } from '../engine/state';
@@ -108,6 +108,32 @@ describe('chooseGwentAiAction — in-round decisions', () => {
     state = updatePlayer(state, PLAYER_1, { leaderId: FRANCESCA_PUREBLOOD_ELF, hand: [], leaderAbilityUsed: false });
     state = updatePlayer(state, PLAYER_2, { leaderId: EMHYR_THE_WHITE_FLAME });
     // No hand, ability canceled by the opponent's White Flame — nothing legal but PASS.
+    const action = chooseGwentAiAction(state, PLAYER_1, 'HARD');
+    expect(action).toEqual({ type: 'PASS', playerId: PLAYER_1 });
+  });
+});
+
+describe('chooseGwentAiAction — last-life pass guard (felhasználói kérés, 2026-08-07)', () => {
+  it('never passes on its last life while behind on the board — plays instead, overriding what scoring alone might prefer', () => {
+    let state = readyState();
+    state = updatePlayer(state, PLAYER_1, { hand: [card('a', WEAK_VANILLA)], lives: 1 });
+    state = updateBoardRow(state, PLAYER_2, 'Melee', { cards: [card('opp', BIG_RANGED)] }); // opponent ahead
+    const action = chooseGwentAiAction(state, PLAYER_1, 'HARD');
+    expect(action).toEqual({ type: 'PLAY_CARD', playerId: PLAYER_1, instanceId: 'a' });
+  });
+
+  it('still passes on its last life while behind if there is truly nothing else legal to do', () => {
+    let state = readyState(); // empty hand
+    state = updatePlayer(state, PLAYER_1, { lives: 1 });
+    state = updateBoardRow(state, PLAYER_2, 'Melee', { cards: [card('opp', BIG_RANGED)] });
+    const action = chooseGwentAiAction(state, PLAYER_1, 'HARD');
+    expect(action).toEqual({ type: 'PASS', playerId: PLAYER_1 });
+  });
+
+  it('may still pass on its last life when AHEAD on the board — only a deficit forces fighting', () => {
+    let state = readyState();
+    state = updateBoardRow(state, PLAYER_1, 'Melee', { cards: [card('mine', BIG_RANGED)] });
+    state = updatePlayer(state, PLAYER_1, { lives: 1, hand: [] });
     const action = chooseGwentAiAction(state, PLAYER_1, 'HARD');
     expect(action).toEqual({ type: 'PASS', playerId: PLAYER_1 });
   });

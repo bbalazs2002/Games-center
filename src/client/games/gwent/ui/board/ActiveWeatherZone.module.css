@@ -40,3 +40,25 @@
   height: 3.76rem;
   object-fit: contain;
 }
+
+/**
+ * Gwent-0e korrekció (2026-08-07): a Tiszta idő lap kijátszásakor a MÁR aktív
+ * időjárás-kártyák együtt tűnnek el a dobó pakli felé — lásd
+ * ActiveWeatherZone.tsx's `CLEARING_ANIMATION_MS` doc-kommentje az
+ * időzítésről (miért éppen ennyi).
+ */
+@keyframes weatherClearOut {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.65) translateY(-0.6rem);
+  }
+}
+
+.clearing .weatherCard {
+  animation: weatherClearOut 480ms ease-in forwards;
+  cursor: default;
+}

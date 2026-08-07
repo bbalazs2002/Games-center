@@ -13,3 +13,35 @@
 .hiddenPlaceholder {
   visibility: hidden;
 }
+
+/**
+ * Gwent-0e korrekció (2026-08-07): egy Scorch által elpusztított lap villanjon
+ * fel, mielőtt a dobott lapokhoz csúszik — a mozgás-tween (FlyingCard) mellé
+ * társított, FÜGGETLEN animáció ugyanazon az elemen. Az időzítés a Ghost saját
+ * `durationMs`-éhez igazodik (lásd `EXIT_DURATION_MS`), nem külön szám.
+ */
+@keyframes cardFlash {
+  0%,
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+  45% {
+    filter: brightness(2.4) saturate(1.6);
+  }
+}
+
+.flash {
+  animation-name: cardFlash;
+  animation-timing-function: ease-in-out;
+}
+
+/** A Scorch-lap saját, kézből induló repülésének láthatatlan köztes megállója — lásd ScorchFloatZone (cardFlight.tsx). */
+.scorchFloatZone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4.5rem;
+  height: 7.05rem;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}

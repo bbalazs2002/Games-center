@@ -1,7 +1,7 @@
 import { getCardDef } from './cardDefs';
 import type { CardDef, Row } from './types';
 import type { CardInstance, GwentLogEntry, GwentState, PlayerId, PlayerState } from './state';
-import { agileAutoOptimizes, isLeaderAutoHornRow, medicPicksRandomTarget, spyPowerMultiplier } from './leaderPassives';
+import { agileAutoOptimizes, medicPicksRandomTarget, spyPowerMultiplier } from './leaderPassives';
 import { BOVINE_DEFENSE_FORCE_CARD_ID, COW_CARD_ID, DANDELION_CARD_ID, HIDDEN_CARD_DEF_ID } from './specialCardIds';
 
 export const ROWS: Row[] = ['Melee', 'Ranged', 'Siege'];
@@ -91,10 +91,17 @@ export function computeCardPower(state: GwentState, rowOwnerId: PlayerId, row: R
   return power;
 }
 
-/** A real Horn card OR one of the 3 "double this row unless Horn's already there" leader passives — never stacks (rules.ts §leaderPassives). */
+/**
+ * A real Horn card OR a leader's own Horn-equivalent one-shot ability
+ * (Foltest The Siegemaster/Eredin King of the Wild Hunt/Francesca The
+ * Beautiful — leaderAbilities.ts's hornDoubleOwnRow) — both just set the same
+ * `hornActive` flag, so they can never stack into a x4. Kept as its own named
+ * function (rather than reading `rowState.hornActive` directly at call
+ * sites) as the one documented place to check row-doubling, in case a future
+ * passive-style source is ever added again.
+ */
 export function effectiveHornActive(state: GwentState, rowOwnerId: PlayerId, row: Row): boolean {
-  const rowState = getPlayer(state, rowOwnerId).board[row];
-  return rowState.hornActive || isLeaderAutoHornRow(state, rowOwnerId, row);
+  return getPlayer(state, rowOwnerId).board[row].hornActive;
 }
 
 export function computeRowTotal(state: GwentState, playerId: PlayerId, row: Row): number {
@@ -185,7 +192,10 @@ export function canConfirmMulligan(state: GwentState, playerId: PlayerId): boole
 
 function isDecoyChoiceValid(player: PlayerState, def: CardDef, decoyTargetInstanceId: string | undefined): boolean {
   if (def.kind !== 'Decoy') return decoyTargetInstanceId === undefined;
-  return decoyTargetInstanceId !== undefined && findCardOnPlayerBoard(player, decoyTargetInstanceId) !== null;
+  if (decoyTargetInstanceId === undefined) return false;
+  const target = findCardOnPlayerBoard(player, decoyTargetInstanceId);
+  // Heroes are immune to Decoy, same as Scorch (destroyStrongestAcross above) — real Gwent rule.
+  return target !== null && !getCardDef(target.instance.defId).abilities.includes('Hero');
 }
 
 function isRowChoiceValid(state: GwentState, player: PlayerState, def: CardDef, chosenRow: Row | undefined): boolean {

@@ -2,7 +2,7 @@ import { getCardDef } from '../engine/cardDefs';
 import type { GwentAction } from '../engine/actions';
 import { canActivateLeaderAbility } from '../engine/leaderAbilities';
 import { reducer } from '../engine/reducer';
-import { computeRowTotal, getCurrentPlayer, getOpponent, getPlayer, ROWS, toPublicGwentState } from '../engine/rules';
+import { computeRowTotal, computeSideTotal, getCurrentPlayer, getOpponent, getPlayer, ROWS, toPublicGwentState } from '../engine/rules';
 import { getValidActions } from '../engine/selectors';
 import type { CardInstance, GwentState, PlayerId, PlayerState } from '../engine/state';
 import { enumerateCandidateActions } from './actionEnumerator';
@@ -216,6 +216,22 @@ function pickByDifficulty(scored: ScoredCandidate[], difficulty: GwentAiDifficul
  * real game — only `shared/games/gwent/ai/simulate.ts`'s AI-only driver needs
  * to advance those phases itself, deliberately outside this function.
  */
+/**
+ * On its last life, passing while behind on the board hands the round — and
+ * the whole match — to the opponent for free (felhasználói kérés,
+ * 2026-08-07: "ha az AI egy vereséggel az egész játékot elvesztené, akkor
+ * semmiképp se passzoljon, amíg az ellenfelének több pontja van"). A
+ * structural filter on the candidate pool, not a scoring nudge — `roundLeadValue`'s
+ * diminishing returns (see above) can otherwise make holding cards look better
+ * than fighting for a lead once the deficit is large, which is fine UNLESS
+ * this round's loss is the match's loss.
+ */
+function mustKeepFightingForLastLife(state: GwentState, slot: PlayerId): boolean {
+  const player = getPlayer(state, slot);
+  if (player.lives > 1) return false;
+  return computeSideTotal(state, slot) < computeSideTotal(state, getOpponent(state, slot).id);
+}
+
 export function chooseGwentAiAction(state: GwentState, slot: PlayerId, difficulty: GwentAiDifficulty): GwentAction | null {
   const decisionState = stateForAiDecision(state, slot);
 
@@ -226,6 +242,8 @@ export function chooseGwentAiAction(state: GwentState, slot: PlayerId, difficult
 
   const candidates = enumerateCandidateActions(decisionState, slot);
   if (candidates.length === 0) return null;
-  const scored = scoreCandidateActions(decisionState, slot, candidates);
+  const fightingCandidates = mustKeepFightingForLastLife(decisionState, slot) ? candidates.filter((a) => a.type !== 'PASS') : candidates;
+  const effectiveCandidates = fightingCandidates.length > 0 ? fightingCandidates : candidates;
+  const scored = scoreCandidateActions(decisionState, slot, effectiveCandidates);
   return pickByDifficulty(scored, difficulty);
 }

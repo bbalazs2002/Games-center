@@ -90,9 +90,9 @@ export type GwentLogEntry =
   /** No `row` field (Gwent-0c.4 §11) — placement now goes through resolvePlayEffects, which appends its own CARD_PLAYED/CARD_MOVED_TO_OPPONENT entry with the authoritative row+side right after this one. */
   | { type: 'MEDIC_REVIVED'; playerId: PlayerId; instanceId: string; defId: string; wasRandom: boolean }
   | { type: 'DECOY_SWAPPED'; playerId: PlayerId; decoyInstanceId: string; returnedInstanceId: string; returnedDefId: string }
-  | { type: 'WEATHER_APPLIED'; playerId: PlayerId; row: Row }
-  | { type: 'WEATHER_CLEARED'; playerId: PlayerId }
-  | { type: 'SCORCH_RESOLVED'; playerId: PlayerId; destroyedInstanceIds: string[] }
+  | { type: 'WEATHER_APPLIED'; playerId: PlayerId; instanceId: string; row: Row }
+  | { type: 'WEATHER_CLEARED'; playerId: PlayerId; instanceId: string }
+  | { type: 'SCORCH_RESOLVED'; playerId: PlayerId; instanceId: string; destroyedInstanceIds: string[] }
   | { type: 'ROW_SCORCH_RESOLVED'; playerId: PlayerId; row: Row; destroyedInstanceIds: string[] }
   | { type: 'COW_REPLACED'; playerId: PlayerId; row: Row; newInstanceId: string }
   | { type: 'LEADER_ABILITY_ACTIVATED'; playerId: PlayerId; abilityId: string }

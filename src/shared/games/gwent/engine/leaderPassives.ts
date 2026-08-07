@@ -1,13 +1,9 @@
-import type { Row } from './types';
 import type { GwentState, PlayerId, PlayerState } from './state';
 import {
   EMHYR_INVADER_OF_THE_NORTH,
   EMHYR_THE_WHITE_FLAME,
   EREDIN_BREACC_GLAS_THE_TREACHEROUS,
-  EREDIN_KING_OF_THE_WILD_HUNT,
-  FOLTEST_THE_SIEGEMASTER,
   FRANCESCA_HOPE_OF_THE_AEN_SEIDHE,
-  FRANCESCA_THE_BEAUTIFUL,
 } from './leaderConstants';
 
 /**
@@ -40,20 +36,6 @@ export function leaderAbilityCanceledByOpponent(state: GwentState, playerId: Pla
   const opponent = state.players.find((p) => p.id !== playerId);
   if (!player || !opponent) return false;
   return isLeaderAbilityCanceled(player.leaderId, opponent.leaderId);
-}
-
-const AUTO_HORN_ROW_BY_ABILITY: Record<string, Row> = {
-  [FOLTEST_THE_SIEGEMASTER]: 'Siege',
-  [EREDIN_KING_OF_THE_WILD_HUNT]: 'Melee',
-  [FRANCESCA_THE_BEAUTIFUL]: 'Ranged',
-};
-
-/** True if `playerId`'s own leader grants an automatic Horn-like doubling on `row` (mutually exclusive with a real Horn, never stacks — see rules.ts effectiveHornActive). */
-export function isLeaderAutoHornRow(state: GwentState, playerId: PlayerId, row: Row): boolean {
-  const player = state.players.find((p) => p.id === playerId);
-  if (!player) return false;
-  if (leaderAbilityCanceledByOpponent(state, playerId)) return false;
-  return AUTO_HORN_ROW_BY_ABILITY[player.leaderId] === row;
 }
 
 /** Eredin Breacc Glas The Treacherous — doubles every Spy card's power, affects BOTH players regardless of who has the leader (unless the leader who grants it has been canceled by the opponent's White Flame). */

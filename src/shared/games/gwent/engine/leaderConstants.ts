@@ -22,11 +22,18 @@ export const EREDIN_COMMANDER_OF_THE_RED_RIDERS = 'monsters-eredin-commander-of-
 export const EREDIN_DESTROYER_OF_WORLDS = 'monsters-eredin-destroyer-of-worlds';
 export const FRANCESCA_PUREBLOOD_ELF = 'scoiatael-francesca-findabair-pureblood-elf';
 export const FRANCESCA_QUEEN_OF_DOL_BLATHANNA = 'scoiatael-francesca-findabair-queen-of-dol-blathanna';
-
-// Category B — passive
+/**
+ * Felhasználói korrekció (2026-08-07): ez a 3 leader eredetileg Category B-be
+ * (passzív, mindig aktív) volt sorolva — tévesen. A valódi Gwentben mindhárom
+ * egy Kürt-lappal egyenértékű, EGYSZERI, aktiválandó képesség (a saját fix
+ * sorára: Siege/Melee/Ranged), nem egy meccs eleje óta néma, automatikus
+ * dupláz. Lásd leaderAbilities.ts hornDoubleOwnRow-ját.
+ */
 export const FOLTEST_THE_SIEGEMASTER = 'northern-realms-foltest-the-siegemaster';
 export const EREDIN_KING_OF_THE_WILD_HUNT = 'monsters-eredin-king-of-the-wild-hunt';
 export const FRANCESCA_THE_BEAUTIFUL = 'scoiatael-francesca-findabair-the-beautiful';
+
+// Category B — passive
 export const EREDIN_BREACC_GLAS_THE_TREACHEROUS = 'monsters-eredin-breacc-glas-the-treacherous';
 export const EMHYR_INVADER_OF_THE_NORTH = 'nilfgaard-emhyr-var-emreis-invader-of-the-north';
 export const FRANCESCA_HOPE_OF_THE_AEN_SEIDHE = 'scoiatael-francesca-findabair-hope-of-the-aen-seidhe';

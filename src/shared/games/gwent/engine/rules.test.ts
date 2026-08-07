@@ -28,12 +28,7 @@ import {
   HORN_CARD_ID,
   SCORCH_CARD_ID,
 } from './specialCardIds';
-import {
-  EREDIN_BREACC_GLAS_THE_TREACHEROUS,
-  EREDIN_KING_OF_THE_WILD_HUNT,
-  FOLTEST_THE_SIEGEMASTER,
-  FRANCESCA_THE_BEAUTIFUL,
-} from './leaderConstants';
+import { EREDIN_BREACC_GLAS_THE_TREACHEROUS } from './leaderConstants';
 
 const HERO = 'monsters-draug'; // power 10, Melee, Hero
 const SPY = 'nilfgaard-shilard-fitz-oesterlen'; // power 7, Melee, Spy
@@ -294,20 +289,10 @@ describe('destroyStrongestAcross', () => {
 });
 
 describe('leader passives (category B) via computeCardPower', () => {
-  it('Foltest The Siegemaster/Eredin King of the Wild Hunt/Francesca The Beautiful each auto-double their own Siege/Melee/Ranged row, never stacking with a real Horn', () => {
-    let state = baseTestState();
-    state = updatePlayer(state, PLAYER_1, { leaderId: FOLTEST_THE_SIEGEMASTER });
-    state = updateBoardRow(state, PLAYER_1, 'Siege', { cards: [card('a', TIGHT_BOND)] });
-    expect(computeCardPower(state, PLAYER_1, 'Siege', card('a', TIGHT_BOND))).toBe(6); // 3 x2 auto-Horn
+  it('hornActive (a real Horn card, or a leader\'s Horn-equivalent one-shot ability — see leaderAbilities.test.ts) doubles every card on that row, not other rows', () => {
+    const state = updateBoardRow(baseTestState(), PLAYER_1, 'Siege', { cards: [card('a', TIGHT_BOND)], hornActive: true });
+    expect(computeCardPower(state, PLAYER_1, 'Siege', card('a', TIGHT_BOND))).toBe(6);
     expect(computeCardPower(state, PLAYER_1, 'Melee', card('a', TIGHT_BOND))).toBe(3); // wrong row — no bonus
-
-    state = updatePlayer(baseTestState(), PLAYER_1, { leaderId: EREDIN_KING_OF_THE_WILD_HUNT });
-    state = updateBoardRow(state, PLAYER_1, 'Melee', { cards: [card('a', TIGHT_BOND)], hornActive: true });
-    expect(computeCardPower(state, PLAYER_1, 'Melee', card('a', TIGHT_BOND))).toBe(6); // real Horn + auto-Horn does NOT stack to x4
-
-    state = updatePlayer(baseTestState(), PLAYER_1, { leaderId: FRANCESCA_THE_BEAUTIFUL });
-    state = updateBoardRow(state, PLAYER_1, 'Ranged', { cards: [card('a', TIGHT_BOND)] });
-    expect(computeCardPower(state, PLAYER_1, 'Ranged', card('a', TIGHT_BOND))).toBe(6);
   });
 
   it('Eredin Breacc Glas The Treacherous doubles every Spy card\'s power on BOTH sides', () => {

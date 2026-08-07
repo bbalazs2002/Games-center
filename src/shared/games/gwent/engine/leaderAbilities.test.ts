@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyLeaderAbility, canActivateLeaderAbility } from './leaderAbilities';
-import { getPlayer, updateBoardRow, updatePlayer } from './rules';
+import { computeCardPower, getPlayer, updateBoardRow, updatePlayer } from './rules';
 import { baseTestState, card, PLAYER_1, PLAYER_2 } from './testHelpers';
 import {
   EMHYR_EMPEROR_OF_NILFGAARD,
@@ -10,6 +10,7 @@ import {
   EREDIN_BRINGER_OF_DEATH,
   EREDIN_COMMANDER_OF_THE_RED_RIDERS,
   EREDIN_DESTROYER_OF_WORLDS,
+  EREDIN_KING_OF_THE_WILD_HUNT,
   FOLTEST_KING_OF_TEMERIA,
   FOLTEST_LORD_COMMANDER_OF_THE_NORTH,
   FOLTEST_SON_OF_MEDELL,
@@ -17,6 +18,7 @@ import {
   FOLTEST_THE_STEEL_FORGED,
   FRANCESCA_PUREBLOOD_ELF,
   FRANCESCA_QUEEN_OF_DOL_BLATHANNA,
+  FRANCESCA_THE_BEAUTIFUL,
 } from './leaderConstants';
 import type { GwentState } from './state';
 
@@ -31,7 +33,7 @@ function readyState(leaderId: string): GwentState {
 }
 
 describe('canActivateLeaderAbility — general gating', () => {
-  it('rejects outside ROUND_IN_PROGRESS, outside the acting player\'s turn, once already used, or for a passive-only leader', () => {
+  it('rejects outside ROUND_IN_PROGRESS, outside the acting player\'s turn, once already used, or for a leader with no ability at all', () => {
     const state = readyState(FOLTEST_LORD_COMMANDER_OF_THE_NORTH);
     expect(canActivateLeaderAbility(state, PLAYER_1)).toBe(true);
     expect(canActivateLeaderAbility(state, PLAYER_2)).toBe(false);
@@ -39,8 +41,8 @@ describe('canActivateLeaderAbility — general gating', () => {
     const used = updatePlayer(state, PLAYER_1, { leaderAbilityUsed: true });
     expect(canActivateLeaderAbility(used, PLAYER_1)).toBe(false);
 
-    const passiveOnly = updatePlayer(state, PLAYER_1, { leaderId: FOLTEST_THE_SIEGEMASTER });
-    expect(canActivateLeaderAbility(passiveOnly, PLAYER_1)).toBe(false);
+    const noAbility = updatePlayer(state, PLAYER_1, { leaderId: EMHYR_THE_WHITE_FLAME }); // Category B, not in LEADER_ABILITIES
+    expect(canActivateLeaderAbility(noAbility, PLAYER_1)).toBe(false);
   });
 });
 
@@ -215,6 +217,28 @@ describe('leader abilities that SHOULD work correctly', () => {
     expect(getPlayer(next, PLAYER_2).board.Melee.cards).toEqual([]);
     expect(getPlayer(next, PLAYER_1).leaderAbilityUsed).toBe(true);
   });
+
+  it.each([
+    [FOLTEST_THE_SIEGEMASTER, 'Siege'] as const,
+    [EREDIN_KING_OF_THE_WILD_HUNT, 'Melee'] as const,
+    [FRANCESCA_THE_BEAUTIFUL, 'Ranged'] as const,
+  ])(
+    '%s doubles its own fixed row like a real Horn card — NOT active before activation, active for cards already there AND played afterwards, never stacking with a real Horn (felhasználói korrekció, 2026-08-07: this used to be a silent passive)',
+    (leaderId, row) => {
+      let state = readyState(leaderId);
+      state = updateBoardRow(state, PLAYER_1, row, { cards: [card('a', TIGHT_BOND)] });
+      expect(computeCardPower(state, PLAYER_1, row, card('a', TIGHT_BOND))).toBe(3); // not yet activated — plain power
+
+      const activated = applyLeaderAbility(state, PLAYER_1, undefined, undefined);
+      expect(getPlayer(activated, PLAYER_1).board[row].hornActive).toBe(true);
+      expect(computeCardPower(activated, PLAYER_1, row, card('a', TIGHT_BOND))).toBe(6); // now doubled — the pre-existing card too
+      expect(getPlayer(activated, PLAYER_1).leaderAbilityUsed).toBe(true);
+
+      const alreadyHorned = updateBoardRow(state, PLAYER_1, row, { hornActive: true }); // a real Horn already played
+      const reActivated = applyLeaderAbility(alreadyHorned, PLAYER_1, undefined, undefined);
+      expect(computeCardPower(reActivated, PLAYER_1, row, card('a', TIGHT_BOND))).toBe(6); // does NOT stack to x4
+    },
+  );
 });
 
 describe('leader abilities that should NOT fully succeed — board/hand-state thresholds still consume the ability (legitimate, real-game behavior)', () => {

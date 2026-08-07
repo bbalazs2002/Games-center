@@ -46,7 +46,9 @@ function playCardVariants(state: GwentState, playerId: PlayerId, option: Playabl
   }
 
   if (option.needsDecoyTarget) {
-    const ownBoardCards = ROWS.flatMap((row) => player.board[row].cards);
+    // Heroes are immune to Decoy (rules.ts's isDecoyChoiceValid) — excluded here too, so every
+    // candidate stays legal (this module's whole-file guarantee, see the doc comment below).
+    const ownBoardCards = ROWS.flatMap((row) => player.board[row].cards).filter((c) => !getCardDef(c.defId).abilities.includes('Hero'));
     return ownBoardCards.map((target) => ({
       type: 'PLAY_CARD',
       playerId,
