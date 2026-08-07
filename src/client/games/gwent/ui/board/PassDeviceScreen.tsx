@@ -17,9 +17,11 @@ export interface PassDeviceScreenProps {
 export function PassDeviceScreen({ nextPlayerName, onReveal }: PassDeviceScreenProps) {
   return (
     <div className={styles.passDeviceScreen}>
-      <h2>Add tovább a gépet</h2>
-      <p>Most {nextPlayerName} következik — győződj meg róla, hogy ő nézi a képernyőt.</p>
-      <Button onClick={onReveal}>Megvan, mehet</Button>
+      <div className={styles.screenPanel}>
+        <h2>Add tovább a gépet</h2>
+        <p>Most {nextPlayerName} következik — győződj meg róla, hogy ő nézi a képernyőt.</p>
+        <Button onClick={onReveal}>Megvan, mehet</Button>
+      </div>
     </div>
   );
 }

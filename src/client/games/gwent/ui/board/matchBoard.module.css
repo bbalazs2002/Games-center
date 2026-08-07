@@ -431,10 +431,18 @@
   object-fit: contain;
 }
 
-/** Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — a pakli-építő Gyűjtemény/Pakliban rácsában legyenek nagyobbak a kártyaképek. Ugyanaz a felül-vágott stílus, mint `size="small"`-nál (1.5×-es méret), külön osztályban, hogy a tábla sortömörsége ne változzon. */
+/**
+ * Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — a pakli-építő
+ * Gyűjtemény/Pakliban rácsában legyenek nagyobbak a kártyaképek. Ugyanaz a
+ * felül-vágott stílus, mint `size="small"`-nál, külön osztályban, hogy a
+ * tábla sortömörsége ne változzon.
+ *
+ * Gwent-0d §4 korrekció (2026-08-06), 5. kör: még nagyobbra véve — elég, ha
+ * soronként 3 fér ki (korábban ~4-5 fért egy sorba).
+ */
 .deckBuilder .cardImage {
-  width: 4.5rem;
-  height: 5.1rem;
+  width: 6.2rem;
+  height: 7.05rem;
   object-fit: cover;
   object-position: top;
 }
@@ -470,6 +478,23 @@
   font-size: 0.6rem;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.55);
+}
+
+/**
+ * Gwent-0d §4 korrekció (2026-08-07): a pakli-építő Gyűjtemény/Pakliban
+ * csempéin nagyobb legyen az erő-szám, mint a tábla `size="small"` lapjain —
+ * a `.cardPower` méretét/betűméretét felülírja, ugyanazon az elemen (két
+ * class együtt).
+ *
+ * Gwent-0d §4 korrekció (2026-08-07), 2. kör: a felhasználó kérése — még
+ * nagyobb, és a sor-ikon (`.deckTileRow`, GwentSetupPage.module.css) legyen
+ * ugyanekkora — ez a méret az a "kút", amiből a sor-ikon a saját szélessé-
+ * gét/magasságát átveszi (lásd ott a doc-kommentet).
+ */
+.cardPowerLarge {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 1.05rem;
 }
 
 .actionBar {
@@ -590,6 +615,39 @@
 .passDeviceScreen h2 {
   font-family: var(--gwent-display-font, serif);
   color: var(--shell-accent, #d4af37);
+}
+
+/**
+ * Gwent-0d §5 (5. fázis, 2026-08-07): a StartingChoiceScreen és a
+ * PassDeviceScreen eddig puszta szöveg volt a sötét háttéren — a játék
+ * minden más felülete (akció-sáv, pakli-építő paneljei, kör-összegző modál,
+ * napló-panel) egy faragott fa- vagy pergamen-dobozban ül. Ugyanaz a
+ * "carved wood" keret (`.actionBar`/`.setupPanel` mintája), amibe a
+ * tényleges tartalom (cím, szöveg, gombok/érmék) kerül — az OUTER
+ * `.startingChoiceScreen`/`.passDeviceScreen` marad a teljes képernyős
+ * sötét háttér, EZ csak a benne középre igazított kártya.
+ */
+.screenPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 2.5rem 3rem;
+  max-width: 34rem;
+  background: var(--shell-panel, #3e2c17);
+  border: 2px solid var(--shell-line, #241407);
+  border-radius: 0.75rem;
+  box-shadow: var(--shell-shadow-deep, 0 10px 22px rgba(0, 0, 0, 0.6)), var(--shell-shadow-lifted, inset 0 0 0 1px rgba(255, 255, 255, 0.25));
+}
+
+.screenPanel h2 {
+  margin: 0;
+  text-wrap: balance;
+}
+
+.screenPanel p {
+  margin: 0;
+  opacity: 0.9;
 }
 
 .coinRow {

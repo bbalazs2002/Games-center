@@ -9,7 +9,7 @@ import styles from './matchBoard.module.css';
 
 export interface CardTileProps {
   instance: CardInstance;
-  /** Omitted for non-unit cards (weather/decoy/horn/scorch never show a power badge). Only rendered as a supplementary overlay at `size="small"` — the card art's own burned-in power badge is already legible at medium/large (Gwent-0d §1). */
+  /** Omitted for non-unit cards (weather/decoy/horn/scorch never show a power badge). Only rendered as a supplementary overlay at `size="small"`/`"deckBuilder"` — the card art's own burned-in power badge is already legible at medium/large (Gwent-0d §1). */
   power?: number;
   selected?: boolean;
   disabled?: boolean;
@@ -79,8 +79,10 @@ export const CardTile = forwardRef<HTMLButtonElement, CardTileProps>(function Ca
   return (
     <button ref={ref} type="button" style={style} className={className} onClick={onClick} disabled={disabled || !onClick} title={def.name}>
       <img className={styles.cardImage} src={assetUrl(imagePath)} alt={def.name} />
-      {/* Gwent-0d §1: only at board scale — the burned-in power badge is already legible at medium/large. */}
-      {power !== undefined && size === 'small' && <span className={styles.cardPower}>{power}</span>}
+      {/* Gwent-0d §1: only at cropped-top scale ("small"/"deckBuilder") — the burned-in power badge is already legible at medium/large. Gwent-0d §4 korrekció (2026-08-07): bigger at "deckBuilder" scale (`cardPowerLarge`) — the felhasználó found the board-sized badge too small in the collection/deck grids. */}
+      {power !== undefined && (size === 'small' || size === 'deckBuilder') && (
+        <span className={[styles.cardPower, size === 'deckBuilder' && styles.cardPowerLarge].filter(Boolean).join(' ')}>{power}</span>
+      )}
     </button>
   );
 });

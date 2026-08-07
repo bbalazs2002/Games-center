@@ -68,53 +68,67 @@ export function GwentMatchSetupPage() {
       <MenuNav backTo="/games/gwent" />
       <div className={styles.content}>
         <h1>Gwent — mérkőzés előkészítése</h1>
+        {/*
+          Gwent-0d §4 korrekció (2026-08-06): a névmező kikerült a
+          `GwentDeckBuilder`-ből — egyetlen, a MenuNav gombsorral egy
+          vonalban középre igazított mező, ami a `matchStep` szerint az
+          épp aktuális játékos nevét szerkeszti (mindkét név state marad
+          lifted, csak a MEGJELENÍTETT input egy).
+        */}
+        <input
+          className={styles.nameInput}
+          value={matchStep === 'player1' ? player1Name : player2Name}
+          onChange={(event) => (matchStep === 'player1' ? setPlayer1Name : setPlayer2Name)(event.target.value)}
+        />
 
         <div className={styles.playerStep} hidden={matchStep !== 'player1'}>
           <GwentDeckBuilder
-            nameInput={<input className={styles.nameInput} value={player1Name} onChange={(event) => setPlayer1Name(event.target.value)} />}
             onValidDraftChange={setPlayer1Draft}
+            footerActions={
+              <>
+                <Button
+                  variant="secondary"
+                  disabled={!player1Draft}
+                  onClick={() => {
+                    if (!player1Draft) return;
+                    saveGwentDeck(player1Draft);
+                    setPlayer1Saved(true);
+                  }}
+                >
+                  Pakli mentése
+                </Button>
+                {player1Saved && <span className={styles.savedMessage}>Elmentve.</span>}
+                {/* Gwent-0c.4 §A: only rendered once the deck is actually valid — not just disabled while invalid. */}
+                {player1Draft && <Button onClick={() => setMatchStep('player2')}>Tovább — {player2Name}</Button>}
+              </>
+            }
           />
-          <div className={styles.matchActions}>
-            <Button
-              variant="secondary"
-              disabled={!player1Draft}
-              onClick={() => {
-                if (!player1Draft) return;
-                saveGwentDeck(player1Draft);
-                setPlayer1Saved(true);
-              }}
-            >
-              Pakli mentése
-            </Button>
-            {player1Saved && <span className={styles.savedMessage}>Elmentve.</span>}
-            {/* Gwent-0c.4 §A: only rendered once the deck is actually valid — not just disabled while invalid. */}
-            {player1Draft && <Button onClick={() => setMatchStep('player2')}>Tovább — {player2Name}</Button>}
-          </div>
         </div>
 
         <div className={styles.playerStep} hidden={matchStep !== 'player2'}>
           <GwentDeckBuilder
-            nameInput={<input className={styles.nameInput} value={player2Name} onChange={(event) => setPlayer2Name(event.target.value)} />}
             onValidDraftChange={setPlayer2Draft}
+            footerActions={
+              <>
+                <Button variant="secondary" onClick={() => setMatchStep('player1')}>
+                  ← {player1Name}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={!player2Draft}
+                  onClick={() => {
+                    if (!player2Draft) return;
+                    saveGwentDeck(player2Draft);
+                    setPlayer2Saved(true);
+                  }}
+                >
+                  Pakli mentése
+                </Button>
+                {player2Saved && <span className={styles.savedMessage}>Elmentve.</span>}
+                {player1Draft && player2Draft && <Button onClick={startMatch}>Mérkőzés indítása</Button>}
+              </>
+            }
           />
-          <div className={styles.matchActions}>
-            <Button variant="secondary" onClick={() => setMatchStep('player1')}>
-              ← {player1Name}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!player2Draft}
-              onClick={() => {
-                if (!player2Draft) return;
-                saveGwentDeck(player2Draft);
-                setPlayer2Saved(true);
-              }}
-            >
-              Pakli mentése
-            </Button>
-            {player2Saved && <span className={styles.savedMessage}>Elmentve.</span>}
-            {player1Draft && player2Draft && <Button onClick={startMatch}>Mérkőzés indítása</Button>}
-          </div>
         </div>
       </div>
     </div>

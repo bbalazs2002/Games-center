@@ -12,13 +12,18 @@
   background: transparent !important;
 }
 
-/* Tall enough for the active slot's full card image (12rem wide, ~1.57:1
-   card aspect ratio -> ~18.8rem tall) without clipping into `.detail` below. */
+/**
+ * Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — ez a modál sose
+ * kelljen görgetni (a Modal.module.css közös `.body { max-height: 85vh;
+ * overflow-y: auto }` szabálya csak utolsó mentőöv marad, ide nem szabad
+ * eljutni) — a `.stage` magassága + az aktív kártyakép mérete lejjebb vették
+ * (12rem -> 9rem), arányosan a soraiban lévő térközök is szűkebbek.
+ */
 .stage {
   position: relative;
-  height: 19.5rem;
+  height: 14.5rem;
   perspective: 60rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
 .slot {
@@ -35,14 +40,14 @@
 
 .slotImage {
   display: block;
-  width: 7rem;
+  width: 5.25rem;
   height: auto;
   border-radius: 0.4rem;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
 }
 
 .activeSlot .slotImage {
-  width: 12rem;
+  width: 9rem;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.6), 0 0 0 3px var(--shell-accent-soft, rgba(212, 175, 55, 0.45));
 }
 
@@ -50,19 +55,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .navButton {
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 1.9rem;
+  height: 1.9rem;
   border-radius: 50%;
   border: 1px solid var(--shell-line, rgba(0, 0, 0, 0.3));
   background: var(--shell-accent-soft, rgba(212, 175, 55, 0.35));
   color: inherit;
   font-family: var(--gwent-display-font, serif);
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -73,13 +78,14 @@
 }
 
 .navCount {
+  font-size: 0.85rem;
   font-variant-numeric: tabular-nums;
   opacity: 0.8;
 }
 
 .detail {
   display: flex;
-  gap: 1.25rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 
@@ -87,7 +93,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
 }
 
 .info {
@@ -95,14 +101,16 @@
   min-width: 14rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.4rem;
   background: rgba(0, 0, 0, 0.55);
   border-radius: 0.5rem;
-  padding: 1rem 1.25rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
 }
 
 .name {
   margin: 0;
+  font-size: 1.1rem;
   font-family: var(--gwent-display-font, serif);
   color: var(--shell-accent, #d4af37);
 }
@@ -111,7 +119,7 @@
   margin: 0;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.25rem 0.75rem;
+  gap: 0.15rem 0.6rem;
 }
 
 .fact {
@@ -129,17 +137,17 @@
 
 .mechanicText {
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .cardText {
   margin: 0;
-  padding-left: 0.75rem;
+  padding-left: 0.6rem;
   border-left: 2px solid currentColor;
   opacity: 0.85;
   font-style: italic;
   font-family: var(--gwent-body-font, serif);
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .abilitiesPanel {
@@ -147,15 +155,16 @@
   min-width: 12rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.3rem;
   background: rgba(0, 0, 0, 0.55);
   border-radius: 0.5rem;
-  padding: 1rem 1.25rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
 }
 
 .abilitiesPanelTitle {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -164,7 +173,7 @@
 
 .abilityEntry {
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
 .abilityEntry strong {

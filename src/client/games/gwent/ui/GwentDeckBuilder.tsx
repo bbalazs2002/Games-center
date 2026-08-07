@@ -13,22 +13,27 @@ import { loadPersistedGwentDeck } from './gwentDeckPersistence';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
 import { DeckStep } from './DeckStep';
 import { FactionStep } from './FactionStep';
-import { LeaderStep } from './LeaderStep';
 import styles from './GwentSetupPage.module.css';
 
 export interface GwentDeckBuilderProps {
-  /** Rendered at the top of `.setupPanel`, above the faction picker — the caller's player-name input (Gwent-0c.4 §A: the name input moves INSIDE the same styled panel as the faction/leader pickers, not a separate loose element above it). */
-  nameInput: ReactNode;
   /** Fires on every change with the current draft once faction+leader+a fully valid deck are all chosen, or null the moment any of that stops being true. */
   onValidDraftChange: (draft: GwentDeckDraft | null) => void;
+  /**
+   * Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — a "Pakli
+   * mentése"/"Tovább" gombok (GwentMatchSetupPage.tsx-ben élnek, onnan
+   * kapják a player1Draft/matchStep stb. állapotot) a középső oszlop ALJÁRA
+   * kerüljenek, hogy a Gyűjtemény/Pakliban oszlopoknak ne kelljen egy külön,
+   * teljes szélességű sornak helyet hagyniuk alul. `margin-top: auto`-val
+   * (.deckMiddleActions) a doboz aljához tapad.
+   */
+  footerActions?: ReactNode;
 }
 
 /**
  * The faction + leader + deck builder body — extracted from Gwent-0a.1's
  * `GwentSetupPage` (2026-08-04) so `GwentMatchSetupPage` can run two
  * independent instances of it (one per hot-seat player) without duplicating
- * any of the deck-building logic. `DeckStep`/`FactionStep`/`LeaderStep`/
- * `CardGrid` are unchanged.
+ * any of the deck-building logic. `DeckStep`/`FactionStep` are unchanged.
  *
  * Gwent-0c.4 §A: no longer a `faction`→`leader`→`deck` step-wizard — the
  * felhasználó wants "egy oldalon" (one page): all three sections render
@@ -41,14 +46,18 @@ export interface GwentDeckBuilderProps {
  * saved last. Applies equally to BOTH hot-seat players now, not just
  * "whichever builder is shown first".
  */
-export function GwentDeckBuilder({ nameInput, onValidDraftChange }: GwentDeckBuilderProps) {
+export function GwentDeckBuilder({ onValidDraftChange, footerActions }: GwentDeckBuilderProps) {
   const [faction, setFaction] = useState<Faction | null>(null);
   // Keyed by faction (not a single flat value) so switching faction/leader mid-build never
   // discards another faction's already-picked leader/cards (0a-spec §9.5 kérés, 2026-08-01).
   const [leaderIdByFaction, setLeaderIdByFaction] = useState<Partial<Record<Faction, string>>>({});
   const [cardCountsByFaction, setCardCountsByFaction] = useState<Partial<Record<Faction, DeckCardCounts>>>({});
-  // Gwent-0d §4: read-only leader-card zoom for the middle column's selected-leader art — same "click the card to open the carousel" pattern as LeaderAbilityPanel's board version.
-  const [leaderZoomOpen, setLeaderZoomOpen] = useState(false);
+  // Gwent-0d §4 korrekció (2026-08-06): a kis vezér-választó csempesor
+  // megszűnt — csak a nagy vezér-kártya látszik, rákattintva EGYSZERRE
+  // működik nézegetőként ÉS választóként: egy karuszel az adott frakció
+  // összes vezérével, "Kiválaszt" gombbal (ugyanaz a minta, mint
+  // MulliganScreen.tsx redraw-választója).
+  const [leaderPickerOpen, setLeaderPickerOpen] = useState(false);
 
   const leaderId = faction ? (leaderIdByFaction[faction] ?? null) : null;
   const cardCounts = faction ? (cardCountsByFaction[faction] ?? {}) : {};
@@ -74,7 +83,7 @@ export function GwentDeckBuilder({ nameInput, onValidDraftChange }: GwentDeckBui
   // same operation either way now: apply a persisted deck if this session
   // hasn't touched that faction yet, else default to its first leader so the
   // deck grid below always has something to show (still freely changeable
-  // via the always-visible LeaderStep grid).
+  // via the leader picker modal, see leaderPickerOpen).
   function selectFaction(next: Faction): void {
     setFaction(next);
     if (applyPersistedDeck(next)) return;
@@ -97,26 +106,29 @@ export function GwentDeckBuilder({ nameInput, onValidDraftChange }: GwentDeckBui
 
   const selectedLeader = leaderId ? getLeaderDef(leaderId) : null;
   const stats = faction ? computeDeckStats(cardCounts, faction) : null;
+  const factionLeaders = faction ? LEADER_DEFS.filter((l) => l.faction === faction) : [];
+  const selectedLeaderIndex = Math.max(
+    0,
+    factionLeaders.findIndex((l) => l.id === leaderId),
+  );
 
-  // Gwent-0d §4: the middle column (leader picker + selected leader card +
-  // deck stats) is composed HERE (GwentDeckBuilder owns faction/leader/stats
-  // knowledge) but physically slotted by DeckStep, between its two card
-  // columns — avoids duplicating DeckStep's sort/validation state upward
-  // just to split it into two separately-callable halves.
+  // Gwent-0d §4 korrekció (2026-08-06): a felhasználó kérése — csak a nagy
+  // vezér-kártya látszik (nincs külön kis csempesor), rákattintva egy
+  // karuszel-modál nyílik AZ ADOTT FRAKCIÓ összes vezérével, "Kiválaszt"
+  // gombbal — ugyanaz a "lap választó modál" minta, mint bármelyik más
+  // kártyánál (lásd DeckStep.tsx info-gombja), csak itt választás is jár
+  // vele (mint MulliganScreen.tsx redraw-választója). A képesség-leírás is
+  // csak a modálon látszik — CardCarouselModal már megjeleníti
+  // (`entry.leader.abilityDescription`), nincs szükség rá itt még egyszer.
   const middleColumn = faction && (
     <>
-      <LeaderStep faction={faction} leaders={LEADER_DEFS.filter((l) => l.faction === faction)} selectedLeaderId={leaderId} onSelect={selectLeader} />
-
       {selectedLeader && (
-        <div className={styles.selectedLeader}>
-          <img
-            className={styles.selectedLeaderImage}
-            src={assetUrl(selectedLeader.imagePaths[0])}
-            alt={selectedLeader.name}
-            onClick={() => setLeaderZoomOpen(true)}
-          />
-          <p className={styles.selectedLeaderAbility}>{selectedLeader.abilityDescription}</p>
-        </div>
+        <img
+          className={styles.selectedLeaderImage}
+          src={assetUrl(selectedLeader.imagePaths[0])}
+          alt={selectedLeader.name}
+          onClick={() => setLeaderPickerOpen(true)}
+        />
       )}
 
       {stats && (
@@ -152,9 +164,18 @@ export function GwentDeckBuilder({ nameInput, onValidDraftChange }: GwentDeckBui
         </dl>
       )}
 
+      {footerActions && <div className={styles.deckMiddleActions}>{footerActions}</div>}
+
       <CardCarouselModal
-        entries={leaderZoomOpen && selectedLeader ? ([{ type: 'leader', leader: selectedLeader }] satisfies CarouselEntry[]) : null}
-        onClose={() => setLeaderZoomOpen(false)}
+        entries={leaderPickerOpen ? (factionLeaders.map((l) => ({ type: 'leader', leader: l })) satisfies CarouselEntry[]) : null}
+        initialIndex={selectedLeaderIndex}
+        onClose={() => setLeaderPickerOpen(false)}
+        confirmLabel="Kiválaszt"
+        onConfirm={(entry) => {
+          if (entry.type !== 'leader') return;
+          selectLeader(entry.leader.id);
+          setLeaderPickerOpen(false);
+        }}
       />
     </>
   );
@@ -162,7 +183,6 @@ export function GwentDeckBuilder({ nameInput, onValidDraftChange }: GwentDeckBui
   return (
     <section className={styles.builderSection}>
       <div className={styles.setupPanel}>
-        {nameInput}
         <FactionStep selectedFaction={faction} onSelect={selectFaction} />
       </div>
 

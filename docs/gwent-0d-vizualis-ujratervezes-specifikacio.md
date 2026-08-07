@@ -1,12 +1,13 @@
 # Gwent-0d — teljes vizuális újratervezés a Witcher 3-beli Gwent minijáték alapján
 
-**Státusz (2026-08-05): 0–4. fázis KÉSZ, élőben ellenőrizve (tsc/eslint/tesztek/build zöld). Az 5. fázis (maradék képernyők token-szintű igazítása) még hátravan.**
+**Státusz (2026-08-07): 0–5. fázis KÉSZ, élőben ellenőrizve (tsc/eslint/tesztek/build zöld).**
 
 - 0. fázis (asset-pipeline, betűtípusok, alap-tokenek) — kész.
 - 1. fázis (`CardTile` egyszerűsítés) — kész.
 - 2. fázis (`CardCarouselModal`) — kész.
 - 3. fázis (meccs-tábla) — kész; több élő korrekciós kör után (időjárás-sáv/vezér-gomb átfedés, ezüst margó folytonossága, arany elválasztó szélessége, húzópakli-hely, jobb oldali margó a sínig, ellenfél-oldali vezér-gomb elrejtése) a felhasználó jóváhagyta a végleges állapotot referenciapontként (`git tag gwent-0d-phase3-checkpoint`).
-- 4. fázis (pakli-építő két hasábos átépítése) — kész: `FactionStep` középre igazított ciklikus váltóvá alakult, `LeaderStep` kompakt csempesorrá a középső oszlopban, `DeckStep` Gyűjtemény/Pakliban két hasábra bomlott (kattintás = ±1 példány, kis "i" gomb nyitja a karuszelt), a középső oszlop vezér-kártyát + pakli-statisztikát mutat. A már ezáltal feleslegessé vált `CardGrid`/`CardCountGrid` törölve.
+- 4. fázis (pakli-építő két hasábos átépítése) — kész, plusz több utólagos finomhangolási kör: nagyobb kártyaképek 3/soros elrendezésben, önálló görgetésű hasábok, "Nézegető mód" bevezetése (a külön "i" infógomb később teljesen megszűnt), a vezér csak a nagy kártyaként jelenik meg (karuszel-modálos váltással), Pakli mentése/Tovább gombok a középső oszlop aljára költöztek, majd az erő-szám és a sor-jelölés (végül ikon, nem felirat) nagyobbra és jobban olvashatóra állítva a Gyűjtemény/Pakliban csempéken. A már ezáltal feleslegessé vált `CardGrid`/`CardCountGrid`/`LeaderStep.tsx` törölve.
+- 5. fázis (maradék képernyők token-szintű igazítása) — kész: a token-rendszer (`gwentTheme.module.css`, Cinzel/EB Garamond) és a `CardCarouselModal` már a korábbi fázisokban be volt kötve ezekbe a képernyőkbe is (`MulliganScreen`, `RoundSummaryModal`, `GwentLogPanel`, a győzelmi képernyő — mind faragott fa- vagy pergamen-panelben ültek már). Az egyetlen valódi hiányosság a `StartingChoiceScreen`/`PassDeviceScreen` volt: puszta szöveg a sötét háttéren, semmilyen kártya-keret nélkül — most egy közös `.screenPanel` (faragott fa-doboz, `.actionBar`/`.setupPanel` mintájára) veszi körül a tartalmukat, konzisztensen a játék többi felületével.
 
 ## Kontextus
 

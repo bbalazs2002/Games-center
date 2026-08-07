@@ -1,3 +1,4 @@
+import { assetUrl } from '../../../core/assetUrl';
 import { cardsForFaction, isHeroCard, type DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
 import type { CardDef, CardKind, Faction, Row, UnitAbility } from '../../../../shared/games/gwent/engine/types';
 
@@ -5,6 +6,13 @@ export const ROW_LABELS_HU: Record<Row, string> = {
   Melee: 'Közelharc',
   Ranged: 'Távolsági',
   Siege: 'Ostrom',
+};
+
+/** Same medallion art as BoardRow.tsx's row header (Gwent-0d §3) — reused here so the deck-builder tile's row marker is an icon, not a text pill (Gwent-0d §4 korrekció, 2026-08-07). */
+export const ROW_ICON_PATH: Record<Row, string> = {
+  Melee: assetUrl('/assets/gwent/icons/melee.png'),
+  Ranged: assetUrl('/assets/gwent/icons/ranged.png'),
+  Siege: assetUrl('/assets/gwent/icons/siege.png'),
 };
 
 /** Gwent-0c.2 §F, 6. pont: CardDetailModal's "Típus" mező magyarul. */

@@ -4,7 +4,7 @@ import { Select } from '../../../ui-kit/Select';
 import type { CardDef, Faction } from '../../../../shared/games/gwent/engine/types';
 import { cardsForFaction, validateDeckDraft, type DeckCardCounts } from '../../../../shared/games/gwent/engine/deckRules';
 import type { CardInstance } from '../../../../shared/games/gwent/engine/state';
-import { CARD_SORT_OPTIONS, sortCards, type CardSortKey } from './cardDisplay';
+import { CARD_SORT_OPTIONS, ROW_ICON_PATH, rowLabel, sortCards, type CardSortKey } from './cardDisplay';
 import { EyeIcon } from './board/boardIcons';
 import { CardTile } from './board/CardTile';
 import { CardCarouselModal, type CarouselEntry } from './board/CardCarouselModal';
@@ -37,12 +37,26 @@ interface DeckCardTileProps {
   count: number;
   onAdd?: () => void;
   onRemove?: () => void;
+  /** Only reachable via `viewMode` now — no separate "i" button anymore. */
   onInfo: () => void;
   /** Gwent-0d §4 korrekció (2026-08-06): "Nézegető mód", ugyanaz a minta, mint a meccs-tábla kézben tartott lapjainál — bekapcsolva a fő kattintás is a karuszelt nyitja meg add/remove helyett, és a "majdnem tele" letiltás sem érvényes (épp a maxolt lapokat is meg kell tudni nézni). */
   viewMode: boolean;
 }
 
-/** A single dense collection/deck tile — the card's own small crop (Gwent-0d §1) IS the add/remove button (unless `viewMode` is on); a tiny corner "i" always opens the shared carousel for a closer look, a sibling button (not nested — CardTile is itself a `<button>`). */
+/**
+ * A single dense collection/deck tile — the card's own small crop (Gwent-0d
+ * §1) IS the add/remove button, unless `viewMode` is on, in which case the
+ * SAME click opens the shared carousel instead (no separate "i" button
+ * anymore — a real playtest report, 2026-08-06: "Nézegető mód" alone is
+ * enough, a dedicated info icon on every tile was redundant clutter).
+ * `power`/row are explicit overlays (top-left, stacked) — the card art
+ * already bakes in a power badge/row icon, but at this crop/size they're not
+ * reliably legible. Power is a bigger text badge here than on the match
+ * board (Gwent-0d §4 korrekció, 2026-08-07: `CardTile`'s `cardPowerLarge`
+ * variant, `deckBuilder`-only); the row is the same medallion icon
+ * BoardRow.tsx uses, not a text label — no info button anywhere, "Nézegető
+ * mód" is the only way to see the full card.
+ */
 function DeckCardTile({ def, count, onAdd, onRemove, onInfo, viewMode }: DeckCardTileProps) {
   // No real CardInstance exists yet for a catalog entry — id-stable synthetic one, same trick CardCarouselModal's 'catalog' entries avoid needing (Gwent-0d §2 doc comment).
   const instance: CardInstance = { instanceId: def.id, defId: def.id, chosenRow: null };
@@ -54,21 +68,19 @@ function DeckCardTile({ def, count, onAdd, onRemove, onInfo, viewMode }: DeckCar
   // (`isCollectionTile` false) marad a jelenlegi darabszám, ami ott mindig >0
   // (a lista már eleve csak owned lapokat listáz).
   const badgeCount = isCollectionTile ? def.copies : count;
+  const rowIcon = def.row ? ROW_ICON_PATH[def.row] : null;
+  const row = rowLabel(def.row);
   return (
     <div className={styles.deckTile}>
-      <CardTile instance={instance} size="deckBuilder" disabled={!viewMode && atMax} onClick={viewMode ? onInfo : (onAdd ?? onRemove)} />
+      <CardTile
+        instance={instance}
+        size="deckBuilder"
+        power={def.basePower ?? undefined}
+        disabled={!viewMode && atMax}
+        onClick={viewMode ? onInfo : (onAdd ?? onRemove)}
+      />
+      {rowIcon && <img className={styles.deckTileRow} src={rowIcon} alt={row ?? ''} title={row ?? undefined} />}
       <span className={styles.deckTileCount}>×{badgeCount}</span>
-      <button
-        type="button"
-        className={styles.deckTileInfo}
-        aria-label={`${def.name} részletei`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onInfo();
-        }}
-      >
-        i
-      </button>
     </div>
   );
 }
