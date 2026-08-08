@@ -103,6 +103,7 @@ describe('reducer — kötelező hitel-törlesztés csak dobás utáni START-ker
     });
     expect(next.turnPhase).toBe('RESOLVING_SPACE');
     expect(getPlayer(next, 'player-1').cash).toBe(18000 + 2000 - 500 - 200); // START bónusz, törlesztés, 1-es mező ára
+    expect(next.pendingMandatoryInstallments).toEqual([]); // regresszió: korábban stale ['car'] maradt itt (0b smoke teszt találta meg)
   });
 
   it('a hitel teljesen kifizetve OWNED_CASH-re vált', () => {

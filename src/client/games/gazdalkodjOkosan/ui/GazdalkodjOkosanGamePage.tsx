@@ -251,11 +251,13 @@ function LastChanceCard({ state }: { state: GazdalkodjOkosanState }) {
 
 export interface GazdalkodjOkosanGamePageProps {
   transport?: GameTransport<GazdalkodjOkosanState, GazdalkodjOkosanAction>;
+  /** Online mode only — which player slot the local viewer controls; the ActionPanel only shows when it's their turn (nyílt infó, csak a köröd aktív, a Ramses-0b mintája). */
+  myPlayer?: PlayerId;
   playerNames?: string[];
   onRequestNewGame?: () => void;
 }
 
-export function GazdalkodjOkosanGamePage({ transport: providedTransport, playerNames, onRequestNewGame }: GazdalkodjOkosanGamePageProps = {}) {
+export function GazdalkodjOkosanGamePage({ transport: providedTransport, myPlayer, playerNames, onRequestNewGame }: GazdalkodjOkosanGamePageProps = {}) {
   const isLocalMode = providedTransport === undefined;
   const localTransport = useMemo(
     () => new LocalGameTransport<GazdalkodjOkosanState, GazdalkodjOkosanAction>(reducer, createInitialState(playerNames ?? ['Játékos 1', 'Játékos 2'])),
@@ -290,7 +292,7 @@ export function GazdalkodjOkosanGamePage({ transport: providedTransport, playerN
               <PlayerCard key={p.id} player={p} isCurrent={index === state.currentPlayerIndex && !winner} />
             ))}
           </div>
-          {!winner && <ActionPanel state={state} dispatch={dispatch} />}
+          {!winner && (!myPlayer || myPlayer === currentPlayer.id) && <ActionPanel state={state} dispatch={dispatch} />}
           <LastChanceCard state={state} />
           <div className={styles.log}>
             <h4>Napló</h4>

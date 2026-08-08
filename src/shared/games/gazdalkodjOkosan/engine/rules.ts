@@ -16,6 +16,16 @@ export function updatePlayer(state: GazdalkodjOkosanState, playerId: PlayerId, p
   return { ...state, players: state.players.map((p) => (p.id === playerId ? { ...p, ...patch } : p)) };
 }
 
+/**
+ * A placeholder ("1. játékos" stb.) lecserélése a csatlakozáskor ismertté
+ * váló valódi névre — `GameRoom.onPlayerAdmitted` hívja online módban, mivel
+ * `createInitialState` még senki csatlakozása előtt lefut. A Ramses
+ * `renamePlayer`-jének megfelelője (docs/ramses-0b-specifikacio.md §3.5).
+ */
+export function renamePlayer(state: GazdalkodjOkosanState, playerId: PlayerId, name: string): GazdalkodjOkosanState {
+  return updatePlayer(state, playerId, { name });
+}
+
 export function getSpace(state: GazdalkodjOkosanState, index: number): BoardSpace {
   return state.board[index];
 }

@@ -79,7 +79,7 @@ const ALL_GAMES: GameDescriptor[] = [
     id: 'gazdalkodj-okosan',
     label: 'Gazdálkodj okosan!',
     load: () => import('../games/gazdalkodjOkosan'),
-    // Nincs `online` — 0a fázis: kizárólag hot-seat, nincs szerver-oldali Room még (lásd docs/gazdalkodj-okosan-0a-specifikacio.md §5, 0b).
+    online: { playerCountRange: [2, 6] }, // 0b: multiplayer bekötve, AI nélkül — lásd docs/gazdalkodj-okosan-0b-multiplayer-specifikacio.md
     rules: () => import('../games/gazdalkodjOkosan/ui/GazdalkodjOkosanRules'),
     coverImage: assetUrl('/assets/gazdalkodj-okosan/box.jpg'),
   },

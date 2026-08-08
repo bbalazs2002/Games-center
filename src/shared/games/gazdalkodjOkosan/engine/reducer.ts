@@ -350,7 +350,13 @@ function applyPayInstallment(state: GazdalkodjOkosanState, loan: 'car' | 'apartm
 
   const remainingPending = state.pendingMandatoryInstallments.filter((l) => l !== loan);
   if (remainingPending.length > 0) return { ...next, pendingMandatoryInstallments: remainingPending };
-  return resolveLandedSpace(next, player.id);
+  // Real bug caught by the 0b schema-codec smoke test (2026-08-08): without
+  // this explicit clear, `next` still carried the stale ['car'/'apartment']
+  // list all the way through resolveLandedSpace's various `{ ...state, ... }`
+  // spreads (none of them touch this field), leaving AWAITING_MANDATORY_
+  // INSTALLMENT's own list stuck non-empty even after the last installment
+  // was paid off.
+  return resolveLandedSpace({ ...next, pendingMandatoryInstallments: [] }, player.id);
 }
 
 function applyOpenBankAccount(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
