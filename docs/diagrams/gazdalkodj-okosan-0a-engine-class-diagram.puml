@@ -1,0 +1,180 @@
+@startuml gazdalkodj-okosan-0a-engine-class-diagram
+
+title Gazdálkodj okosan-0a — motor adatmodell (Tesco-kiadás)
+
+enum SpaceType {
+  START
+  FLAVOR
+  PAY
+  PAY_AND_SKIP
+  CHANCE
+  BKV_PASS
+  BANK
+  INSURANCE
+  CAR_PURCHASE
+  APARTMENT_PURCHASE
+  FURNITURE_PURCHASE
+  HOSPITAL
+  EXTRA_ROLL_REWARD
+}
+
+enum FurnitureItemId {
+  konyhabutor
+  mosogep
+  hutoszekreny
+  mosogatogep
+  tuzhely
+  szobabutor
+}
+
+enum TurnPhase {
+  AWAITING_ROLL
+  AWAITING_MANDATORY_INSTALLMENT
+  RESOLVING_SPACE
+  TURN_COMPLETE
+}
+
+enum GameStatus {
+  IN_PROGRESS
+  FINISHED
+}
+
+class BoardSpace {
+  +index: number
+  +type: SpaceType
+  +label: string
+  +amount: number?
+  +furnitureItems: FurnitureItemId[]?
+  +requiresBkvPass: boolean?
+}
+
+class InstallmentPlan {
+  +totalPrice: number
+  +remainingBalance: number
+  +perTurnPayment: number
+}
+
+class OwnershipStatus <<union>> {
+  NONE
+  OWNED_CASH(pricePaid)
+  FINANCED(plan: InstallmentPlan)
+}
+
+class ChanceCard {
+  +id: string
+  +text: string
+  +effect: ChanceCardEffect
+}
+
+class ChanceCardEffect <<union>> {
+  MONEY_DELTA(amount)
+  MOVE_TO(targetIndex, thenPay?)
+  GAIN_FURNITURE(item, cashIfAlreadyOwned, cashIfNoApartment?)
+  FIRE_EVENT
+  CAR_THEFT
+  EXTRA_ROLL
+  IMMEDIATE_INTEREST
+}
+
+class BankAccount {
+  +balance: number
+}
+
+class Player {
+  +id: PlayerId
+  +name: string
+  +cash: number
+  +bankAccount: BankAccount?
+  +hasBkvPass: boolean
+  +position: number
+  +apartment: OwnershipStatus
+  +car: OwnershipStatus
+  +furniture: Record<FurnitureItemId, boolean>
+  +insurance: {life, home, car}
+  +hospitalTurnsRemaining: number
+  +skipNextRoll: boolean
+  +extraRollsPending: number
+  +bankrupt: boolean
+}
+
+class LogEntry <<union>> {
+  DICE_ROLLED
+  MOVED
+  SPACE_PAYMENT
+  CHANCE_CARD_DRAWN
+  BKV_PASS_PURCHASED
+  BANK_ACCOUNT_OPENED
+  MONEY_TRANSFERRED
+  INTEREST_PAID
+  INSURANCE_BOUGHT
+  APARTMENT_PURCHASED
+  CAR_PURCHASED
+  INSTALLMENT_PAID
+  FURNITURE_PURCHASED
+  FURNITURE_GAINED_FROM_CARD
+  FIRE_EVENT
+  CAR_THEFT
+  HOSPITAL_ENTERED / EXITED
+  SKIPPED_TURN
+  BANKRUPT
+  GAME_WON
+  ... (lásd 3. szakasz teljes lista)
+}
+
+class GazdalkodjOkosanState {
+  +board: BoardSpace[]
+  +chanceDeck: ChanceCard[]
+  +players: Player[]
+  +currentPlayerIndex: number
+  +turnPhase: TurnPhase
+  +pendingMandatoryInstallments: ('car'|'apartment')[]
+  +lastDiceRoll: number?
+  +status: GameStatus
+  +winnerId: PlayerId?
+  +log: LogEntry[]
+}
+
+class GazdalkodjOkosanAction <<union>> {
+  ROLL_MOVE_DICE
+  PAY_APARTMENT_INSTALLMENT(amount?)
+  PAY_CAR_INSTALLMENT(amount?)
+  BUY_APARTMENT(financed)
+  BUY_CAR(financed)
+  BUY_FURNITURE(item)
+  OPEN_BANK_ACCOUNT
+  DEPOSIT_TO_ACCOUNT(amount)
+  WITHDRAW_FROM_ACCOUNT(amount)
+  BUY_INSURANCE(policy)
+  BUY_BKV_PASS
+  DRAW_CHANCE_CARD
+  END_TURN
+}
+
+GazdalkodjOkosanState "1" *-- "42" BoardSpace
+GazdalkodjOkosanState "1" *-- "35" ChanceCard
+GazdalkodjOkosanState "1" *-- "2..6" Player
+GazdalkodjOkosanState "1" *-- "0..*" LogEntry
+GazdalkodjOkosanState --> TurnPhase
+GazdalkodjOkosanState --> GameStatus
+BoardSpace --> SpaceType
+BoardSpace --> FurnitureItemId
+Player --> OwnershipStatus : apartment, car
+Player --> BankAccount : bankAccount?
+OwnershipStatus --> InstallmentPlan
+Player --> FurnitureItemId : furniture
+ChanceCard --> ChanceCardEffect
+ChanceCardEffect ..> FurnitureItemId
+
+note right of GazdalkodjOkosanState
+  reducer(state, GazdalkodjOkosanAction) => GazdalkodjOkosanState
+  ugyanaz a framework-agnosztikus minta,
+  mint Dáma/Hotel/Ramses/Gwent
+
+  Teljesen NYÍLT állapot (nincs maszkolás,
+  mint Gwentnél) + mezőnkénti frissítésre
+  alkalmas szerkezet (nincs Set/Map, rögzített
+  hosszúságú tömbök) — előretervezve a
+  Hotel-0b @colyseus/schema tanulsága alapján
+end note
+
+@enduml
