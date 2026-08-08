@@ -1,0 +1,132 @@
+/**
+ * Soronkénti időjárás-effektek — lásd WeatherEffects.tsx doc-kommentjét a
+ * három forrás-referenciáért (freefrontend.com / codepen.io, felhasználói
+ * kérés 2026-08-08). A pozicionálást (`position:absolute; inset:0`,
+ * `pointer-events:none`) a HÍVÓ fél adja — BoardRow saját `.weatherOverlay`
+ * divje (matchBoard.module.css) —, ezek a szabályok csak a belső tartalmat
+ * (eső/hó/felhő) fedik le, a rendelkezésre álló teljes területet kitöltve.
+ */
+
+/* ---------------------------------------------------------------------- */
+/* Eső (Ostrom sor / Torrential Rain) — jh3y: "Pure CSS random rain w/ SVG
+   + CSS variables" (codepen.io/jh3y/pen/WyNdMG). Minden csepp egy önálló,
+   egyedi CSS-változókkal (--x/--o/--a/--d/--s) paraméterezett SVG könnycsepp,
+   véletlen ütemben hullva — nem egy egyenletes, gépies mintázat. */
+
+.rain {
+  position: absolute;
+  inset: 0;
+}
+
+.drop {
+  position: absolute;
+  top: -1.7rem;
+  left: calc(var(--x) * 1%);
+  width: 0.45rem;
+  height: 1.9rem;
+  animation: gwentRainFall calc(var(--a) * 1s) linear calc(var(--d) * 1s) infinite;
+}
+
+.dropSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: var(--o);
+  transform: scaleY(var(--s));
+}
+
+.dropSvg path {
+  fill: rgba(200, 224, 255, 0.9);
+}
+
+@keyframes gwentRainFall {
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(9rem);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Hó/dér (Közelharc sor / Biting Frost) — darika-dev: "CSS Snowfall Effect
+   with Sass Generator" (codepen.io/darika-dev/pen/YPKyMgp), a forrás emoji-
+   pelyhei helyett fehér, izzó pöttyökkel (felhasználói kérés: "legyenek
+   fehérek") — véletlen méret/sodródás/villódzás elemenként, ugyanúgy sok
+   apró elemből generálva, mint az eredeti. */
+
+.snow {
+  position: absolute;
+  inset: 0;
+}
+
+.flake {
+  position: absolute;
+  top: -1.4rem;
+  left: calc(var(--x) * 1%);
+  width: calc(0.3rem + var(--size) * 1rem);
+  height: calc(0.3rem + var(--size) * 1rem);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0.3rem rgba(255, 255, 255, 0.7);
+  animation:
+    gwentSnowFall calc(var(--a) * 1s) linear calc(var(--d) * 1s) infinite,
+    gwentSnowFlicker calc(var(--blur-a) * 1s) ease-in-out calc(var(--blur-d) * 1s) infinite;
+}
+
+@keyframes gwentSnowFall {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate(calc(var(--drift) * 1rem), 9rem) rotate(360deg);
+  }
+}
+
+@keyframes gwentSnowFlicker {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Felhő/köd (Távolsági sor / Impenetrable Fog) — vavik96: "SCSS Cloud"
+   (codepen.io/vavik96/pen/vEdMXM), betűtípus-import nélkül, self-hostolt
+   képekkel (public/assets/gwent/weather/) — két, eltérő sebességgel csúszó
+   réteg vízszintes, végtelenített `background-position` hurokkal. (A forrás
+   3., középső rétege — clouds_2.png — időközben eltűnt a CDN-jéről, 403-at
+   ad; csak a másik két, ténylegesen elérhető réteg lett self-hostolva.) */
+
+.clouds {
+  position: absolute;
+  inset: 0;
+  opacity: 0.55;
+  mix-blend-mode: screen;
+}
+
+.cloudLayer {
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat-x;
+  background-position: 0 12%;
+  animation: gwentCloudDrift var(--cloud-duration) linear infinite;
+}
+
+@keyframes gwentCloudDrift {
+  to {
+    background-position: calc(var(--cloud-width) * -1) 12%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drop,
+  .flake,
+  .cloudLayer {
+    animation: none;
+  }
+}

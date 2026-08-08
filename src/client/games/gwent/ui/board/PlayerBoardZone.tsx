@@ -33,6 +33,15 @@ export interface PlayerBoardZoneProps {
   onSelectRow?: (row: Row) => void;
   /** Opens the shared carousel inspector for a card GROUP (Gwent-0d §2/§4) — a board row's own cards, or this zone's whole discard pile. Lifted to MatchBoard so there's exactly one carousel instance for the whole match. */
   onOpenCardGroup: (cards: CardInstance[], initialIndex: number) => void;
+  /**
+   * False while a hand card is selected and awaiting further input (row/medic
+   * pick) — real playtest report, 2026-08-08: already-placed board cards
+   * stayed clickable (opening the inspector) mid-decision, easy to misclick.
+   * Only gates the board ROWS' own cards, not the discard pile (a different,
+   * always-safe-to-inspect zone) — defaults to true (every other caller/spot
+   * in a match where nothing is pending).
+   */
+  boardRowsInteractive?: boolean;
 }
 
 const INNER_TO_OUTER_ROWS: Row[] = ['Melee', 'Ranged', 'Siege'];
@@ -49,6 +58,7 @@ export function PlayerBoardZone({
   selectableRows,
   onSelectRow,
   onOpenCardGroup,
+  boardRowsInteractive = true,
 }: PlayerBoardZoneProps) {
   const player = state.players.find((p) => p.id === playerId)!;
   const total = computeSideTotal(state, playerId);
@@ -86,7 +96,7 @@ export function PlayerBoardZone({
             onSelectTarget={onSelectTarget}
             rowSelectable={selectableRows?.has(row) ?? false}
             onSelectRow={() => onSelectRow?.(row)}
-            onOpenGroup={onOpenCardGroup}
+            onOpenGroup={boardRowsInteractive ? onOpenCardGroup : undefined}
           />
         ))}
       </div>

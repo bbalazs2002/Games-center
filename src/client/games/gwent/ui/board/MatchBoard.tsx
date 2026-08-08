@@ -391,6 +391,13 @@ export function MatchBoard({
     pendingCardId,
     pendingChosenRow,
   );
+  // Real playtest report (2026-08-08): already-placed board cards stayed
+  // clickable (opening the inspector carousel) even while a hand card was
+  // selected and awaiting further input (row/medic pick) — easy to
+  // misclick mid-decision. Decoy is the one deliberate exception: THAT
+  // pending state legitimately needs board cards clickable, as the target
+  // picker (`onSelectTarget` below), not the inspector.
+  const boardCardsInteractive = !pendingInstance || isDecoy;
 
   return (
     <CardFlightProvider log={state.log}>
@@ -428,6 +435,7 @@ export function MatchBoard({
             }}
             selectableRows={selectableRowsForZone(rowPickOwnerId, topPlayer.id, selectableRows)}
             onSelectRow={selectRow}
+            boardRowsInteractive={boardCardsInteractive}
             onOpenCardGroup={openCardGroup}
           />
 
@@ -460,6 +468,7 @@ export function MatchBoard({
             }}
             selectableRows={selectableRowsForZone(rowPickOwnerId, bottomPlayer.id, selectableRows)}
             onSelectRow={selectRow}
+            boardRowsInteractive={boardCardsInteractive}
             onOpenCardGroup={openCardGroup}
           />
         </div>

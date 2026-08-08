@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { expectedViewerId, toPublicGwentState } from '@shared/games/gwent/engine/rules';
 import type { CardInstance, GwentLogEntry, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
 import type { HotSeatAiSlots } from './useGwentHotSeatAi';
@@ -21,7 +21,23 @@ const ANIMATION_SETTLE_MS = 550;
 const EXTRA_PAUSE_MS = 1000;
 const PASS_DEVICE_GRACE_MS = ANIMATION_SETTLE_MS + EXTRA_PAUSE_MS;
 
+/**
+ * Real playtest report, 2026-08-08: the coin-flip animation
+ * (StartingChoiceScreen's `useCoinFlipAnimation`, ~900ms CSS spin) never got
+ * to play — `applyFlipStartingCoin` sets `phase: 'ROUND_IN_PROGRESS'` in the
+ * SAME dispatch that records the flip result, so `GwentMatchPhaseContent`
+ * switches away from `StartingChoiceScreen` on the very next render, before
+ * the spin (or even the "Eredmény: …" result line) is ever shown. Same class
+ * of bug as the `PassDeviceScreen` grace window above, fixed the same way:
+ * hold the screen on `StartingChoiceScreen` for a bit after a
+ * `STARTING_COIN_FLIP` log entry appears, using the true state throughout
+ * (its own `canFlipStartingCoin` check already goes false once the real
+ * phase has moved on, so the flip button doesn't re-arm during the hold).
+ */
+const COIN_FLIP_GRACE_MS = 1900;
+
 type HandRevealEntry = Extract<GwentLogEntry, { type: 'LEADER_REVEALED_OPPONENT_HAND' }>;
+type CoinFlipEntry = Extract<GwentLogEntry, { type: 'STARTING_COIN_FLIP' }>;
 
 /** Extracted purely to keep `useGwentMatchViewState` under the project's complexity-10 ESLint limit. */
 function resolveViewerId(useActiveViewer: boolean, activeViewerId: PlayerId | null, myPlayer: PlayerId | undefined): PlayerId | undefined {
@@ -33,6 +49,11 @@ function resolveHandReveal(entries: HandRevealEntry[], acknowledgedCount: number
   if (entries.length <= acknowledgedCount) return null;
   const latest = entries[entries.length - 1];
   return latest.playerId === viewerForReveal ? latest : null;
+}
+
+/** Same reasoning as `resolveViewerId` — keeps the extra `coinFlipGraceActive` branch out of the hook body's own complexity count. */
+function resolveShowPassDevice(transitionPending: boolean, gateReady: boolean, pendingHandReveal: HandRevealEntry | null, coinFlipGraceActive: boolean): boolean {
+  return transitionPending && gateReady && !pendingHandReveal && !coinFlipGraceActive;
 }
 
 /**
@@ -61,6 +82,8 @@ export interface GwentMatchViewState {
   matchBoardMyPlayer: PlayerId | undefined;
   bottomViewerId: PlayerId | undefined;
   requestDeckReveal: (playerId: PlayerId) => Promise<CardInstance[]>;
+  /** True for the COIN_FLIP_GRACE_MS window right after a coin flip — see that constant's doc comment. Keeps `StartingChoiceScreen` mounted even though `state.phase` has already moved on to `ROUND_IN_PROGRESS`. */
+  holdOnStartingChoiceScreen: boolean;
 }
 
 /**
@@ -94,6 +117,17 @@ export function useGwentMatchViewState(
   // far — any entry past that count, belonging to the CURRENT local viewer,
   // is still pending.
   const [acknowledgedRevealCount, setAcknowledgedRevealCount] = useState(0);
+  const [coinFlipGraceActive, setCoinFlipGraceActive] = useState(false);
+  const previousLogLengthForCoinRef = useRef(state.log.length);
+
+  useEffect(() => {
+    const newEntries = state.log.length > previousLogLengthForCoinRef.current ? state.log.slice(previousLogLengthForCoinRef.current) : [];
+    previousLogLengthForCoinRef.current = state.log.length;
+    if (!newEntries.some((entry): entry is CoinFlipEntry => entry.type === 'STARTING_COIN_FLIP')) return;
+    setCoinFlipGraceActive(true);
+    const timer = setTimeout(() => setCoinFlipGraceActive(false), COIN_FLIP_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [state.log]);
 
   const expectedViewer = resolveExpectedViewer(expectedViewerId(state), activeViewerId, hotSeatAiSlots);
   const transitionPending = isLocalMode && expectedViewer !== null && expectedViewer !== activeViewerId;
@@ -118,7 +152,8 @@ export function useGwentMatchViewState(
 
   return {
     viewState: isLocalMode ? toPublicGwentState(state, activeViewerId) : state,
-    showPassDevice: transitionPending && gateReady && !pendingHandReveal,
+    showPassDevice: resolveShowPassDevice(transitionPending, gateReady, pendingHandReveal, coinFlipGraceActive),
+    holdOnStartingChoiceScreen: coinFlipGraceActive,
     nextPlayerName: nextPlayer?.name ?? '',
     onRevealDevice: () => setActiveViewerId(expectedViewer),
     pendingHandReveal,

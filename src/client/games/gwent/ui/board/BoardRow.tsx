@@ -5,6 +5,7 @@ import type { CardInstance, GwentState, PlayerId } from '@shared/games/gwent/eng
 import type { Row } from '@shared/games/gwent/engine/types';
 import { METAL_TEXTURE_PATH } from '../gwentTextures';
 import { TrackedCardTile } from './cardFlight';
+import { WeatherOverlay } from './WeatherEffects';
 import styles from './matchBoard.module.css';
 
 const ROW_LABELS: Record<Row, string> = { Melee: 'Közelharc', Ranged: 'Távolsági', Siege: 'Ostrom' };
@@ -64,7 +65,9 @@ export function BoardRow({ state, playerId, row, decoyTargetSelectable, onSelect
       onClick={rowSelectable ? onSelectRow : undefined}
     >
       {isWeatherActive && (
-        <div className={[styles.weatherOverlay, styles[`weatherOverlay${row}`]].join(' ')} aria-hidden="true" />
+        <div className={styles.weatherOverlay} aria-hidden="true">
+          <WeatherOverlay row={row} />
+        </div>
       )}
       <div className={styles.rowHinge} style={{ backgroundImage: `url(${METAL_TEXTURE_PATH})` }} />
       <div className={styles.rowLabel}>

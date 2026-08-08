@@ -68,7 +68,9 @@ interface GwentMatchPhaseContentProps {
 /** The phase-appropriate screen inside the match shell — a plain if-chain instead of chained `&&`s in JSX, purely to keep `GwentGamePage` itself under the project's complexity-10 ESLint limit. */
 function GwentMatchPhaseContent({ viewState, dispatch, myPlayer, view }: GwentMatchPhaseContentProps) {
   if (viewState.phase === 'MULLIGAN') return <MulliganScreen state={viewState} dispatch={dispatch} myPlayer={myPlayer} />;
-  if (viewState.phase === 'AWAITING_START_CHOICE') return <StartingChoiceScreen state={viewState} dispatch={dispatch} myPlayer={myPlayer} />;
+  if (viewState.phase === 'AWAITING_START_CHOICE' || view.holdOnStartingChoiceScreen) {
+    return <StartingChoiceScreen state={viewState} dispatch={dispatch} myPlayer={myPlayer} />;
+  }
   if (viewState.phase === 'ROUND_IN_PROGRESS' || viewState.phase === 'ROUND_RESOLVED') {
     return (
       <MatchBoard

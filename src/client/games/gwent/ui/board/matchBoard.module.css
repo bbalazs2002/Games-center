@@ -268,106 +268,16 @@
 /**
  * Gwent-0e korrekció (2026-08-07): a korábbi apró hópehely-ikon helyett a
  * TELJES sor kap egy hangulati réteget, amíg az adott sorra időjárás-hatás
- * aktív — felhasználói kérés szerint soronként más karakterrel (fagy/felhő/
- * eső). Tisztán CSS (nincs hozzá kép-asset), `pointer-events: none` (a
- * lapokra kattintás sosem sérül), és visszafogott opacitású, hogy a lapok
- * jól olvashatók maradjanak fölötte.
+ * aktív — soronként más effektussal (dér/köd/eső, lásd WeatherEffects.tsx,
+ * felhasználói kérés 2026-08-08: konkrét freefrontend.com/codepen.io
+ * referenciák alapján cserélve). `pointer-events: none` (a lapokra kattintás
+ * sosem sérül), és visszafogott opacitású, hogy a lapok jól olvashatók
+ * maradjanak fölötte.
  */
 .weatherOverlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
-}
-
-/**
- * Referencia: assets/Gwent/design-sample/frost.png — vékony jégcsapok/dér-
- * tüskék nőnek fel a sor ALJÁRÓL, sűrűbben a szélek felé, a közepén (ahol a
- * sor-ikon ül) ritkásabban, plusz egy hideg kékes-fehér árnyalat az egész
- * sávon. A tüske-sziluett egy csempézhető (repeat-x) inline SVG — CSS
- * gradiensekkel nem lehet ilyen éles, szabálytalan fogazott kontúrt adni.
- */
-.weatherOverlayMelee {
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 40' preserveAspectRatio='none'%3E%3Cpath d='M0,40 L0,22 L3,31 L6,8 L9,27 L12,15 L15,34 L18,12 L21,29 L24,19 L27,36 L30,10 L33,25 L36,30 L39,14 L42,33 L45,18 L48,26 L51,33 L54,15 L57,29 L60,20 L63,37 L66,11 L69,26 L72,31 L75,16 L78,34 L81,19 L84,28 L87,9 L90,25 L93,32 L96,17 L100,27 L100,40 Z' fill='rgba(232,244,255,0.6)'/%3E%3C/svg%3E")
-      bottom / 16rem 65% repeat-x,
-    linear-gradient(0deg, rgba(210, 232, 250, 0.22) 0%, transparent 55%),
-    linear-gradient(160deg, rgba(150, 210, 255, 0.14) 0%, rgba(200, 235, 255, 0.03) 60%);
-  animation: gwentFrostShimmer 5s ease-in-out infinite;
-}
-
-@keyframes gwentFrostShimmer {
-  0%,
-  100% {
-    opacity: 0.88;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/**
- * Referencia: assets/Gwent/design-sample/fog.png — gomolygó, foltos
- * ködpamacsok a sor KÉT SZÉLÉN torlódnak (nem egyenletesen az egész soron),
- * a közép felé elvékonyodva. 3-3 egymást átfedő, enyhén eltérő méretű/
- * pozíciójú radiális folt oldalanként ad szabálytalan, "felhő" kontúrt;
- * mindegyik saját, apró lebegő elmozdulással.
- */
-.weatherOverlayRanged {
-  background:
-    radial-gradient(ellipse 34% 85% at 2% 45%, rgba(232, 235, 238, 0.55) 0%, rgba(232, 235, 238, 0.22) 45%, transparent 75%),
-    radial-gradient(ellipse 24% 55% at 0% 15%, rgba(220, 224, 229, 0.4) 0%, transparent 72%),
-    radial-gradient(ellipse 24% 60% at 3% 82%, rgba(220, 224, 229, 0.4) 0%, transparent 72%),
-    radial-gradient(ellipse 34% 85% at 98% 55%, rgba(232, 235, 238, 0.55) 0%, rgba(232, 235, 238, 0.22) 45%, transparent 75%),
-    radial-gradient(ellipse 24% 55% at 100% 20%, rgba(220, 224, 229, 0.4) 0%, transparent 72%),
-    radial-gradient(ellipse 24% 60% at 97% 88%, rgba(220, 224, 229, 0.4) 0%, transparent 72%);
-  animation: gwentFogDrift 9s ease-in-out infinite;
-}
-
-@keyframes gwentFogDrift {
-  0%,
-  100% {
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0,
-      0 0;
-  }
-  50% {
-    background-position:
-      0.4rem 0,
-      -0.3rem 0.2rem,
-      0.3rem -0.15rem,
-      -0.4rem 0,
-      0.3rem -0.2rem,
-      -0.3rem 0.15rem;
-  }
-}
-
-/** Referencia: assets/Gwent/design-sample/rain.png — finom, sűrű átlós csíkok, visszafogott, nedves tónussal. */
-@keyframes gwentRainFall {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: -0.9rem 1.5rem;
-  }
-}
-
-.weatherOverlaySiege {
-  background:
-    repeating-linear-gradient(76deg, rgba(210, 222, 232, 0.32) 0px, rgba(210, 222, 232, 0.32) 1px, transparent 1px, transparent 7px),
-    linear-gradient(160deg, rgba(60, 90, 120, 0.14) 0%, rgba(30, 50, 70, 0.05) 100%);
-  animation: gwentRainFall 0.6s linear infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .weatherOverlayMelee,
-  .weatherOverlayRanged,
-  .weatherOverlaySiege {
-    animation: none;
-  }
 }
 
 .rowHinge {

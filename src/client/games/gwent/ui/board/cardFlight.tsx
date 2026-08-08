@@ -1,5 +1,5 @@
 import { animated, useSpring } from '@react-spring/web';
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import type { CardInstance, GwentLogEntry, PlayerId } from '@shared/games/gwent/engine/state';
 import type { Faction } from '@shared/games/gwent/engine/types';
 import { CardTile } from './CardTile';
@@ -220,16 +220,27 @@ export interface CardFlightProviderProps {
  * `discard:<playerId>`); every live board/hand card registers its own
  * instanceId + DOMRect + visual info on every render via `registerCardRef`.
  *
- * A plain `useEffect` keyed on `log` (fires strictly after every
- * `useLayoutEffect` in the same commit, regardless of tree position — this
- * is what makes the ordering reliable without coordinating with individual
- * card components) diffs this render's registrations against the previous
- * diff pass: a persisting instanceId whose rect moved, or a brand-new
- * instanceId with a resolvable origin, spawns a "ghost" flight; a vanished
- * instanceId with a resolvable discard destination spawns an exit flight.
- * While a ghost is flying, the real element is hidden (`isInFlight`) so
- * there's never a visible duplicate — see CardTile call sites (BoardRow/
- * HandArea) for how that's applied.
+ * A `useLayoutEffect` keyed on `log` diffs this render's registrations
+ * against the previous diff pass: a persisting instanceId whose rect moved,
+ * or a brand-new instanceId with a resolvable origin, spawns a "ghost"
+ * flight; a vanished instanceId with a resolvable discard destination spawns
+ * an exit flight. While a ghost is flying, the real element is hidden
+ * (`isInFlight`) so there's never a visible duplicate — see CardTile call
+ * sites (BoardRow/HandArea) for how that's applied.
+ *
+ * MUST be `useLayoutEffect`, not a plain `useEffect` (real playtest report,
+ * 2026-08-08: "a lap mozgás animációk villognak" — flicker on EVERY
+ * placement, not just Scorch/Weather). A card's move already lands it at its
+ * FINAL board position in the very same commit that removes it from its old
+ * spot — a plain `useEffect` only spawns the ghost and hides that real
+ * element AFTER the browser has already painted that first, un-animated
+ * "snapped to destination" frame, so the card visibly flashes at its
+ * destination and then jumps back to replay as a ghost. `useLayoutEffect`
+ * runs before paint instead, so the hide + ghost spawn are part of the same
+ * frame the move itself commits in. Ref callbacks (which populate
+ * `currentRef`, see `registerCardRef`) fire even earlier than layout
+ * effects regardless, so this doesn't change anything about the "refs are
+ * already fresh by the time this diff runs" assumption below.
  */
 export function CardFlightProvider({ log, children }: CardFlightProviderProps) {
   const zoneRectsRef = useRef(new Map<string, DOMRect>());
@@ -278,7 +289,7 @@ export function CardFlightProvider({ log, children }: CardFlightProviderProps) {
 
   const isInFlight = useCallback((instanceId: string) => inFlightIds.has(instanceId), [inFlightIds]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const newLogEntries = log.length > previousLogLengthRef.current ? log.slice(previousLogLengthRef.current) : [];
     previousLogLengthRef.current = log.length;
 
