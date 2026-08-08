@@ -76,6 +76,14 @@ const ALL_GAMES: GameDescriptor[] = [
     coverImage: assetUrl('/assets/ramses/box.jpg'),
   },
   {
+    id: 'gazdalkodj-okosan',
+    label: 'Gazdálkodj okosan!',
+    load: () => import('../games/gazdalkodjOkosan'),
+    // Nincs `online` — 0a fázis: kizárólag hot-seat, nincs szerver-oldali Room még (lásd docs/gazdalkodj-okosan-0a-specifikacio.md §5, 0b).
+    rules: () => import('../games/gazdalkodjOkosan/ui/GazdalkodjOkosanRules'),
+    coverImage: assetUrl('/assets/gazdalkodj-okosan/box.jpg'),
+  },
+  {
     id: 'gwent',
     label: 'Gwent',
     load: () => import('../games/gwent'),

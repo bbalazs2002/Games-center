@@ -1,0 +1,180 @@
+.page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  padding: 4rem 1rem 2rem;
+  background: #0d2b1f;
+  color: #f5f0e0;
+}
+
+.page h1 {
+  text-align: center;
+  margin: 0 0 0.5rem;
+}
+
+.turnReadout,
+.winnerBanner {
+  text-align: center;
+  font-weight: 600;
+}
+
+.winnerBanner {
+  color: #d4af37;
+  font-size: 1.3rem;
+}
+
+.layout {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(6rem, 1fr));
+  gap: 0.3rem;
+  max-width: 55rem;
+}
+
+.space {
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 0.3rem;
+  padding: 0.3rem;
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 0.7rem;
+  min-height: 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.type-START,
+.type-BANK {
+  background: rgba(212, 175, 55, 0.25);
+}
+
+.type-HOSPITAL {
+  background: rgba(150, 40, 40, 0.3);
+}
+
+.type-CHANCE {
+  background: rgba(80, 60, 160, 0.3);
+}
+
+.spaceIndex {
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.spaceLabel {
+  flex: 1;
+}
+
+.spaceAmount {
+  opacity: 0.75;
+}
+
+.tokens {
+  display: flex;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.token {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: #d4af37;
+  color: #0d2b1f;
+  font-weight: 700;
+  font-size: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar {
+  width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.playerCard {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.playerCard h3 {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+}
+
+.playerCard p {
+  margin: 0.1rem 0;
+  font-size: 0.8rem;
+}
+
+.current {
+  border-color: #d4af37;
+  box-shadow: 0 0 0 1px #d4af37;
+}
+
+.bankrupt {
+  opacity: 0.5;
+}
+
+.actionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.moneyRow {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.moneyRow input {
+  width: 6rem;
+}
+
+.chanceCard {
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 0.85rem;
+}
+
+.chanceCard h4 {
+  margin: 0 0 0.3rem;
+}
+
+.log {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  font-size: 0.75rem;
+}
+
+.log h4 {
+  margin: 0 0 0.3rem;
+}
+
+.log p {
+  margin: 0.15rem 0;
+}
