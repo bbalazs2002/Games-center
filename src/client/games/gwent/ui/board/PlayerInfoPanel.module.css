@@ -171,3 +171,99 @@
   font-size: 0.7rem;
   color: var(--shell-accent, #d4af37);
 }
+
+/**
+ * Gwent-0f (felhasználói kérés, 2026-08-08): a matchBoard.module.css-beli
+ * `--gwent-leader-col-width` tablet-szélesen jóval keskenyebb lesz — enélkül
+ * `.identity` (a név/frakció szöveg) a `min-width:0`+`overflow:hidden`
+ * kombinációval a NULLÁRA zsugorodhat (a szöveg teljesen eltűnik, nem csak
+ * "…"-ra rövidül) — élő teszten talált valódi regresszió. Ugyanaz a
+ * töréspont, mint ott: az avatar/pontszám-jelvény kisebbre vált, hogy
+ * `.identity`-nek több hely maradjon, a szöveg legalább pár karakterig
+ * olvasható maradjon az ellipsis előtt.
+ */
+@media (max-width: 900px) {
+  /* Wraps `.stats` onto its OWN line below avatar+identity instead of
+     splitting the panel's (now much narrower) width three ways — `.identity`
+     was still collapsing to 0 even after shrinking the avatar/badges below,
+     since `.stats` (flex-shrink: 0, by design — its icons must stay legible)
+     alone needed more width than the whole panel had left. */
+  .panel {
+    flex-wrap: wrap;
+    gap: 0.3rem 0.3rem;
+    padding: 0.3rem 0.4rem;
+  }
+
+  .identity {
+    min-width: 3.5rem;
+  }
+
+  .avatar {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+
+  .crestBadge {
+    width: 0.9rem;
+    height: 0.9rem;
+    font-size: 0.5rem;
+  }
+
+  .scoreBadge {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+
+  .scoreNumber {
+    font-size: 0.75rem;
+  }
+
+  .statLine {
+    font-size: 0.65rem;
+    gap: 0.1rem;
+  }
+
+  .stats {
+    flex-basis: 100%;
+    justify-content: flex-end;
+    gap: 0.25rem;
+    padding-left: calc(1.9rem + 0.3rem); /* lines up under `.identity`, past the (now-smaller) avatar column */
+  }
+}
+
+/** Fekvő tablet (matchBoard.module.css's `.leaderImage` méretcsökkentésével azonos ok/töréspont) — a panel saját függőleges paddingja is szűkül egy hajszálnyit. */
+@media (max-height: 800px) {
+  .panel {
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+  }
+}
+
+/**
+ * ~700px alatti szélesség — élő teszten talált valódi hiba: a 900px-es
+ * töréspontnál `.stats` már saját (teljes szélességű) sorra kerül, de ennél
+ * keskenyebb oszlopban (matchBoard.module.css: `--gwent-leader-col-width:
+ * 7.5rem`) a SAJÁT tartalma (kéz-lapszám ikon, 2 élet-kristály, pontszám-
+ * jelvény — mindhárom `flex-shrink: 0`, szándékosan, hogy az ikonok
+ * olvashatók maradjanak) még mindig szélesebb, mint a rendelkezésre álló
+ * hely — vízszintes túlfolyást okozva a vezér-oszlopban. Lásd
+ * LifeTokens.module.css saját, ugyanide tartozó `.crystal` zsugorítását is.
+ */
+@media (max-width: 700px) {
+  .scoreBadge {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  .scoreNumber {
+    font-size: 0.65rem;
+  }
+
+  .statLine {
+    font-size: 0.6rem;
+  }
+
+  .stats {
+    gap: 0.15rem;
+  }
+}

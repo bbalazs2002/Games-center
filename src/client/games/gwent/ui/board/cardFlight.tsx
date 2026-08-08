@@ -353,7 +353,7 @@ export interface TrackedCardTileProps {
   disabled?: boolean;
   targetable?: boolean;
   onClick?: () => void;
-  size?: 'small' | 'medium';
+  size?: 'small' | 'medium' | 'hand';
   style?: CSSProperties;
 }
 

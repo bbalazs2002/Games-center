@@ -5,6 +5,20 @@
  * an earlier "fixed overlay" draft) — the two PlayerBoardZones are the only
  * flexible ("give up space first") children; everything else keeps its own
  * natural size and is therefore always fully visible.
+ *
+ * Gwent-0f (felhasználói kérés, 2026-08-08): "kisebb képernyőn szétcsúszik...
+ * legalább tableten legyen használható... dinamikusan méretezve, görgetés
+ * nélkül ahol lehet". `.matchBoard` maga `max-width: 64rem`-nél megáll, tehát
+ * MINDEN, ami ennél szélesebb viewporton fut, már amúgy is a teljes/eredeti
+ * méretet kapja — a zsugorítás kizárólag azt a tartományt célozza, ahol a
+ * viewport ennél keskenyebb (tablet, kis laptop-ablak). Ezért egyszerű
+ * viewport-alapú `@media` töréspont, nem folytonos `vw`-clamp: a `.matchBoard`
+ * SAJÁT szélessége (nem a nyers viewport) igazából a releváns mennyiség, de
+ * mivel az max-width-korlátos és középre igazított margóval nő/csökken 1:1
+ * arányban a viewporttal egészen a plafonig, a viewport-media-query pontos
+ * proxy — és sokkal olvashatóbb/tesztelhetőbb, mint egy `A + B*vw` képlet,
+ * amit úgy kéne belőni, hogy pont a max-width-plafonnál érje el a régi fix
+ * értékeket.
  */
 .matchBoard {
   /* Shared with ActiveWeatherZone.module.css's `.zone` so the weather strip
@@ -17,11 +31,58 @@
      leader-card clearance margin below — moved up here (not local to
      `.boardDividerRow`) so both can reference the SAME value. */
   --gwent-weather-slot-h: 4.6rem;
+  /* ActiveWeatherZone.module.css's `.weatherImage` — real playtest report,
+     2026-08-08: that image stayed a FIXED 3.76rem tall while its container
+     (`--gwent-weather-slot-h` above) shrank at narrower/shorter breakpoints,
+     so the active-weather card thumbnail overflowed its own box and
+     appeared to float, misplaced, near the divider/leader area instead of
+     sitting cleanly inside its slot. Derived from `--gwent-weather-slot-h`
+     itself (matching `.zone`'s own `padding: 0.3rem 0.6rem` above/below,
+     and the source image's own ~0.638 width:height ratio) so it's ALWAYS
+     in sync — no separate per-breakpoint override needed. */
+  --gwent-weather-card-h: calc(var(--gwent-weather-slot-h, 4.6rem) - 0.6rem);
+  --gwent-weather-card-w: calc(var(--gwent-weather-card-h) * 0.638);
+  /* Board-card size (BoardRow's `size="small"`) — see `.small .cardImage`
+     below, which reads these instead of a fixed rem pair. */
+  --gwent-card-w: 3rem;
+  --gwent-card-h: 3.4rem;
+  /* `.boardZone`'s grid pile column (below) and `.rowLabel`/`.hornColumn`'s
+     own fixed widths — pulled up here for the same reason as the others. */
+  --gwent-pile-col-width: 4rem;
+  /* `.rowTotal`/`.rowMedallion` (below) — real playtest report, 2026-08-08:
+     these stayed FIXED size while `.boardRow`'s own min-height (tied to
+     `--gwent-card-h`) shrank at narrower/shorter breakpoints, so at some
+     sizes the row-label's own stacked content (badge + medallion, taller
+     than a shrunk row) overflowed `.boardRow`'s bounds — visually reading as
+     the score badge/divider "cutting into" the row. Kept in sync with
+     `--gwent-card-h` at every breakpoint below. */
+  --gwent-row-badge-size: 1.7rem;
+  --gwent-row-medallion-size: 1.8rem;
+  /* HandArea's own `size="hand"` — Gwent-0f, felhasználói kérés (2026-08-08):
+     "kisebbre veheted a kézben tartott lapokat, hogy helyet spórolj" — a real
+     playtest report of the acting player's own bottom Siege row getting
+     visually CLIPPED (not just scrollable — cut off) at some window sizes,
+     because `.actionBar` (flex-shrink: 0, never shrinks) was tall enough to
+     squeeze `.boardSurface` below what its 3 rows needed. Kept separate from
+     `--gwent-card-w/h` (board) and `.medium` (target-picker overlays) — see
+     CardTile.tsx's doc comment on the `'hand'` size variant. */
+  --gwent-hand-card-w: 3.6rem;
+  --gwent-hand-card-h: 5.65rem;
 
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  padding: 4rem 1.5rem 1.5rem 5rem;
+  /* Top/left clearance is for LocalGameControls' top-center pill row and
+     FeedbackButton's left-middle circle (both `position: fixed/absolute`,
+     genuinely floating OUTSIDE this element, sized independently of it).
+     Gwent-0f (felhasználói kérés, 2026-08-08): first attempt at trimming
+     this shrank it too far — live-measured the pill row's REAL bottom edge
+     (~2.72rem, `top: 1rem` + its own rendered height) and left only ~4px
+     before the board, which visibly touched. 3.75rem leaves a real, visible
+     ~1rem gap below the pills instead of guessing. NOT reduced further at
+     the narrower/shorter breakpoints below — the pill row itself doesn't
+     shrink there, so the same clearance is needed at every size. */
+  padding: 3.75rem 1.5rem 1.5rem 5rem;
   max-width: 64rem;
   margin: 0 auto;
   height: 100dvh;
@@ -29,6 +90,43 @@
   background: var(--shell-ground, #0d2b1f);
   color: var(--shell-ink-parchment, #f5f0e0);
 }
+
+/**
+ * Tablet és keskenyebb (portrait tablet ~768px, kis laptop-ablak) — a
+ * lebegő UI-elemek (feedback gomb, felső gombsor) NEM zsugorodnak, ezért a
+ * nekik szánt margó csak enyhén csökken; minden más (vezér-oszlop, kártya-
+ * méret, pakli-oszlop) érdemben kisebb, hogy a sorok tartalma ne kényszerül-
+ * jön vízszintes görgetésre normál (5-8 lapos) sornál.
+ */
+@media (max-width: 900px) {
+  .matchBoard {
+    --gwent-leader-col-width: 9.5rem;
+    --gwent-weather-slot-h: 3.4rem;
+    --gwent-card-w: 2.5rem;
+    --gwent-card-h: 2.85rem;
+    --gwent-pile-col-width: 3rem;
+    --gwent-hand-card-w: 3rem;
+    --gwent-hand-card-h: 4.7rem;
+    --gwent-row-badge-size: 1.4rem;
+    --gwent-row-medallion-size: 1.4rem;
+    padding: 3.75rem 0.6rem 0.6rem 3.75rem;
+  }
+}
+
+/** Még keskenyebb (kis tablet portrait, ~700px alatt) — további, kisebb lépés. */
+@media (max-width: 700px) {
+  .matchBoard {
+    --gwent-leader-col-width: 7.5rem;
+    --gwent-card-w: 2.1rem;
+    --gwent-card-h: 2.4rem;
+    --gwent-hand-card-w: 2.6rem;
+    --gwent-hand-card-h: 4.1rem;
+    --gwent-row-badge-size: 1.2rem;
+    --gwent-row-medallion-size: 1.2rem;
+    padding: 3.75rem 0.4rem 0.4rem 3.25rem;
+  }
+}
+
 
 .boardSurface,
 .actionBar {
@@ -97,7 +195,7 @@
 
 .boardZone {
   display: grid;
-  grid-template-columns: var(--gwent-leader-col-width, 9rem) 1fr 4rem;
+  grid-template-columns: var(--gwent-leader-col-width, 9rem) 1fr var(--gwent-pile-col-width, 4rem);
   gap: 0.6rem;
   align-items: stretch;
   /* The one flexible pair (Gwent-0c.2 §N) — shrinks to whatever's left after
@@ -248,7 +346,16 @@
   align-items: stretch;
   gap: 0.5rem;
   flex: 1 1 0;
-  min-height: 0;
+  /* Gwent-0f (real playtest report, 2026-08-08): was `min-height: 0`, letting
+     a row shrink past its own card height whenever `.actionBar` (never
+     shrinks) left too little room — the acting player's own bottom-most row
+     (Siege, closest to the actionBar) ended up visually CLIPPED, not just
+     needing a scroll. A row can now never shrink below fitting one card —
+     `--gwent-card-h` is itself responsive (see `.matchBoard`'s breakpoints),
+     so this floor shrinks right along with it. If the 3 rows' combined floor
+     still exceeds what's left, `.boardZoneCenterColumn`'s own `overflow-y:
+     auto` (below) is the intended fallback — scrolling instead of clipping. */
+  min-height: calc(var(--gwent-card-h, 3.4rem) + 0.5rem);
   background: linear-gradient(160deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.32) 100%);
   border: 1px solid var(--shell-line, rgba(21, 12, 4, 0.6));
   padding: 0.25rem 0.4rem 0.25rem 0;
@@ -290,8 +397,8 @@
 }
 
 .rowMedallion {
-  width: 1.8rem;
-  height: 1.8rem;
+  width: var(--gwent-row-medallion-size, 1.8rem);
+  height: var(--gwent-row-medallion-size, 1.8rem);
   object-fit: contain;
   padding: 0.2rem;
   border-radius: 50%;
@@ -338,8 +445,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.7rem;
-  height: 1.7rem;
+  width: var(--gwent-row-badge-size, 1.7rem);
+  height: var(--gwent-row-badge-size, 1.7rem);
   border-radius: 50%;
   background: var(--shell-surface, #e6d3ab);
   border: 1px solid var(--shell-accent, #d4af37);
@@ -441,8 +548,8 @@
  * source pixel ratio isn't guaranteed identical across every card image.
  */
 .small .cardImage {
-  width: 3rem;
-  height: 3.4rem;
+  width: var(--gwent-card-w, 3rem);
+  height: var(--gwent-card-h, 3.4rem);
   object-fit: cover;
   object-position: top;
 }
@@ -450,6 +557,13 @@
 .medium .cardImage {
   width: 4.5rem;
   height: 7.05rem;
+  object-fit: contain;
+}
+
+/** HandArea's own fan — see `--gwent-hand-card-w/h`'s doc comment on `.matchBoard`. */
+.hand .cardImage {
+  width: var(--gwent-hand-card-w, 4.5rem);
+  height: var(--gwent-hand-card-h, 7.05rem);
   object-fit: contain;
 }
 
@@ -595,6 +709,17 @@
 }
 
 /**
+ * Gwent-0f (felhasználói kérés, 2026-08-08): "A Vezér-képesség aktiválása
+ * gombot veheted kisebbre" — a `Button` ui-kit alapértelmezett mérete
+ * (0.5rem/1rem padding, 1rem betűméret) egy 2 soros feliratú, keskeny vezér-
+ * oszlopban aránytalanul sok helyet foglalt.
+ */
+.leaderAbilityButton {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
+}
+
+/**
  * Gwent-0d §3: the FULL leader card (not a cropped thumbnail) — the source
  * image already bakes in the frame/name/flavor, same as every unit card
  * (Gwent-0d §1), so this just needs to show it uncropped at a size that
@@ -734,4 +859,77 @@
 .roundSummaryList {
   list-style: none;
   padding: 0;
+}
+
+/**
+ * Fekvő tablet (pl. 1024×768) — a SZÉLESSÉG itt már elég (900px fölött), a
+ * MAGASSÁG a szűkös: a vezér-kártya (`.leaderImage`, eredetileg 7.85rem
+ * magas) + a köztük lévő `.boardZoneLeaderColumn` gap élő teszten a bal
+ * oszlopot függőleges görgetésre kényszerítette. Külön, magasság-alapú
+ * töréspont — független a fenti szélesség-alapúaktól, mindkettő egyszerre is
+ * érvénybe léphet (pl. keskeny ÉS alacsony ablak).
+ *
+ * Szándékosan A FÁJL VÉGÉN (nem a `.matchBoard` mellett, ahol a szélesség-
+ * alapú töréspontok ülnek) — élő teszten talált valódi hiba: a `.leaderImage`/
+ * `.boardZone`/`.leaderPanel` szelektorok saját, feltétel nélküli szabálya
+ * lentebb, KÉSŐBB szerepelt a fájlban, és ugyanolyan specificitás mellett a
+ * KÉSŐBBI forrás-sorrendű szabály nyer — a média-lekérdezés helyesen
+ * illeszkedett, mégis a feltétel nélküli szabály győzött. (A `--gwent-*`
+ * egyéni tulajdonságokat módosító szélesség-töréspontok ettől mentesek —
+ * azok a tulajdonság ÉRTÉKÉN cascade-elnek, nem a fogyasztó szelektor saját
+ * sorrendjén, ezért maradhattak a `.matchBoard` mellett.)
+ */
+@media (max-height: 800px) {
+  .matchBoard {
+    --gwent-weather-slot-h: 2.6rem;
+    --gwent-hand-card-w: 2.9rem;
+    --gwent-hand-card-h: 4.55rem;
+    /* padding-top deliberately NOT reduced here — see the base `.matchBoard`
+       rule's doc comment: the top pill row doesn't shrink just because the
+       viewport got SHORTER, so the same clearance is still needed. */
+    padding-bottom: 0.75rem;
+    gap: 0.4rem;
+  }
+
+  .actionBar {
+    padding: 0.4rem 0.5rem;
+    gap: 0.3rem;
+  }
+
+  .boardZone {
+    padding: 0.4rem;
+  }
+
+  .boardZoneLeaderColumn {
+    gap: 0.1rem;
+  }
+
+  .leaderPanel {
+    gap: 0.2rem;
+  }
+
+  .leaderImage {
+    width: 2.7rem;
+    height: 4.25rem;
+  }
+}
+
+/**
+ * ~700px alatti SZÉLESSÉG, elég MAGAS ablakkal (tehát a fenti magasság-
+ * töréspont nem lép életbe) — élő teszten talált valódi hiba: a
+ * "Vezér-képesség aktiválása" gomb szövege a (700px alatt 7.5rem-re szűkült)
+ * vezér-oszlopban 3 sorba tört, ami a még teljes méretű `.leaderImage`-dzsel
+ * (5rem/7.85rem) együtt túlfutott a rendelkezésre álló magasságon —
+ * függőleges görgetést kényszerítve a bal oszlopra. Ugyanaz a — enyhébb —
+ * zsugorítás, mint a magasság-töréspontnál, csak szélesség-feltétellel.
+ */
+@media (max-width: 700px) {
+  .leaderPanel {
+    gap: 0.25rem;
+  }
+
+  .leaderImage {
+    width: 3.5rem;
+    height: 5.5rem;
+  }
 }

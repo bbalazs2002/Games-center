@@ -36,7 +36,7 @@ export function HandArea({ hand, ownerId, playableInstanceIds, selectedInstanceI
             instance={instance}
             ownerId={ownerId}
             power={basePower ?? undefined}
-            size="medium"
+            size="hand"
             selected={instance.instanceId === selectedInstanceId}
             disabled={!playableInstanceIds.has(instance.instanceId)}
             onClick={() => onSelectCard(instance.instanceId)}

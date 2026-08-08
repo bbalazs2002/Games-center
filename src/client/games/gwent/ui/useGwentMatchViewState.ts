@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { expectedViewerId, toPublicGwentState } from '@shared/games/gwent/engine/rules';
 import type { CardInstance, GwentLogEntry, GwentState, PlayerId } from '@shared/games/gwent/engine/state';
 import type { HotSeatAiSlots } from './useGwentHotSeatAi';
@@ -38,15 +38,35 @@ const PASS_DEVICE_GRACE_MS = ANIMATION_SETTLE_MS + EXTRA_PAUSE_MS;
  * AI-controlled starting player, the game froze on this screen forever —
  * `useGwentHotSeatAi` schedules the AI's first move `GWENT_AI_MOVE_DELAY_MS`
  * (800ms) after ANY transport state change, well inside this grace window.
- * That move appends its own new `state.log` entries, which re-runs THIS
- * effect (still deps-keyed on `[state.log]`) — and React tears down the
- * PREVIOUS invocation's `return () => clearTimeout(timer)` cleanup before
- * running the new one, cancelling the pending "turn grace off" timer. The
- * re-run finds no `STARTING_COIN_FLIP` entry in ITS OWN new slice and so
- * schedules no replacement — `coinFlipGraceActive` is left stuck `true`
- * forever, wedging `holdOnStartingChoiceScreen` open indefinitely. Fixed by
- * tracking the timer in a ref instead of an effect-cleanup return, so a
- * later, unrelated log change can no longer cancel it (see below).
+ * That move appended its own new `state.log` entries, which used to re-run
+ * an effect-cleanup that cancelled the pending "turn grace off" timer with
+ * nothing scheduled to replace it — `coinFlipGraceActive` got stuck `true`
+ * forever. Fixed as part of the render-time redesign below (the deadline
+ * now lives in a ref read fresh on every render, immune to effect-cleanup
+ * races entirely).
+ *
+ * Real playtest report, 2026-08-08 (3rd round): the coin still visibly
+ * never SPUN, even though the grace window itself worked (screen held, then
+ * correctly advanced). Root cause was a one-render gap: `applyFlipStartingCoin`
+ * sets `phase: 'ROUND_IN_PROGRESS'` in the SAME synchronous update that
+ * appends the log entry, but the (then-)`useState`+`useEffect` version of
+ * `coinFlipGraceActive` could only flip to `true` on the NEXT render (effects
+ * run after commit, never inside the render that changed `state.log`). On
+ * that one in-between render, `viewState.phase` was ALREADY `ROUND_IN_PROGRESS`
+ * and `holdOnStartingChoiceScreen` was STILL `false` — so `GwentMatchPhaseContent`
+ * briefly unmounted `StartingChoiceScreen`, then remounted it the very next
+ * render once the effect caught up. That remount reset `CoinFlipPanel`'s own
+ * local `spinning`/`landingDeg` state (`useCoinFlipAnimation`) back to its
+ * defaults, discarding the `spinning: true` that `startFlip()` had just set
+ * on click — the result text re-derives fine from `state.log` on the fresh
+ * mount (so the screen LOOKED like it worked), but `landingDeg` never gets
+ * set on that fresh mount, so the coin itself never visually spins.
+ *
+ * Fixed by computing the deadline SYNCHRONOUSLY during render (a ref
+ * mutation, not `useState`) — see the hook body below — so a new coin flip
+ * extends the hold in the very same render pass that advances `phase`,
+ * `StartingChoiceScreen` never unmounts across a flip at all, and
+ * `CoinFlipPanel`'s local animation state survives untouched.
  */
 const COIN_FLIP_GRACE_MS = 1900;
 
@@ -68,6 +88,23 @@ function resolveHandReveal(entries: HandRevealEntry[], acknowledgedCount: number
 /** Same reasoning as `resolveViewerId` — keeps the extra `coinFlipGraceActive` branch out of the hook body's own complexity count. */
 function resolveShowPassDevice(transitionPending: boolean, gateReady: boolean, pendingHandReveal: HandRevealEntry | null, coinFlipGraceActive: boolean): boolean {
   return transitionPending && gateReady && !pendingHandReveal && !coinFlipGraceActive;
+}
+
+/**
+ * Same reasoning as `resolveViewerId` — the render-time ref mutation (see
+ * COIN_FLIP_GRACE_MS's doc comment for why it can't be an effect) split out
+ * of the hook body purely to keep its own complexity count down. Mutates
+ * both refs in place and returns nothing; the hook reads `deadlineRef`
+ * itself right after calling this.
+ */
+function advanceCoinFlipDeadline(log: GwentState['log'], previousLengthRef: { current: number }, deadlineRef: { current: number | null }): void {
+  if (log.length > previousLengthRef.current) {
+    const newEntries = log.slice(previousLengthRef.current);
+    if (newEntries.some((entry): entry is CoinFlipEntry => entry.type === 'STARTING_COIN_FLIP')) {
+      deadlineRef.current = Date.now() + COIN_FLIP_GRACE_MS;
+    }
+  }
+  previousLengthRef.current = log.length;
 }
 
 /**
@@ -131,29 +168,33 @@ export function useGwentMatchViewState(
   // far — any entry past that count, belonging to the CURRENT local viewer,
   // is still pending.
   const [acknowledgedRevealCount, setAcknowledgedRevealCount] = useState(0);
-  const [coinFlipGraceActive, setCoinFlipGraceActive] = useState(false);
   const previousLogLengthForCoinRef = useRef(state.log.length);
-  // Deliberately NOT an effect-cleanup return (see COIN_FLIP_GRACE_MS's doc
-  // comment) — an unrelated later log change (e.g. the AI's own follow-up
-  // move) must NOT be able to cancel this timer, only a genuinely NEW coin
-  // flip may pre-empt it.
-  const coinFlipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const coinFlipDeadlineRef = useRef<number | null>(null);
+  const [, forceCoinFlipTick] = useReducer((tick: number) => tick + 1, 0);
 
+  // Synchronous, DURING render (a ref mutation, not useState) — see
+  // COIN_FLIP_GRACE_MS's doc comment for why this can't be an effect. Safe
+  // as a render-time mutation: pure bookkeeping with no side effect, read
+  // back immediately within the same render, and idempotent under
+  // StrictMode's double-invoke (the length check is already false the
+  // second time, since the ref was already advanced).
+  advanceCoinFlipDeadline(state.log, previousLogLengthForCoinRef, coinFlipDeadlineRef);
+  const coinFlipGraceActive = coinFlipDeadlineRef.current !== null && Date.now() < coinFlipDeadlineRef.current;
+
+  // Nothing else forces a re-render exactly when the deadline passes (no
+  // further log changes need happen) — this effect's only job is to
+  // schedule one, so `coinFlipGraceActive` above gets re-evaluated and
+  // correctly flips to false once real time catches up. Immune to the
+  // earlier AI-freeze race: an unrelated log change during the window just
+  // reschedules against the SAME ref-stored deadline (unchanged unless a
+  // genuinely new flip happened above), never cancels it outright.
   useEffect(() => {
-    const newEntries = state.log.length > previousLogLengthForCoinRef.current ? state.log.slice(previousLogLengthForCoinRef.current) : [];
-    previousLogLengthForCoinRef.current = state.log.length;
-    if (!newEntries.some((entry): entry is CoinFlipEntry => entry.type === 'STARTING_COIN_FLIP')) return;
-    if (coinFlipTimerRef.current) clearTimeout(coinFlipTimerRef.current);
-    setCoinFlipGraceActive(true);
-    coinFlipTimerRef.current = setTimeout(() => {
-      setCoinFlipGraceActive(false);
-      coinFlipTimerRef.current = null;
-    }, COIN_FLIP_GRACE_MS);
+    if (coinFlipDeadlineRef.current === null) return;
+    const remaining = coinFlipDeadlineRef.current - Date.now();
+    if (remaining <= 0) return;
+    const timer = setTimeout(forceCoinFlipTick, remaining);
+    return () => clearTimeout(timer);
   }, [state.log]);
-
-  useEffect(() => () => {
-    if (coinFlipTimerRef.current) clearTimeout(coinFlipTimerRef.current);
-  }, []);
 
   const expectedViewer = resolveExpectedViewer(expectedViewerId(state), activeViewerId, hotSeatAiSlots);
   const transitionPending = isLocalMode && expectedViewer !== null && expectedViewer !== activeViewerId;

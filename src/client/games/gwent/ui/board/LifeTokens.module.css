@@ -21,3 +21,11 @@
   opacity: 0.32;
   filter: grayscale(1) brightness(0.8) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5));
 }
+
+/** Same tablet-narrow squeeze as PlayerInfoPanel.module.css's own `@media (max-width: 700px)` block — see its doc comment. */
+@media (max-width: 700px) {
+  .crystal {
+    width: 1rem;
+    height: 1rem;
+  }
+}

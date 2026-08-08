@@ -16,6 +16,10 @@
   flex-shrink: 0;
   width: 100%;
   height: 100%;
+  /* Defense-in-depth alongside `--gwent-weather-card-w/h` above — a card
+     thumbnail can never visually escape this box and read as "misplaced"
+     even if some future change desyncs the two again. */
+  overflow: hidden;
   padding: 0.3rem 0.6rem;
   border: 1px solid var(--shell-line, rgba(21, 12, 4, 0.6));
   border-radius: 0.35rem;
@@ -33,11 +37,16 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
-/** Teljes, le nem vágott kártyakép (object-fit: contain, nem cover) — a doboz magassága ehhez igazodik, nem fordítva. */
+/**
+ * Teljes, le nem vágott kártyakép (object-fit: contain, nem cover).
+ * `--gwent-weather-card-w/h` (matchBoard.module.css) — a `.zone` szülő
+ * mindig `--gwent-weather-slot-h`-nyi magas, ez a kép ebből származtatva
+ * mindig belefér, nem lóg túl rajta (real playtest report, 2026-08-08).
+ */
 .weatherImage {
   display: block;
-  width: 2.4rem;
-  height: 3.76rem;
+  width: var(--gwent-weather-card-w, 2.4rem);
+  height: var(--gwent-weather-card-h, 3.76rem);
   object-fit: contain;
 }
 

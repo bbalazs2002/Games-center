@@ -252,6 +252,7 @@ export function LeaderAbilityPanel({ state, playerId, dispatch, requestDeckRevea
       */}
       {isOwnPanel && !pickingTarget && (
         <Button
+          className={styles.leaderAbilityButton}
           disabled={!canActivate}
           onClick={() => (needsAnyTargetPick(needsDeckTarget, needsOwnDiscardTarget, needsOpponentDiscardTarget) ? void openPicker() : activate())}
         >
