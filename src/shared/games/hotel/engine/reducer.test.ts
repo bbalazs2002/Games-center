@@ -343,6 +343,61 @@ describe('reducer — free spaces resolve automatically on landing (no repeatabl
   });
 });
 
+describe('reducer — FREE_BUILDING/FREE_STAIRCASE must resolve even when the SAME space also owes nightly rent (real playtest bug, 2026-08-08, confirmed via production game logs; generalized to FREE_STAIRCASE per felhasználói review)', () => {
+  it('grants the free building AND still asks for the nights roll, when the FREE_BUILDING space\'s own staircase points to an opponent\'s built lot', () => {
+    // space-11 (index 10, FREE_BUILDING) is adjacent to both letoile and
+    // president — exactly the real-game situation: a staircase built there
+    // can point to either, and used to make `applyRollMoveDice` return EARLY
+    // into AWAITING_NIGHTS_ROLL before ever checking `space.type`, silently
+    // skipping the free building entirely.
+    let state = twoPlayerState();
+    state = updateLot(state, 'president', { ownerId: 'player-2', buildingsBuilt: 2 });
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 0, hasGarden: false }); // something for player-1 to build for free
+    state = updateSpace(state, 'space-11', { staircaseForLotId: 'president' });
+    state = updatePlayer(state, 'player-1', { position: 9 }); // +1 roll lands on space-11 (index 10)
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(getLot(next, 'fujiyama').buildingsBuilt).toBe(1); // free building granted immediately on landing
+    // The normal rent flow still applies on top — the FREE_BUILDING grant doesn't replace it.
+    expect(next.turnPhase).toBe('AWAITING_NIGHTS_ROLL');
+    expect(next.pendingNightsRollLotId).toBe('president');
+  });
+
+  it('still resolves straight into RESOLVING_SPACE (no rent owed) when the FREE_BUILDING space\'s staircase points to the player\'s OWN lot', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'president', { ownerId: 'player-1', buildingsBuilt: 0, hasGarden: false });
+    state = updateSpace(state, 'space-11', { staircaseForLotId: 'president' });
+    state = updatePlayer(state, 'player-1', { position: 9 });
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(getLot(next, 'president').buildingsBuilt).toBe(1); // the free building — president is the only owned lot
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+  });
+
+  it('does not double-grant the free building when the space has no staircase at all (the plain, already-working case)', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1', buildingsBuilt: 0, hasGarden: false });
+    state = updatePlayer(state, 'player-1', { position: 9 });
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(getLot(next, 'fujiyama').buildingsBuilt).toBe(1); // exactly one, not two
+    expect(next.turnPhase).toBe('RESOLVING_SPACE');
+  });
+
+  it('grants the free staircase\'s own payout AND still asks for the nights roll, when the FREE_STAIRCASE space itself carries an opponent\'s built staircase', () => {
+    let state = twoPlayerState();
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 2 });
+    state = updateSpace(state, 'space-7', { staircaseForLotId: 'fujiyama' }); // space-7 (index 6, FREE_STAIRCASE) also carrying fujiyama's staircase
+    state = updatePlayer(state, 'player-1', { position: 5 }); // +1 roll lands on space-7 — owns no lots, so the flat 100 payout applies
+
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(getPlayer(next, 'player-1').cash).toBe(15000 + 100); // FREE_STAIRCASE's own payout, granted regardless
+    // The normal rent flow still applies on top — the FREE_STAIRCASE grant doesn't replace it.
+    expect(next.turnPhase).toBe('AWAITING_NIGHTS_ROLL');
+    expect(next.pendingNightsRollLotId).toBe('fujiyama');
+  });
+});
+
 describe('reducer — staircase rent (nights)', () => {
   it('charges the guest and pays the hotel owner', () => {
     let state = twoPlayerState();

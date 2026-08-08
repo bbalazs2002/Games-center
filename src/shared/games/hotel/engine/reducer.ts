@@ -187,6 +187,34 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
   }
 
   const space = next.board[newPosition];
+  // Real playtest bug (2026-08-08, confirmed via production game logs, then
+  // generalized per felhasználói review): a FREE_BUILDING/FREE_STAIRCASE
+  // space can ALSO carry a staircase for some OTHER lot with rent due (e.g.
+  // space-11 is adjacent to both L'etoile and President, and a staircase
+  // built there points to whichever of the two got it) — landing there used
+  // to check `owedStaircaseLotId` FIRST and return early into
+  // AWAITING_NIGHTS_ROLL, which skipped the space's own special action
+  // entirely (confirmed: a player landed exactly on such a space, paid
+  // rent, and never got the building). The two mechanics are independent —
+  // which chain's territory a space belongs to (the staircase/rent) has
+  // nothing to do with the space's OWN action — so the specified resolution
+  // order is: dobás -> +2000 mező -> Ingyen épület/lépcső -> éjszakázás ->
+  // kötelező árverezés -> Vásárlás/építkezés/lépcső vásárlás/árverezés/kör
+  // vége. Neither resolveFreeBuilding nor resolveFreeStaircaseLanding
+  // touches `space` itself (staircase PLACEMENT only ever happens via a
+  // separately dispatched CHOOSE_FREE_STAIRCASE_SPACE, once the player
+  // picks a lot), so `space.staircaseForLotId` below still correctly
+  // reflects whatever this exact space already carries.
+  if (space.type === 'FREE_BUILDING') {
+    next = resolveFreeBuilding(next, player.id);
+  }
+  if (space.type === 'FREE_STAIRCASE') {
+    next = resolveFreeStaircaseLanding(next, player.id);
+    // The player must pick a lot/space first (AWAITING_FREE_STAIRCASE_CHOICE)
+    // — nothing past this point (the rent check included) may run until
+    // CHOOSE_FREE_STAIRCASE_SPACE resolves that separately.
+    if (next.turnPhase === 'AWAITING_FREE_STAIRCASE_CHOICE') return next;
+  }
   const owedStaircaseLotId = staircaseLotWithPossibleRent(next, player.id, space);
   if (owedStaircaseLotId) {
     return { ...next, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: owedStaircaseLotId };
@@ -197,19 +225,6 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
   // turn ends — so START falls through to the same RESOLVING_SPACE state as
   // every other space, letting the player act (or manually end their turn)
   // instead of the engine silently doing it for them.
-  // FREE_BUILDING resolves automatically on landing — there's nothing for the
-  // player to decide (docs/hotel-0a-specifikacio.md §2 says "valamelyik
-  // hoteled", i.e. the game's own pick, and unlike a staircase a building
-  // isn't placed on a specific board space), so no repeatable "claim reward"
-  // button that could be clicked more than once. FREE_STAIRCASE, in
-  // contrast, DOES let the player choose which lot/space (§9.2) — see
-  // resolveFreeStaircaseLanding.
-  if (space.type === 'FREE_STAIRCASE') {
-    return resolveFreeStaircaseLanding(next, player.id);
-  }
-  if (space.type === 'FREE_BUILDING') {
-    return { ...resolveFreeBuilding(next, player.id), turnPhase: 'RESOLVING_SPACE' };
-  }
   return { ...next, turnPhase: 'RESOLVING_SPACE' };
 }
 

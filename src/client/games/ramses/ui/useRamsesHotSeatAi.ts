@@ -14,6 +14,9 @@ import type { PlayerId, RamsesState } from '@shared/games/ramses/engine/state';
 /** Which hot-seat player slots are AI-controlled, and at what difficulty — built once at game start in RamsesSetupPage, empty for an all-human game. */
 export type HotSeatAiSlots = Partial<Record<PlayerId, RamsesAiDifficulty>>;
 
+/** How often to recheck `isAnimating` while it's true, before acting — mirrors Hotel's useHotSeatAi.ts (same constant name/value). */
+const ANIMATION_POLL_INTERVAL_MS = 150;
+
 /**
  * Drives AI-controlled players in a hot-seat game — the client-side mirror
  * of GameRoom's maybeTriggerAiMove/tryApplyOneAiMove for online rooms, but
@@ -32,17 +35,30 @@ export type HotSeatAiSlots = Partial<Record<PlayerId, RamsesAiDifficulty>>;
  * human would remember what any player's move reveals, and the AI models
  * that.
  *
+ * `isAnimating` (read via a ref, not a dependency — see aiSlotsRef's own
+ * note) gates every AI action on the pyramid's slide animation having
+ * actually settled first — real playtest report (2026-08-08), same fix as
+ * Hotel's useHotSeatAi.ts: without this, the AI could dispatch its own move
+ * while a piece (its own previous move, OR the human's) was still visibly
+ * mid-slide.
+ *
  * No-op (registers nothing, memory still tracked) when `aiSlots` is empty,
  * so an all-human hot-seat game is unaffected beyond the (harmless) memory
  * bookkeeping.
  */
-export function useRamsesHotSeatAi(transport: GameTransport<RamsesState, RamsesAction> | null, aiSlots: HotSeatAiSlots): void {
+export function useRamsesHotSeatAi(
+  transport: GameTransport<RamsesState, RamsesAction> | null,
+  aiSlots: HotSeatAiSlots,
+  isAnimating: boolean,
+): void {
   const memoryRef = useRef<RevealMemory>(createRevealMemory());
   // Read via a ref so a new inline aiSlots object on re-render doesn't force
   // the effect to tear down/reconnect — RamsesSetupPage passes a value that's
   // logically fixed for the whole game, but this stays robust either way.
   const aiSlotsRef = useRef(aiSlots);
   aiSlotsRef.current = aiSlots;
+  const isAnimatingRef = useRef(isAnimating);
+  isAnimatingRef.current = isAnimating;
 
   useEffect(() => {
     if (!transport) return;
@@ -54,6 +70,10 @@ export function useRamsesHotSeatAi(transport: GameTransport<RamsesState, RamsesA
     function tryOneMove(): void {
       timer = null;
       if (disposed) return;
+      if (isAnimatingRef.current) {
+        timer = setTimeout(tryOneMove, ANIMATION_POLL_INTERVAL_MS);
+        return;
+      }
       const state = activeTransport.getState();
       for (const [slot, difficulty] of Object.entries(aiSlotsRef.current) as [PlayerId, RamsesAiDifficulty][]) {
         const action = chooseRamsesAiAction(state, memoryRef.current, slot, difficulty);
@@ -83,6 +103,6 @@ export function useRamsesHotSeatAi(transport: GameTransport<RamsesState, RamsesA
       unsubscribe();
       if (timer) clearTimeout(timer);
     };
-    // aiSlots itself isn't a dependency on purpose — see aiSlotsRef above.
+    // aiSlots/isAnimating aren't dependencies on purpose — see their refs above.
   }, [transport]);
 }

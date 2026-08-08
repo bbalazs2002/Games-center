@@ -12,10 +12,53 @@
   min-height: 24rem;
 }
 
+/**
+ * Real playtest report (2026-08-08): the game-end screen had no styling at
+ * all beyond `.page`'s dark backdrop — a plain, unstyled h1/p/button-row.
+ * `.winnerScreen` centers that content inside the already-full-height `.page`
+ * flex column; `.winnerBanner` is the "glass" card, matching the navy/gold
+ * language already used everywhere else in Hotel (hotelTheme.module.css,
+ * PlayerActionWheel.module.css) rather than inventing a new look.
+ */
+.winnerScreen {
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.winnerBanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2.5rem 3rem;
+  background: var(--shell-surface, rgba(15, 23, 32, 0.5));
+  border: 2px solid var(--shell-accent, #d4af37);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(212, 175, 55, 0.25);
+  backdrop-filter: blur(6px);
+}
+
+.winnerBanner h1 {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+  color: var(--shell-accent, #d4af37);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.winnerBanner p {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--shell-ink, #f3ecd9);
+}
+
 .winnerActions {
   display: flex;
   gap: 0.75rem;
-  margin-top: 1.5rem;
+  margin-top: 0.5rem;
 }
 
 /** Floating glass status pill, bottom-center — see docs/hotel-0c-specifikacio.md, "organize around the wheel" round. */

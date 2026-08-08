@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTexture } from '@react-three/drei';
 import { a, useSpring } from '@react-spring/three';
@@ -75,6 +75,17 @@ interface RamsesCellViewData extends RamsesCell {
   pyramidColor: string;
   /** Non-null ONLY on the cell a pyramid just slid INTO, for exactly the one render right after that happens — see useSlideAnimationOffset. */
   slideFromOffset: [number, number, number] | null;
+  /**
+   * Same function reference on every cell — only the one `AnimatedPyramid`
+   * that actually receives a non-null `slideFromOffset` ever calls it (see
+   * that component's own effect guard), so harmless to hand to all of them.
+   * Real playtest report (2026-08-08): nothing used to stop a second click
+   * (or the AI) from dispatching another SLIDE_PYRAMID while a piece was
+   * still mid-slide — RamsesGamePage threads this into `isPyramidAnimating`,
+   * gating both `handleCellClick` and `useRamsesHotSeatAi`, mirroring
+   * Hotel's `onAnyTokenAnimatingChange`/`isTokenAnimating` (LoopTrackBoard3D.tsx/HotelGamePage.tsx).
+   */
+  onPyramidAnimatingChange: (animating: boolean) => void;
 }
 
 /**
@@ -137,18 +148,41 @@ function usePersistentPyramidColors(state: RamsesState): Map<string, string> {
  * for GridBoard3D's absolute cellPosition math — it cancels out in a delta).
  */
 function useSlideAnimationOffset(state: RamsesState): { cellId: string; offset: [number, number, number] } | null {
+  const [slide, setSlide] = useState<{ cellId: string; offset: [number, number, number] } | null>(null);
   const lastEmptyCellIdRef = useRef(state.emptyCellId);
-  if (lastEmptyCellIdRef.current === state.emptyCellId) return null;
 
-  const fromCell = state.board.find((cell) => cell.id === state.emptyCellId); // just emptied — the piece came FROM here
-  const toCell = state.board.find((cell) => cell.id === lastEmptyCellIdRef.current); // where it landed
-  lastEmptyCellIdRef.current = state.emptyCellId;
-  if (!fromCell || !toCell) return null;
+  // Real playtest report (2026-08-08): the previous version diffed
+  // `emptyCellId` and mutated `lastEmptyCellIdRef` DURING RENDER, then
+  // returned the offset directly — a human's own move (unlike an AI one)
+  // could land in the middle of a burst of sibling re-renders from this same
+  // page's other state (useSpecialCardAnnouncement/useTurnStartAnnouncement/
+  // etc. all sit in this same component), and a render mutating a ref is not
+  // guaranteed to only run once per commit — a second render before
+  // `AnimatedPyramid` ever read the prop would silently "consume" the diff
+  // (reset the ref) with nothing downstream ever having seen it, so the
+  // piece just teleported with no animation. `useState`, set from inside a
+  // `useEffect`, is immune to that — a state update is only ever applied
+  // once, and `AnimatedPyramid`'s own effect is keyed on this value's
+  // identity, so it fires exactly once per real transition regardless of
+  // how many times this component happens to re-render around it.
+  useEffect(() => {
+    const previousEmptyCellId = lastEmptyCellIdRef.current;
+    lastEmptyCellIdRef.current = state.emptyCellId;
+    if (previousEmptyCellId === state.emptyCellId) return;
 
-  return {
-    cellId: toCell.id,
-    offset: [(fromCell.col - toCell.col) * CELL_SIZE, 0, (fromCell.row - toCell.row) * CELL_SIZE],
-  };
+    const fromCell = state.board.find((cell) => cell.id === state.emptyCellId); // just emptied — the piece came FROM here
+    const toCell = state.board.find((cell) => cell.id === previousEmptyCellId); // where it landed
+    if (!fromCell || !toCell) return;
+
+    setSlide({
+      cellId: toCell.id,
+      offset: [(fromCell.col - toCell.col) * CELL_SIZE, 0, (fromCell.row - toCell.row) * CELL_SIZE],
+    });
+    // `state.board` deliberately excluded — only a genuine `emptyCellId` change should ever trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.emptyCellId]);
+
+  return slide;
 }
 
 const SPECIAL_ANNOUNCEMENT_DURATION_MS = 2600;
@@ -353,13 +387,27 @@ function RevealedCellPlane({ treasureId }: { treasureId: string | null }) {
  * (its own `useEffect` only reacts to a NEW non-null offset), so a piece
  * that's just sitting still costs nothing extra.
  */
-function AnimatedPyramid({ color, slideFromOffset }: { color: string; slideFromOffset: [number, number, number] | null }) {
+function AnimatedPyramid({
+  color,
+  slideFromOffset,
+  onAnimatingChange,
+}: {
+  color: string;
+  slideFromOffset: [number, number, number] | null;
+  onAnimatingChange: (animating: boolean) => void;
+}) {
   const [spring, api] = useSpring(() => ({ offset: [0, 0, 0] as [number, number, number] }));
 
-  useEffect(() => {
+  // useLayoutEffect, not useEffect — a real playtest concern (2026-08-08): a
+  // fast second click could otherwise land in the window between the FIRST
+  // click's commit and its (post-paint) effect actually flipping
+  // isPyramidAnimating to true. Synchronous, pre-paint signaling closes that
+  // gap to effectively zero.
+  useLayoutEffect(() => {
     if (!slideFromOffset) return;
     api.set({ offset: slideFromOffset });
-    void api.start({ offset: [0, 0, 0], config: { tension: 260, friction: 22 } });
+    onAnimatingChange(true);
+    void Promise.all(api.start({ offset: [0, 0, 0], config: { tension: 260, friction: 22 } })).then(() => onAnimatingChange(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slideFromOffset]);
 
@@ -376,7 +424,9 @@ function AnimatedPyramid({ color, slideFromOffset }: { color: string; slideFromO
 /** Pyramids stay simple colored cones (see PYRAMID_COLORS) — the real physical pieces are plain, unmarked plastic, nothing to photograph/texture. Only the "what's under it" layer gets a real photo. */
 function renderCell(cell: RamsesCellViewData) {
   if (cell.hasPyramid) {
-    return <AnimatedPyramid color={cell.pyramidColor} slideFromOffset={cell.slideFromOffset} />;
+    return (
+      <AnimatedPyramid color={cell.pyramidColor} slideFromOffset={cell.slideFromOffset} onAnimatingChange={cell.onPyramidAnimatingChange} />
+    );
   }
 
   return (
@@ -652,7 +702,11 @@ export function RamsesGamePage({
   );
   const [state, dispatch] = useGameTransport(transport);
   const effectiveHotSeatAiSlots = hotSeatAiSlots ?? {};
-  useRamsesHotSeatAi(transport, effectiveHotSeatAiSlots);
+  // Real playtest report (2026-08-08): while a pyramid is still mid-slide,
+  // neither a human click NOR the hot-seat AI may queue up the next move —
+  // mirrors Hotel's isTokenAnimating (HotelGamePage.tsx/LoopTrackBoard3D.tsx).
+  const [isPyramidAnimating, setIsPyramidAnimating] = useState(false);
+  useRamsesHotSeatAi(transport, effectiveHotSeatAiSlots, isPyramidAnimating);
   // `state` here is already MaskedRamsesTransport's output (masked) — safe to
   // publish as-is, same guarantee the rest of this page already relies on.
   useReportFeedbackContext('ramses', state);
@@ -699,11 +753,12 @@ export function RamsesGamePage({
       ...cell,
       pyramidColor: pyramidColors.get(cell.id) ?? PYRAMID_COLORS[0],
       slideFromOffset: slideAnimation && slideAnimation.cellId === cell.id ? slideAnimation.offset : null,
+      onPyramidAnimatingChange: setIsPyramidAnimating,
     },
   }));
 
   function handleCellClick(cellId: string): void {
-    if (!isMyTurn || isCurrentPlayerAi || !slidableCellIds.includes(cellId)) return;
+    if (!isMyTurn || isCurrentPlayerAi || isPyramidAnimating || !slidableCellIds.includes(cellId)) return;
     dispatch({ type: 'SLIDE_PYRAMID', fromCellId: cellId });
   }
 

@@ -875,14 +875,16 @@ function HotelWinnerScreen({
   onNavigateHome: () => void;
 }) {
   return (
-    <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
-      <h1>Vége a játéknak!</h1>
-      <p>Győztes: {winner.name}</p>
-      <div className={styles.winnerActions}>
-        {showNewGameButton && <Button onClick={onRequestNewGame}>Új játék</Button>}
-        <Button variant="secondary" onClick={onNavigateHome}>
-          Főmenü
-        </Button>
+    <div className={[styles.page, styles.winnerScreen, themeClass].filter(Boolean).join(' ')}>
+      <div className={styles.winnerBanner}>
+        <h1>Vége a játéknak!</h1>
+        <p>Győztes: {winner.name}</p>
+        <div className={styles.winnerActions}>
+          {showNewGameButton && <Button onClick={onRequestNewGame}>Új játék</Button>}
+          <Button variant="secondary" onClick={onNavigateHome}>
+            Főmenü
+          </Button>
+        </div>
       </div>
     </div>
   );

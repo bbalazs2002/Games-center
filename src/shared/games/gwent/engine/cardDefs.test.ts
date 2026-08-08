@@ -53,9 +53,11 @@ describe('CARD_DEFS', () => {
     expect(withRowScorch.sort()).toEqual(['Schirrú', 'Toad', 'Villentretenmerth']);
   });
 
-  it('specialText is set on exactly Cow and Dandelion (see 0a-spec §4.4)', () => {
+  it('specialText is set on exactly Cow, Dandelion, and every other card whose mechanic needs an explanation the Nézegető mód carousel wouldn\'t otherwise show (real playtest report, 2026-08-08: Scorch had none)', () => {
     const withSpecialText = CARD_DEFS.filter((c) => c.specialText !== null).map((c) => c.name);
-    expect(withSpecialText.sort()).toEqual(['Cow', 'Dandelion']);
+    expect(withSpecialText.sort()).toEqual(
+      ['Biting Frost', 'Clear Weather', 'Commander\'s Horn', 'Cow', 'Dandelion', 'Decoy', 'Impenetrable Fog', 'Scorch', 'Torrential Rain'].sort(),
+    );
   });
 
   it('Ice Giant has power 6 (corrected 2026-08-01, confirmed against the physical card)', () => {

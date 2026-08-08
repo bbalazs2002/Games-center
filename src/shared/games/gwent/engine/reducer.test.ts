@@ -282,6 +282,17 @@ describe('reducer — PASS / round resolution', () => {
     expect(p1.board.Melee.cards).toEqual([]);
   });
 
+  it('clears any still-active weather effects along with the board — real playtest report, 2026-08-08: a weather effect used to silently carry over into the next round', () => {
+    let state = readyState();
+    state = { ...state, activeWeatherRows: ['Melee', 'Ranged'] };
+
+    let next = reducer(state, { type: 'PASS', playerId: PLAYER_1 });
+    next = reducer(next, { type: 'PASS', playerId: PLAYER_2 });
+
+    expect(next.phase).toBe('ROUND_RESOLVED');
+    expect(next.activeWeatherRows).toEqual([]);
+  });
+
   it('the Monsters bonus keeps exactly 1 random surviving unit on the board, the rest goes to discard', () => {
     let state = readyState();
     state = updatePlayer(state, PLAYER_1, { faction: 'Monsters' });

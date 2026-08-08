@@ -337,8 +337,18 @@ function applyPass(state: GwentState, playerId: PlayerId): GwentState {
   return { ...next, currentPlayerIndex: nextTurnPlayerIndex(next, playerId) };
 }
 
+/**
+ * Weather effects only last for the current round, same as the board itself
+ * (real playtest report, 2026-08-08) — `resolveRound` used to leave
+ * `activeWeatherRows` untouched, so an active weather effect (and its row
+ * overlay/`ActiveWeatherZone` tile) silently carried over into the NEXT
+ * round even though every weather CARD was already sitting in someone's
+ * discard pile from the moment it was played (resolveWeatherCard). Reset
+ * here means every downstream consumer (computeCardPower's `state.activeWeatherRows.includes(row) ? 1 : ...`,
+ * BoardRow's `.weatherOverlay*`, ActiveWeatherZone's fade-out) picks it up automatically.
+ */
 function clearBoardsWithMonstersBonus(state: GwentState): GwentState {
-  let next = state;
+  let next: GwentState = { ...state, activeWeatherRows: [] };
   for (const player of state.players) {
     const allCards = ROWS.flatMap((row) => player.board[row].cards.map((card) => ({ row, card })));
     const survivor = player.faction === 'Monsters' && allCards.length > 0 ? allCards[Math.floor(Math.random() * allCards.length)] : null;

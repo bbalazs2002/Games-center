@@ -255,9 +255,23 @@ export function CardFlightProvider({ log, children }: CardFlightProviderProps) {
     [],
   );
 
+  // Real playtest report (2026-08-08): the exit-flight animations (a
+  // destroyed/discarded card flying to the discard pile, and both legs of
+  // spawnFloatThenDiscardFlight) never actually played — `current.has(id)`
+  // in spawnExitGhosts (below) was permanently true for ANY instanceId ever
+  // registered, because this callback only ever ADDED to currentRef.current
+  // and never removed an entry when its element unmounted (`el === null`,
+  // silently ignored). A `TrackedCardTile` that's still mounted gets a
+  // BRAND NEW closure every render (this function isn't memoized per
+  // instanceId), so React fires the OLD closure with `null` and the NEW one
+  // with the live element on every single render regardless of whether
+  // anything unmounted — deleting-then-immediately-re-setting is therefore
+  // a safe no-op for a card that's still there, and a real, correct removal
+  // for one that's truly gone.
   const registerCardRef = useCallback(
     (instanceId: string, info: TrackedCardInfo) => (el: HTMLElement | null) => {
       if (el) currentRef.current.set(instanceId, { ...info, rect: el.getBoundingClientRect() });
+      else currentRef.current.delete(instanceId);
     },
     [],
   );
