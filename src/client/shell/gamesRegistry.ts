@@ -31,6 +31,15 @@ export interface GameDescriptor {
   rules?: () => Promise<{ default: ComponentType }>;
   /** Box-cover photo shown on HomePage's tile grid — see docs/shell-ux-specifikacio.md §5.2. Missing/omitted falls back to a monogram tile. */
   coverImage?: string;
+  /**
+   * Looping ambient background video for this game's non-gameplay shell
+   * pages (Lobby, GameModeSelectPage, setup/room pages, LoadingScreen,
+   * OnlineStatusScreen) — rendered by `<GameBackgroundVideo gameId=.../>`.
+   * Deliberately NOT wired into the actual game-board pages (HotelGamePage/
+   * HotelOnlineGamePage still only use `theme` for colors) — the user asked
+   * for the video on Hotel-related pages but explicitly not during a match.
+   */
+  backgroundVideo?: string;
 }
 
 /**
@@ -55,6 +64,7 @@ const ALL_GAMES: GameDescriptor[] = [
     theme: () => import('../games/hotel/ui/hotelTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/hotel/ui/HotelRules'),
     coverImage: assetUrl('/assets/hotel/box.jpg'),
+    backgroundVideo: assetUrl('/assets/hotel/background-video.mp4'),
   },
   {
     id: 'ramses',

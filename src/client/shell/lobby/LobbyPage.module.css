@@ -1,5 +1,14 @@
 .page {
   position: relative;
+  /* Forces this box to own its stacking context so GameBackgroundVideo's
+     `position: fixed; z-index: -1` layer is scoped BEHIND this page's own
+     content but stays ABOVE this page's opaque `background` below — without
+     `isolation`, a fixed negative-z-index child instead escapes to whatever
+     ancestor stacking context happens to exist further up the tree, where it
+     ends up painted behind this page's own (opaque) background too, making
+     it invisible. Real bug, caught live via Playwright canvas pixel sampling
+     (2026-08-08): the video was confirmed playing but never visible on screen. */
+  isolation: isolate;
   min-height: 100vh;
   display: flex;
   justify-content: center;
