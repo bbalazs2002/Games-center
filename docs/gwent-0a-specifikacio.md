@@ -38,7 +38,7 @@
   | Northern Realms | Minden megnyert kör után +1 lapot húz a saját paklijából. |
   | Nilfgaardian Empire | Egy döntetlenre végződő kört automatikusan megnyer. |
   | Monsters | Minden kör után 1 véletlenszerű egységkártyája a táblán marad (nem kerül a dobott lapok közé). |
-  | Scoia'tael | Minden kör elején ez a játékos dönti el, ki kezd. |
+  | Scoia'tael | Az 1. kör elején ez a játékos dönti el, ki kezd. |
 - **Kezdő kéz:** mindkét játékos húz 10 lapot a saját paklijából, majd legfeljebb 2 lapot lecserélhet (mulligan) újakra.
 - **Harci sorok:** az egységkártyák három sor egyikébe kerülnek: Close Combat (Melee), Ranged Combat, Siege Combat. A sorok együttes ereje dönt — a magasabb ÖSSZ erejű játékos nyeri a kört.
 - **Kör menete:** a játékosok felváltva vagy lejátszanak egy lapot, vagy passzolnak (a passzolás véglegesnek — a kör hátralévő részére a játékos többé nem lép). A kör akkor ér véget, ha mindkét játékos passzolt.

@@ -73,7 +73,7 @@ const ALL_GAMES: GameDescriptor[] = [
     // N-fős stepper (see docs/gwent-0e-ai-specifikacio.md §9, implemented 2026-08-07).
     online: { supportsAiOpponent: true },
     theme: () => import('../games/gwent/ui/gwentTheme.module.css').then((m) => ({ default: m.default.theme })),
-    // Still no `rules` — RulesModal falls back gracefully.
+    rules: () => import('../games/gwent/ui/GwentRules'),
     coverImage: assetUrl('/assets/gwent/icons/box.png'),
   },
 ];

@@ -33,6 +33,20 @@ const PASS_DEVICE_GRACE_MS = ANIMATION_SETTLE_MS + EXTRA_PAUSE_MS;
  * `STARTING_COIN_FLIP` log entry appears, using the true state throughout
  * (its own `canFlipStartingCoin` check already goes false once the real
  * phase has moved on, so the flip button doesn't re-arm during the hold).
+ *
+ * Real playtest report, 2026-08-08 (2nd round): when the coin toss picks an
+ * AI-controlled starting player, the game froze on this screen forever —
+ * `useGwentHotSeatAi` schedules the AI's first move `GWENT_AI_MOVE_DELAY_MS`
+ * (800ms) after ANY transport state change, well inside this grace window.
+ * That move appends its own new `state.log` entries, which re-runs THIS
+ * effect (still deps-keyed on `[state.log]`) — and React tears down the
+ * PREVIOUS invocation's `return () => clearTimeout(timer)` cleanup before
+ * running the new one, cancelling the pending "turn grace off" timer. The
+ * re-run finds no `STARTING_COIN_FLIP` entry in ITS OWN new slice and so
+ * schedules no replacement — `coinFlipGraceActive` is left stuck `true`
+ * forever, wedging `holdOnStartingChoiceScreen` open indefinitely. Fixed by
+ * tracking the timer in a ref instead of an effect-cleanup return, so a
+ * later, unrelated log change can no longer cancel it (see below).
  */
 const COIN_FLIP_GRACE_MS = 1900;
 
@@ -119,15 +133,27 @@ export function useGwentMatchViewState(
   const [acknowledgedRevealCount, setAcknowledgedRevealCount] = useState(0);
   const [coinFlipGraceActive, setCoinFlipGraceActive] = useState(false);
   const previousLogLengthForCoinRef = useRef(state.log.length);
+  // Deliberately NOT an effect-cleanup return (see COIN_FLIP_GRACE_MS's doc
+  // comment) — an unrelated later log change (e.g. the AI's own follow-up
+  // move) must NOT be able to cancel this timer, only a genuinely NEW coin
+  // flip may pre-empt it.
+  const coinFlipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const newEntries = state.log.length > previousLogLengthForCoinRef.current ? state.log.slice(previousLogLengthForCoinRef.current) : [];
     previousLogLengthForCoinRef.current = state.log.length;
     if (!newEntries.some((entry): entry is CoinFlipEntry => entry.type === 'STARTING_COIN_FLIP')) return;
+    if (coinFlipTimerRef.current) clearTimeout(coinFlipTimerRef.current);
     setCoinFlipGraceActive(true);
-    const timer = setTimeout(() => setCoinFlipGraceActive(false), COIN_FLIP_GRACE_MS);
-    return () => clearTimeout(timer);
+    coinFlipTimerRef.current = setTimeout(() => {
+      setCoinFlipGraceActive(false);
+      coinFlipTimerRef.current = null;
+    }, COIN_FLIP_GRACE_MS);
   }, [state.log]);
+
+  useEffect(() => () => {
+    if (coinFlipTimerRef.current) clearTimeout(coinFlipTimerRef.current);
+  }, []);
 
   const expectedViewer = resolveExpectedViewer(expectedViewerId(state), activeViewerId, hotSeatAiSlots);
   const transitionPending = isLocalMode && expectedViewer !== null && expectedViewer !== activeViewerId;
