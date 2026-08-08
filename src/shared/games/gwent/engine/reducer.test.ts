@@ -305,6 +305,17 @@ describe('reducer — PASS / round resolution', () => {
     expect(p1.discard).toHaveLength(1);
   });
 
+  it('the Monsters bonus never keeps a Hero card — felhasználói pontosítás, 2026-08-08: "a hős lapokra ez sem vonatkozik, azok mindig lekerülnek"', () => {
+    let state = readyState();
+    state = updatePlayer(state, PLAYER_1, { faction: 'Monsters' });
+    state = updateBoardRow(state, PLAYER_1, 'Melee', { cards: [card('hero', HERO)] });
+    let next = reducer(state, { type: 'PASS', playerId: PLAYER_1 });
+    next = reducer(next, { type: 'PASS', playerId: PLAYER_2 });
+    const p1 = getPlayer(next, PLAYER_1);
+    expect(p1.board.Melee.cards).toEqual([]);
+    expect(p1.discard.map((c) => c.instanceId)).toEqual(['hero']);
+  });
+
   it('a real tie (neither side Nilfgaard) costs BOTH players a life', () => {
     let state = readyState();
     state = updatePlayer(state, PLAYER_1, { faction: 'Monsters' });

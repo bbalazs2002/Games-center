@@ -351,7 +351,12 @@ function clearBoardsWithMonstersBonus(state: GwentState): GwentState {
   let next: GwentState = { ...state, activeWeatherRows: [] };
   for (const player of state.players) {
     const allCards = ROWS.flatMap((row) => player.board[row].cards.map((card) => ({ row, card })));
-    const survivor = player.faction === 'Monsters' && allCards.length > 0 ? allCards[Math.floor(Math.random() * allCards.length)] : null;
+    // Hero cards are never eligible as the Monsters survivor — felhasználói
+    // pontosítás (2026-08-08): "a hős lapokra ez sem vonatkozik, azok mindig
+    // lekerülnek" — they go to discard like anyone else's cards, same as
+    // every other faction's round-end cleanup.
+    const survivorCandidates = allCards.filter((entry) => !getCardDef(entry.card.defId).abilities.includes('Hero'));
+    const survivor = player.faction === 'Monsters' && survivorCandidates.length > 0 ? survivorCandidates[Math.floor(Math.random() * survivorCandidates.length)] : null;
     const toDiscard = allCards.filter((entry) => entry !== survivor).map((entry) => entry.card);
     next = updatePlayer(next, player.id, { discard: [...getPlayer(next, player.id).discard, ...toDiscard] });
     for (const row of ROWS) {
