@@ -1,3 +1,4 @@
+import { GameBackgroundVideo } from '../shell/GameBackgroundVideo';
 import { useGameTheme } from '../shell/useGameTheme';
 import styles from './LoadingScreen.module.css';
 
@@ -16,6 +17,7 @@ export function LoadingScreen({ gameId }: LoadingScreenProps) {
 
   return (
     <div className={[styles.screen, themeClass].filter(Boolean).join(' ')}>
+      <GameBackgroundVideo gameId={gameId} />
       <span className={styles.label}>BETÖLTÉS…</span>
     </div>
   );

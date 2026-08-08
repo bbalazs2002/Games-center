@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../ui-kit/Button';
 import { MenuNav } from '../ui-kit/MenuNav';
 import { RulesModal } from '../ui-kit/RulesModal';
+import { GameBackgroundVideo } from './GameBackgroundVideo';
 import { GAMES_REGISTRY } from './gamesRegistry';
 import { useGameTheme } from './useGameTheme';
 import styles from './GameModeSelectPage.module.css';
@@ -20,6 +21,7 @@ export function GameModeSelectPage() {
 
   return (
     <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
+      <GameBackgroundVideo gameId={gameId} />
       <MenuNav backTo="/" />
       <div className={styles.content}>
         <h1>{game.label}</h1>

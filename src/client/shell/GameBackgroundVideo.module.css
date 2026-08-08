@@ -1,0 +1,36 @@
+/**
+ * Fixed, full-viewport layer behind normal page content — `position: fixed`
+ * establishes its own stacking context, and within the ROOT stacking context
+ * a negative z-index paints before (i.e. behind) in-flow static content, so
+ * this needs no cooperation from the pages that mount it.
+ */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A soft scrim keeps existing panel/text contrast intact regardless of the
+   video's own brightness — the themed pages already lean on translucent
+   `--shell-surface` panels over a solid/gradient `--shell-ground`, so this
+   just keeps that same contrast budget once the ground is in motion. */
+.layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video {
+    display: none;
+  }
+}

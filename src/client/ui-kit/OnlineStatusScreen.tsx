@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { GameBackgroundVideo } from '../shell/GameBackgroundVideo';
 import { useGameTheme } from '../shell/useGameTheme';
 import styles from './OnlineStatusScreen.module.css';
 
@@ -19,6 +20,7 @@ export function OnlineStatusScreen({ gameId, children }: OnlineStatusScreenProps
   const themeClass = useGameTheme(gameId);
   return (
     <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
+      <GameBackgroundVideo gameId={gameId} />
       <div className={styles.card}>{children}</div>
     </div>
   );

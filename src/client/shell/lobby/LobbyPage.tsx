@@ -12,6 +12,7 @@ import { Modal } from '../../ui-kit/Modal';
 import { Select } from '../../ui-kit/Select';
 import themedModal from '../../ui-kit/themedModalContent.module.css';
 import { useAuth } from '../auth/useAuth';
+import { GameBackgroundVideo } from '../GameBackgroundVideo';
 import { GAMES_REGISTRY, type GameDescriptor } from '../gamesRegistry';
 import { useGameTheme } from '../useGameTheme';
 import styles from './LobbyPage.module.css';
@@ -471,6 +472,7 @@ export function LobbyPage() {
 
   return (
     <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
+      <GameBackgroundVideo gameId={gameId} />
       <MenuNav backTo={`/games/${gameId}`} />
       <div className={styles.content}>
         <div className={styles.header}>

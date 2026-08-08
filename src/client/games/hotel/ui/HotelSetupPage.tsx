@@ -3,6 +3,7 @@ import { Button } from '../../../ui-kit/Button';
 import formControls from '../../../ui-kit/FormControls.module.css';
 import { MenuNav } from '../../../ui-kit/MenuNav';
 import { Select } from '../../../ui-kit/Select';
+import { GameBackgroundVideo } from '../../../shell/GameBackgroundVideo';
 import { useGameTheme } from '../../../shell/useGameTheme';
 import type { HotelAiDifficulty } from '@shared/games/hotel/ai';
 import { HotelGamePage } from './HotelGamePage';
@@ -106,6 +107,7 @@ export function HotelSetupPage() {
 
   return (
     <div className={[styles.page, themeClass].filter(Boolean).join(' ')}>
+      <GameBackgroundVideo gameId="hotel" />
       <MenuNav backTo="/games/hotel" />
       <div className={styles.content}>
         <h1>Hotel — új játék</h1>
