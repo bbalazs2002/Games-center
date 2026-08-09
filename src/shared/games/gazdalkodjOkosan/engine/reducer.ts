@@ -19,12 +19,14 @@ import {
   canAffordCar,
   canBuyFurniture,
   canBuyInsurance,
+  canCancelPayment,
   canDepositToAccount,
   canDrawChanceCard,
   canEndTurn,
   canOpenBankAccount,
   canPayInstallment,
   canRollMoveDice,
+  canSettlePayment,
   canWithdrawFromAccount,
   getCurrentPlayer,
   getCurrentSpace,
@@ -32,9 +34,10 @@ import {
   getSpace,
   hasWon,
   nextActivePlayerIndex,
+  totalWealth,
   updatePlayer,
 } from './rules';
-import type { BoardSpace, ChanceCardEffect, FurnitureItemId, GazdalkodjOkosanState, OwnershipStatus, Player, PlayerId } from './state';
+import type { BoardSpace, ChanceCardEffect, FurnitureItemId, GazdalkodjOkosanState, OwnershipStatus, PaymentReason, Player, PlayerId } from './state';
 
 function clearedFurnitureRecord(): Record<FurnitureItemId, boolean> {
   return Object.fromEntries(ALL_FURNITURE_ITEMS.map((item) => [item, false])) as Record<FurnitureItemId, boolean>;
@@ -59,11 +62,124 @@ function bankruptPlayer(state: GazdalkodjOkosanState, playerId: PlayerId): Gazda
   return finishTurn(next);
 }
 
-function chargePlayer(state: GazdalkodjOkosanState, playerId: PlayerId, amount: number): GazdalkodjOkosanState {
-  if (amount <= 0) return state;
+/**
+ * Egyetlen belépési pont MINDEN fizetéshez (kötelező mezőfizetés,
+ * hiteltörlesztés, lakás/autó/bútor/biztosítás/BKV vásárlás, Szerencsekártya
+ * pénzbüntetés) — a tényleges levonás helyett `pendingPayment`-et állít be és
+ * `AWAITING_PAYMENT`-re vált, amit a SETTLE_PAYMENT action zár le (lásd
+ * finalizePayment/applySettlePayment). Kötelező jellegű `reason`-öknél (nem
+ * BUY_*), ha a játékos SEMMILYEN megosztással nem tudná kifizetni
+ * (totalWealth < amount), azonnal csődbe megy — nincs értelme egy lehetetlen
+ * döntésre várni (nincs adósság-/árverés-mechanika ebben a játékban).
+ * Önkéntes (BUY_*) vásárlásoknál ez a bankruptcy-ág sosem fut le, mert a
+ * `canAfford*`/`canBuy*` predikátumok már totalWealth-re nézve engedik csak a
+ * gombot megjelenni (lásd rules.ts).
+ */
+function requestPayment(state: GazdalkodjOkosanState, playerId: PlayerId, amount: number, reason: PaymentReason): GazdalkodjOkosanState {
+  if (amount <= 0) return finalizePayment(state, playerId, 0, 0, reason);
   const player = getPlayer(state, playerId);
-  if (player.cash >= amount) return updatePlayer(state, playerId, { cash: player.cash - amount });
-  return bankruptPlayer(state, playerId);
+  if (!reason.kind.startsWith('BUY_') && totalWealth(player) < amount) return bankruptPlayer(state, playerId);
+  return { ...state, pendingPayment: { amount, reason }, turnPhase: 'AWAITING_PAYMENT' };
+}
+
+function deductSplit(state: GazdalkodjOkosanState, playerId: PlayerId, cashAmount: number, bankAmount: number): GazdalkodjOkosanState {
+  const player = getPlayer(state, playerId);
+  return updatePlayer(state, playerId, {
+    cash: player.cash - cashAmount,
+    bankAccount: bankAmount > 0 && player.bankAccount ? { balance: player.bankAccount.balance - bankAmount } : player.bankAccount,
+  });
+}
+
+/**
+ * A `pendingPayment` levonása UTÁN fut le — a `reason.kind` szerint elvégzi a
+ * tényleges hatást (tulajdon beállítása, log-bejegyzés, `turnPhase`
+ * továbblépés). Ugyanaz a logika, ami korábban `applyBuyApartment`/
+ * `applyBuyCar`/`applyBuyFurniture`/`applyBuyInsurance`/`applyBuyBkvPass`/
+ * `applyPayInstallment`/`resolvePaySpace` törzsében volt, csak most a
+ * levonás UTÁNI, `SETTLE_PAYMENT`-tel kapott `cashAmount`/`bankAmount`-tal
+ * (0/0-val hívva a `requestPayment`-ből `amount<=0` esetén, hogy a
+ * mellékhatás/fázisváltás fizetés nélkül is lefusson).
+ */
+// eslint-disable-next-line complexity -- egyetlen lapos leképezés reason.kind szerint, minden ág néhány soros, bontása csak áttekinthetetlenebbé tenné
+function finalizePayment(
+  state: GazdalkodjOkosanState,
+  playerId: PlayerId,
+  cashAmount: number,
+  bankAmount: number,
+  reason: PaymentReason,
+): GazdalkodjOkosanState {
+  switch (reason.kind) {
+    case 'SPACE_PAYMENT': {
+      let next = appendLog(state, {
+        type: 'SPACE_PAYMENT',
+        playerId,
+        spaceIndex: reason.spaceIndex,
+        amount: cashAmount + bankAmount,
+        cashAmount,
+        bankAmount,
+      });
+      if (reason.thenSkipNextRoll) next = updatePlayer(next, playerId, { skipNextRoll: true });
+      return { ...next, turnPhase: 'RESOLVING_SPACE' };
+    }
+    case 'INSTALLMENT': {
+      const player = getPlayer(state, playerId);
+      const status = reason.loan === 'car' ? player.car : player.apartment;
+      if (status.kind !== 'FINANCED') return { ...state, turnPhase: 'RESOLVING_SPACE' };
+      const payment = cashAmount + bankAmount;
+      const remainingBalance = status.plan.remainingBalance - payment;
+      const paidOff = remainingBalance <= 0;
+      const newStatus: OwnershipStatus = paidOff
+        ? { kind: 'OWNED_CASH', pricePaid: status.plan.totalPrice }
+        : { kind: 'FINANCED', plan: { ...status.plan, remainingBalance } };
+      let next = updatePlayer(state, playerId, reason.loan === 'car' ? { car: newStatus } : { apartment: newStatus });
+      next = appendLog(next, { type: 'INSTALLMENT_PAID', playerId, loan: reason.loan, amount: payment, paidOff, cashAmount, bankAmount });
+      const remainingPending = state.pendingMandatoryInstallments.filter((l) => l !== reason.loan);
+      if (remainingPending.length > 0) return { ...next, pendingMandatoryInstallments: remainingPending, turnPhase: 'AWAITING_MANDATORY_INSTALLMENT' };
+      return resolveLandedSpace({ ...next, pendingMandatoryInstallments: [] }, playerId);
+    }
+    case 'BUY_APARTMENT': {
+      const terms = APARTMENT_PURCHASE_TERMS;
+      const status: OwnershipStatus = reason.financed
+        ? { kind: 'FINANCED', plan: { totalPrice: terms.financedTotal, remainingBalance: terms.financedTotal - terms.downPayment, perTurnPayment: terms.perTurnPayment } }
+        : { kind: 'OWNED_CASH', pricePaid: terms.cashPrice };
+      const next = updatePlayer(state, playerId, { apartment: status });
+      return { ...appendLog(next, { type: 'APARTMENT_PURCHASED', playerId, financed: reason.financed, cashAmount, bankAmount }), turnPhase: 'RESOLVING_SPACE' };
+    }
+    case 'BUY_CAR': {
+      const terms = CAR_PURCHASE_TERMS;
+      const status: OwnershipStatus = reason.financed
+        ? { kind: 'FINANCED', plan: { totalPrice: terms.financedTotal, remainingBalance: terms.financedTotal - terms.downPayment, perTurnPayment: terms.perTurnPayment } }
+        : { kind: 'OWNED_CASH', pricePaid: terms.cashPrice };
+      const next = updatePlayer(state, playerId, { car: status });
+      return { ...appendLog(next, { type: 'CAR_PURCHASED', playerId, financed: reason.financed, cashAmount, bankAmount }), turnPhase: 'RESOLVING_SPACE' };
+    }
+    case 'BUY_FURNITURE': {
+      const player = getPlayer(state, playerId);
+      const next = updatePlayer(state, playerId, { furniture: { ...player.furniture, [reason.item]: true } });
+      return { ...appendLog(next, { type: 'FURNITURE_PURCHASED', playerId, item: reason.item, cashAmount, bankAmount }), turnPhase: 'RESOLVING_SPACE' };
+    }
+    case 'BUY_INSURANCE': {
+      const player = getPlayer(state, playerId);
+      const next = updatePlayer(state, playerId, { insurance: { ...player.insurance, [reason.policy]: true } });
+      return { ...appendLog(next, { type: 'INSURANCE_BOUGHT', playerId, policy: reason.policy, cashAmount, bankAmount }), turnPhase: 'RESOLVING_SPACE' };
+    }
+    case 'BUY_BKV_PASS': {
+      const next = updatePlayer(state, playerId, { hasBkvPass: true });
+      return { ...appendLog(next, { type: 'BKV_PASS_PURCHASED', playerId, cashAmount, bankAmount }), turnPhase: 'RESOLVING_SPACE' };
+    }
+    case 'CHANCE_MONEY_DELTA':
+      return { ...state, turnPhase: 'RESOLVING_SPACE' };
+    case 'CHANCE_MOVE_THEN_PAY': {
+      let next = state;
+      if (reason.thenExtraRoll) {
+        const player = getPlayer(next, playerId);
+        next = updatePlayer(next, playerId, { extraRollsPending: player.extraRollsPending + 1 });
+      }
+      return { ...next, turnPhase: 'RESOLVING_SPACE' };
+    }
+    default:
+      return state;
+  }
 }
 
 function checkWinCondition(state: GazdalkodjOkosanState, playerId: PlayerId): GazdalkodjOkosanState {
@@ -79,7 +195,15 @@ function finishTurn(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
 
   if (!currentPlayer.bankrupt && currentPlayer.extraRollsPending > 0) {
     const withDecrementedRolls = updatePlayer(checked, currentPlayer.id, { extraRollsPending: currentPlayer.extraRollsPending - 1 });
-    return { ...withDecrementedRolls, turnPhase: 'AWAITING_ROLL', pendingMandatoryInstallments: [], lastDiceRoll: null };
+    return {
+      ...withDecrementedRolls,
+      turnPhase: 'AWAITING_ROLL',
+      pendingMandatoryInstallments: [],
+      pendingChanceCardEffect: null,
+      pendingPayment: null,
+      pendingMandatoryChanceDraw: false,
+      lastDiceRoll: null,
+    };
   }
 
   return {
@@ -87,6 +211,9 @@ function finishTurn(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
     currentPlayerIndex: nextActivePlayerIndex(checked),
     turnPhase: 'AWAITING_ROLL',
     pendingMandatoryInstallments: [],
+    pendingChanceCardEffect: null,
+    pendingPayment: null,
+    pendingMandatoryChanceDraw: false,
     lastDiceRoll: null,
   };
 }
@@ -158,17 +285,32 @@ function resolveHospitalSpace(state: GazdalkodjOkosanState, playerId: PlayerId):
 }
 
 function resolvePaySpace(state: GazdalkodjOkosanState, playerId: PlayerId, space: BoardSpace): GazdalkodjOkosanState {
-  const next = chargePlayer(state, playerId, space.amount ?? 0);
-  if (getPlayer(next, playerId).bankrupt) return next;
-  let logged = appendLog(next, { type: 'SPACE_PAYMENT', playerId, spaceIndex: space.index, amount: space.amount ?? 0 });
-  if (space.type === 'PAY_AND_SKIP') logged = updatePlayer(logged, playerId, { skipNextRoll: true });
-  return { ...logged, turnPhase: 'RESOLVING_SPACE' };
+  return requestPayment(state, playerId, space.amount ?? 0, {
+    kind: 'SPACE_PAYMENT',
+    spaceIndex: space.index,
+    thenSkipNextRoll: space.type === 'PAY_AND_SKIP',
+  });
 }
 
-function resolveChanceSpace(state: GazdalkodjOkosanState, playerId: PlayerId, space: BoardSpace): GazdalkodjOkosanState {
+/**
+ * A Szerencsekerék mezőn a kártyahúzás MINDIG kötelező, függetlenül attól,
+ * hogy a játékos dobással landolt ott, vagy egy másik Szerencsekártya
+ * (MOVE_TO) küldte oda — lásd pendingMandatoryChanceDraw doksi. Egyetlen
+ * kivétel: ha a mező BKV-bérletet igényel és a játékosnak nincs, a mező
+ * eleve hatástalan (ugyanez a szabály érvényes függetlenül az odaérkezés
+ * módjától is — pl. bérlettel a 27-es mezőre lépve a húzás ugyanúgy
+ * kötelező, akár dobással, akár kártyával került oda a játékos).
+ */
+function applyChanceDrawObligation(state: GazdalkodjOkosanState, playerId: PlayerId): GazdalkodjOkosanState {
+  const space = getSpace(state, getPlayer(state, playerId).position);
+  if (space.type !== 'CHANCE') return state;
   const missingPass = space.requiresBkvPass && !getPlayer(state, playerId).hasBkvPass;
   const next = missingPass ? appendLog(state, { type: 'CHANCE_CARD_SKIPPED_NO_PASS', playerId }) : state;
-  return { ...next, turnPhase: 'RESOLVING_SPACE' };
+  return { ...next, pendingMandatoryChanceDraw: !missingPass };
+}
+
+function resolveChanceSpace(state: GazdalkodjOkosanState, playerId: PlayerId): GazdalkodjOkosanState {
+  return { ...applyChanceDrawObligation(state, playerId), turnPhase: 'RESOLVING_SPACE' };
 }
 
 function resolveExtraRollRewardSpace(state: GazdalkodjOkosanState, playerId: PlayerId, space: BoardSpace): GazdalkodjOkosanState {
@@ -190,7 +332,7 @@ function resolveLandedSpace(state: GazdalkodjOkosanState, playerId: PlayerId): G
     case 'PAY_AND_SKIP':
       return resolvePaySpace(state, playerId, space);
     case 'CHANCE':
-      return resolveChanceSpace(state, playerId, space);
+      return resolveChanceSpace(state, playerId);
     case 'EXTRA_ROLL_REWARD':
       return resolveExtraRollRewardSpace(state, playerId, space);
     default:
@@ -208,17 +350,24 @@ function applyMoveToEffect(
   playerId: PlayerId,
   effect: Extract<ChanceCardEffect, { kind: 'MOVE_TO' }>,
 ): GazdalkodjOkosanState {
-  const { state: moved } = moveAndLog(state, playerId, stepsToward(state, playerId, effect.targetIndex), 'CHANCE_CARD');
-  let next = moved;
+  const { state: movedTo } = moveAndLog(state, playerId, stepsToward(state, playerId, effect.targetIndex), 'CHANCE_CARD');
+  // A célmező saját, LANDOLÁSKOR kötelező hatásai (mezőfizetés, kórház stb.)
+  // szándékosan NEM futnak le automatikusan card-driven mozgásnál (lásd a
+  // ChanceCardEffect.MOVE_TO doksiját) — DE a Szerencsekerék-húzás
+  // kötelezettsége alóli kivétel: az mindig érvényes, függetlenül attól,
+  // hogy dobással vagy kártyával érkezett-e oda a játékos.
+  const moved = applyChanceDrawObligation(movedTo, playerId);
   if (effect.thenPay) {
-    next = chargePlayer(next, playerId, effect.thenPay);
-    if (getPlayer(next, playerId).bankrupt) return next;
+    // A thenExtraRoll alkalmazása átkerül finalizePayment CHANCE_MOVE_THEN_PAY
+    // ágába — a fizetésnek elsőbbsége van, ha a játékos időközben csődbe
+    // menne, ne kapjon extra dobást.
+    return requestPayment(moved, playerId, effect.thenPay, { kind: 'CHANCE_MOVE_THEN_PAY', thenExtraRoll: !!effect.thenExtraRoll });
   }
   if (effect.thenExtraRoll) {
-    const player = getPlayer(next, playerId);
-    next = updatePlayer(next, playerId, { extraRollsPending: player.extraRollsPending + 1 });
+    const player = getPlayer(moved, playerId);
+    return updatePlayer(moved, playerId, { extraRollsPending: player.extraRollsPending + 1 });
   }
-  return next;
+  return moved;
 }
 
 function applyGainFurnitureEffect(
@@ -278,7 +427,9 @@ function applyImmediateInterestEffect(
 function applyChanceCardEffect(state: GazdalkodjOkosanState, playerId: PlayerId, effect: ChanceCardEffect): GazdalkodjOkosanState {
   switch (effect.kind) {
     case 'MONEY_DELTA':
-      return effect.amount >= 0 ? creditPlayer(state, playerId, effect.amount) : chargePlayer(state, playerId, -effect.amount);
+      return effect.amount >= 0
+        ? creditPlayer(state, playerId, effect.amount)
+        : requestPayment(state, playerId, -effect.amount, { kind: 'CHANCE_MONEY_DELTA' });
     case 'MOVE_TO':
       return applyMoveToEffect(state, playerId, effect);
     case 'GAIN_FURNITURE':
@@ -335,29 +486,11 @@ function applyPayInstallment(state: GazdalkodjOkosanState, loan: 'car' | 'apartm
 
   const minimumRequired = Math.min(status.plan.perTurnPayment, status.plan.remainingBalance);
   const requested = amount ?? minimumRequired;
-  if (requested < minimumRequired) return state;
-  const payment = Math.min(requested, status.plan.remainingBalance);
-
-  let next = chargePlayer(state, player.id, payment);
-  if (getPlayer(next, player.id).bankrupt) return next;
-
-  const remainingBalance = status.plan.remainingBalance - payment;
-  const paidOff = remainingBalance <= 0;
-  const newStatus: OwnershipStatus = paidOff
-    ? { kind: 'OWNED_CASH', pricePaid: status.plan.totalPrice }
-    : { kind: 'FINANCED', plan: { ...status.plan, remainingBalance } };
-  next = updatePlayer(next, player.id, loan === 'car' ? { car: newStatus } : { apartment: newStatus });
-  next = appendLog(next, { type: 'INSTALLMENT_PAID', playerId: player.id, loan, amount: payment, paidOff });
-
-  const remainingPending = state.pendingMandatoryInstallments.filter((l) => l !== loan);
-  if (remainingPending.length > 0) return { ...next, pendingMandatoryInstallments: remainingPending };
-  // Real bug caught by the 0b schema-codec smoke test (2026-08-08): without
-  // this explicit clear, `next` still carried the stale ['car'/'apartment']
-  // list all the way through resolveLandedSpace's various `{ ...state, ... }`
-  // spreads (none of them touch this field), leaving AWAITING_MANDATORY_
-  // INSTALLMENT's own list stuck non-empty even after the last installment
-  // was paid off.
-  return resolveLandedSpace({ ...next, pendingMandatoryInstallments: [] }, player.id);
+  // A korábbi csendes remainingBalance-re-kerekítés helyett most no-op — a
+  // fizetési forrás (készpénz/folyószámla) megosztásának az esedékes
+  // összeghez KELL igazodnia, egy utólag lekerekített összeg szétesne.
+  if (requested < minimumRequired || requested > status.plan.remainingBalance) return state;
+  return requestPayment(state, player.id, requested, { kind: 'INSTALLMENT', loan });
 }
 
 function applyOpenBankAccount(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
@@ -394,6 +527,7 @@ function applyEndTurn(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
   return finishTurn(state);
 }
 
+// eslint-disable-next-line complexity -- egyetlen lapos, per-action-típusú dispatch-tábla, minden ág egysoros, bontása csak áttekinthetetlenebbé tenné
 function dispatchTurnAndMoney(state: GazdalkodjOkosanState, action: GazdalkodjOkosanAction): GazdalkodjOkosanState | undefined {
   switch (action.type) {
     case 'ROLL_MOVE_DICE':
@@ -412,6 +546,10 @@ function dispatchTurnAndMoney(state: GazdalkodjOkosanState, action: GazdalkodjOk
       return applyEndTurn(state);
     case 'ACK_CHANCE_CARD':
       return applyAckChanceCard(state);
+    case 'SETTLE_PAYMENT':
+      return applySettlePayment(state, action.cashAmount, action.bankAmount);
+    case 'CANCEL_PAYMENT':
+      return applyCancelPayment(state);
     default:
       return undefined;
   }
@@ -421,52 +559,38 @@ function applyBuyApartment(state: GazdalkodjOkosanState, financed: boolean): Gaz
   if (!canBuyApartment(state)) return state;
   const player = getCurrentPlayer(state);
   if (!canAffordApartment(player, financed)) return state;
-  const terms = APARTMENT_PURCHASE_TERMS;
-  const status: OwnershipStatus = financed
-    ? { kind: 'FINANCED', plan: { totalPrice: terms.financedTotal, remainingBalance: terms.financedTotal - terms.downPayment, perTurnPayment: terms.perTurnPayment } }
-    : { kind: 'OWNED_CASH', pricePaid: terms.cashPrice };
-  const paid = financed ? terms.downPayment : terms.cashPrice;
-  const next = updatePlayer(state, player.id, { cash: player.cash - paid, apartment: status });
-  return appendLog(next, { type: 'APARTMENT_PURCHASED', playerId: player.id, financed });
+  const price = financed ? APARTMENT_PURCHASE_TERMS.downPayment : APARTMENT_PURCHASE_TERMS.cashPrice;
+  return requestPayment(state, player.id, price, { kind: 'BUY_APARTMENT', financed });
 }
 
 function applyBuyCar(state: GazdalkodjOkosanState, financed: boolean): GazdalkodjOkosanState {
   if (!canBuyCar(state)) return state;
   const player = getCurrentPlayer(state);
   if (!canAffordCar(player, financed)) return state;
-  const terms = CAR_PURCHASE_TERMS;
-  const status: OwnershipStatus = financed
-    ? { kind: 'FINANCED', plan: { totalPrice: terms.financedTotal, remainingBalance: terms.financedTotal - terms.downPayment, perTurnPayment: terms.perTurnPayment } }
-    : { kind: 'OWNED_CASH', pricePaid: terms.cashPrice };
-  const paid = financed ? terms.downPayment : terms.cashPrice;
-  const next = updatePlayer(state, player.id, { cash: player.cash - paid, car: status });
-  return appendLog(next, { type: 'CAR_PURCHASED', playerId: player.id, financed });
+  const price = financed ? CAR_PURCHASE_TERMS.downPayment : CAR_PURCHASE_TERMS.cashPrice;
+  return requestPayment(state, player.id, price, { kind: 'BUY_CAR', financed });
 }
 
 function applyBuyFurniture(state: GazdalkodjOkosanState, item: FurnitureItemId): GazdalkodjOkosanState {
   if (!canBuyFurniture(state, item)) return state;
   const player = getCurrentPlayer(state);
-  const price = FURNITURE_CATALOG[item].price;
-  const next = updatePlayer(state, player.id, { cash: player.cash - price, furniture: { ...player.furniture, [item]: true } });
-  return appendLog(next, { type: 'FURNITURE_PURCHASED', playerId: player.id, item });
+  return requestPayment(state, player.id, FURNITURE_CATALOG[item].price, { kind: 'BUY_FURNITURE', item });
 }
 
 function applyBuyInsurance(state: GazdalkodjOkosanState, policy: 'life' | 'home' | 'car'): GazdalkodjOkosanState {
   if (!canBuyInsurance(state, policy)) return state;
   const player = getCurrentPlayer(state);
-  const price = INSURANCE_PRICES[policy];
-  const next = updatePlayer(state, player.id, { cash: player.cash - price, insurance: { ...player.insurance, [policy]: true } });
-  return appendLog(next, { type: 'INSURANCE_BOUGHT', playerId: player.id, policy });
+  return requestPayment(state, player.id, INSURANCE_PRICES[policy], { kind: 'BUY_INSURANCE', policy });
 }
 
 function applyBuyBkvPass(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
   if (!canBuyBkvPass(state)) return state;
   const player = getCurrentPlayer(state);
   const price = getSpace(state, BKV_PASS_SPACE_INDEX).amount ?? 0;
-  const next = updatePlayer(state, player.id, { cash: player.cash - price, hasBkvPass: true });
-  return appendLog(next, { type: 'BKV_PASS_PURCHASED', playerId: player.id });
+  return requestPayment(state, player.id, price, { kind: 'BUY_BKV_PASS' });
 }
 
+/** A kártya húzása (log, pakli-rotáció) azonnali, de a HATÁSA (mozgás is!) csak ACK_CHANCE_CARD-kor fut le — lásd applyAckChanceCard. */
 function applyDrawChanceCard(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
   if (!canDrawChanceCard(state)) return state;
   const player = getCurrentPlayer(state);
@@ -476,17 +600,43 @@ function applyDrawChanceCard(state: GazdalkodjOkosanState): GazdalkodjOkosanStat
 
   const [card, ...rest] = state.chanceDeck;
   const next: GazdalkodjOkosanState = appendLog({ ...state, chanceDeck: [...rest, card] }, { type: 'CHANCE_CARD_DRAWN', playerId: player.id, cardId: card.id });
-  const resolved = applyChanceCardEffect(next, player.id, card.effect);
-  // Csődbe jutott a hatástól — a meglévő minta szerint (pl. resolvePaySpace)
-  // nem erőltetjük az ack-fázist, a turnPhase változatlan marad.
-  if (getPlayer(resolved, player.id).bankrupt) return resolved;
-  return { ...resolved, turnPhase: 'AWAITING_CHANCE_CARD_ACK' };
+  return { ...next, pendingChanceCardEffect: card.effect, pendingMandatoryChanceDraw: false, turnPhase: 'AWAITING_CHANCE_CARD_ACK' };
 }
 
-/** A húzott kártya hatásának kötelező megerősítése — amíg ez meg nem történik, minden más action blokkolva van (mind a `can*` predikátum RESOLVING_SPACE-t követel, lásd rules.ts canAckChanceCard). */
+/**
+ * A húzott kártya hatásának kötelező megerősítése — ITT fut le maga a hatás
+ * (mozgás, pénzváltozás stb.), nem a húzáskor, hogy a bábu/egyéb hatás csak
+ * az "OK" után váljon láthatóvá. Ha a hatás fizetést igényelt, a `turnPhase`
+ * már `AWAITING_PAYMENT` (ne írd felül); ha csődbe jutott, a `bankruptPlayer`
+ * már beállította a fázist.
+ */
 function applyAckChanceCard(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
   if (!canAckChanceCard(state)) return state;
-  return { ...state, turnPhase: 'RESOLVING_SPACE' };
+  const player = getCurrentPlayer(state);
+  const effect = state.pendingChanceCardEffect;
+  const cleared: GazdalkodjOkosanState = { ...state, pendingChanceCardEffect: null };
+  if (!effect) return { ...cleared, turnPhase: 'RESOLVING_SPACE' };
+  const resolved = applyChanceCardEffect(cleared, player.id, effect);
+  if (getPlayer(resolved, player.id).bankrupt || resolved.turnPhase === 'AWAITING_PAYMENT') return resolved;
+  return { ...resolved, turnPhase: 'RESOLVING_SPACE' };
+}
+
+/** A `pendingPayment` lezárása — lásd requestPayment/finalizePayment. */
+function applySettlePayment(state: GazdalkodjOkosanState, cashAmount: number, bankAmount: number): GazdalkodjOkosanState {
+  if (!canSettlePayment(state)) return state;
+  const player = getCurrentPlayer(state);
+  const pending = state.pendingPayment;
+  if (!pending || cashAmount < 0 || bankAmount < 0 || cashAmount + bankAmount !== pending.amount) return state;
+  if (cashAmount > player.cash || bankAmount > (player.bankAccount?.balance ?? 0)) return state;
+
+  const deducted = deductSplit(state, player.id, cashAmount, bankAmount);
+  return finalizePayment({ ...deducted, pendingPayment: null }, player.id, cashAmount, bankAmount, pending.reason);
+}
+
+/** Csak önkéntes (BUY_*) fizetési oknál — lásd rules.ts canCancelPayment. */
+function applyCancelPayment(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
+  if (!canCancelPayment(state)) return state;
+  return { ...state, pendingPayment: null, turnPhase: 'RESOLVING_SPACE' };
 }
 
 function dispatchPurchases(state: GazdalkodjOkosanState, action: GazdalkodjOkosanAction): GazdalkodjOkosanState | undefined {

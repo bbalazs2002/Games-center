@@ -1,5 +1,5 @@
 import { CHANCE_CARDS } from '@shared/games/gazdalkodjOkosan/engine/chanceCards';
-import type { FurnitureItemId, GazdalkodjOkosanState, LogEntry, PlayerId } from '@shared/games/gazdalkodjOkosan/engine/state';
+import type { FurnitureItemId, GazdalkodjOkosanState, LogEntry, PaymentReason, PlayerId } from '@shared/games/gazdalkodjOkosan/engine/state';
 
 export const FURNITURE_LABELS: Record<FurnitureItemId, string> = {
   konyhabutor: 'Konyhabútor',
@@ -19,6 +19,39 @@ function chanceCardText(cardId: string): string {
   return CHANCE_CARDS.find((c) => c.id === cardId)?.text ?? '';
 }
 
+/** Shows the cash/bank split in the log line, but only when the payment actually came from both sources — a 100%-cash or 100%-bank payment doesn't need the breakdown spelled out. */
+function paymentBreakdown(cashAmount: number, bankAmount: number): string {
+  if (cashAmount <= 0 || bankAmount <= 0) return '';
+  return ` (${cashAmount.toLocaleString('hu-HU')} készpénz + ${bankAmount.toLocaleString('hu-HU')} folyószámla)`;
+}
+
+/** A `PaymentModal` címkéje — mit fedez a soron lévő fizetés (AWAITING_PAYMENT). */
+// eslint-disable-next-line complexity -- egyetlen lapos leképezés reason.kind szerint, minden ág egysoros, bontása csak áttekinthetetlenebbé tenné
+export function describePaymentReason(reason: PaymentReason): string {
+  switch (reason.kind) {
+    case 'SPACE_PAYMENT':
+      return 'Mezőfizetés';
+    case 'INSTALLMENT':
+      return reason.loan === 'car' ? 'Autóhitel törlesztése' : 'Lakáshitel törlesztése';
+    case 'BUY_APARTMENT':
+      return `Lakás vásárlása${reason.financed ? ' (hitel előleg)' : ''}`;
+    case 'BUY_CAR':
+      return `Autó vásárlása${reason.financed ? ' (hitel előleg)' : ''}`;
+    case 'BUY_FURNITURE':
+      return `${FURNITURE_LABELS[reason.item]} vásárlása`;
+    case 'BUY_INSURANCE':
+      return `Biztosítás kötése (${reason.policy})`;
+    case 'BUY_BKV_PASS':
+      return 'BKV-bérlet vásárlása';
+    case 'CHANCE_MONEY_DELTA':
+      return 'Szerencsekártya büntetés';
+    case 'CHANCE_MOVE_THEN_PAY':
+      return 'Fizetés (Szerencsekártya)';
+    default:
+      return 'Fizetés';
+  }
+}
+
 // eslint-disable-next-line complexity -- egyetlen nagy leképezés, minden ág egysoros, bontása csak áttekinthetetlenebbé tenné
 export function formatLogEntry(entry: LogEntry, state: GazdalkodjOkosanState): string {
   const name = (id: PlayerId) => playerName(state, id);
@@ -28,13 +61,13 @@ export function formatLogEntry(entry: LogEntry, state: GazdalkodjOkosanState): s
     case 'MOVED':
       return `${name(entry.playerId)} a(z) ${entry.toIndex}. mezőre lépett${entry.startBonus > 0 ? ` (+${entry.startBonus.toLocaleString('hu-HU')} EUR a Starton)` : ''}`;
     case 'SPACE_PAYMENT':
-      return `${name(entry.playerId)} fizetett ${entry.amount.toLocaleString('hu-HU')} EUR-t`;
+      return `${name(entry.playerId)} fizetett ${entry.amount.toLocaleString('hu-HU')} EUR-t${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'CHANCE_CARD_DRAWN':
       return `${name(entry.playerId)} Szerencsekártyát húzott: „${chanceCardText(entry.cardId)}”`;
     case 'CHANCE_CARD_SKIPPED_NO_PASS':
       return `${name(entry.playerId)} nem húzhatott kártyát (nincs BKV-bérlete)`;
     case 'BKV_PASS_PURCHASED':
-      return `${name(entry.playerId)} megvette a BKV-bérletet`;
+      return `${name(entry.playerId)} megvette a BKV-bérletet${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'BKV_REWARD_SKIPPED_NO_PASS':
       return `${name(entry.playerId)} nem kapta meg a jutalmat (nincs BKV-bérlete)`;
     case 'EXTRA_ROLL_GRANTED':
@@ -46,15 +79,15 @@ export function formatLogEntry(entry: LogEntry, state: GazdalkodjOkosanState): s
     case 'INTEREST_PAID':
       return `${name(entry.playerId)} ${entry.amount.toLocaleString('hu-HU')} EUR kamatot kapott`;
     case 'INSURANCE_BOUGHT':
-      return `${name(entry.playerId)} biztosítást kötött (${entry.policy})`;
+      return `${name(entry.playerId)} biztosítást kötött (${entry.policy})${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'APARTMENT_PURCHASED':
-      return `${name(entry.playerId)} lakást vásárolt${entry.financed ? ' (hitelre)' : ''}`;
+      return `${name(entry.playerId)} lakást vásárolt${entry.financed ? ' (hitelre)' : ''}${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'CAR_PURCHASED':
-      return `${name(entry.playerId)} autót vásárolt${entry.financed ? ' (hitelre)' : ''}`;
+      return `${name(entry.playerId)} autót vásárolt${entry.financed ? ' (hitelre)' : ''}${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'INSTALLMENT_PAID':
-      return `${name(entry.playerId)} törlesztett ${entry.amount.toLocaleString('hu-HU')} EUR-t${entry.paidOff ? ' — a hitel lezárult' : ''}`;
+      return `${name(entry.playerId)} törlesztett ${entry.amount.toLocaleString('hu-HU')} EUR-t${entry.paidOff ? ' — a hitel lezárult' : ''}${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'FURNITURE_PURCHASED':
-      return `${name(entry.playerId)} megvette: ${FURNITURE_LABELS[entry.item]}`;
+      return `${name(entry.playerId)} megvette: ${FURNITURE_LABELS[entry.item]}${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'FURNITURE_GAINED_FROM_CARD':
       return `${name(entry.playerId)} ${entry.cashInstead ? 'készpénzt kapott' : `megkapta: ${FURNITURE_LABELS[entry.item]}`} egy kártyáról`;
     case 'FIRE_EVENT':

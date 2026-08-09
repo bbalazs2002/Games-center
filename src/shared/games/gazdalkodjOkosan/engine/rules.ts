@@ -94,8 +94,9 @@ export function canPayInstallment(state: GazdalkodjOkosanState, loan: 'car' | 'a
   return state.turnPhase === 'AWAITING_MANDATORY_INSTALLMENT' && state.pendingMandatoryInstallments.includes(loan);
 }
 
+/** A Szerencsekerék mezőn dobással landolva a kártyahúzás kötelező — lásd state.ts pendingMandatoryChanceDraw. */
 export function canEndTurn(state: GazdalkodjOkosanState): boolean {
-  return state.turnPhase === 'RESOLVING_SPACE';
+  return state.turnPhase === 'RESOLVING_SPACE' && !state.pendingMandatoryChanceDraw;
 }
 
 export function canBuyApartment(state: GazdalkodjOkosanState): boolean {
@@ -105,8 +106,9 @@ export function canBuyApartment(state: GazdalkodjOkosanState): boolean {
   return player.apartment.kind === 'NONE';
 }
 
+/** totalWealth-re néz (nem csak cash) — a fizetés forrása (készpénz/folyószámla) most már megválasztható SETTLE_PAYMENT-kor, lásd reducer.ts requestPayment. */
 export function canAffordApartment(player: Player, financed: boolean): boolean {
-  return player.cash >= (financed ? APARTMENT_PURCHASE_TERMS.downPayment : APARTMENT_PURCHASE_TERMS.cashPrice);
+  return totalWealth(player) >= (financed ? APARTMENT_PURCHASE_TERMS.downPayment : APARTMENT_PURCHASE_TERMS.cashPrice);
 }
 
 export function canBuyCar(state: GazdalkodjOkosanState): boolean {
@@ -116,8 +118,9 @@ export function canBuyCar(state: GazdalkodjOkosanState): boolean {
   return player.car.kind === 'NONE';
 }
 
+/** totalWealth-re néz (nem csak cash) — lásd canAffordApartment. */
 export function canAffordCar(player: Player, financed: boolean): boolean {
-  return player.cash >= (financed ? CAR_PURCHASE_TERMS.downPayment : CAR_PURCHASE_TERMS.cashPrice);
+  return totalWealth(player) >= (financed ? CAR_PURCHASE_TERMS.downPayment : CAR_PURCHASE_TERMS.cashPrice);
 }
 
 export function canBuyFurniture(state: GazdalkodjOkosanState, item: FurnitureItemId): boolean {
@@ -127,32 +130,44 @@ export function canBuyFurniture(state: GazdalkodjOkosanState, item: FurnitureIte
   const player = getCurrentPlayer(state);
   if (player.apartment.kind === 'NONE') return false;
   if (player.furniture[item]) return false;
-  return player.cash >= FURNITURE_CATALOG[item].price;
+  return totalWealth(player) >= FURNITURE_CATALOG[item].price;
 }
 
 /**
- * Nyitás/befizetés a 8-as mezőn kívül csak `AWAITING_MANDATORY_INSTALLMENT`
- * alatt van kizárva — a kötelező törlesztés fázisban KIZÁRÓLAG a
- * PAY_*_INSTALLMENT action(ök) engedélyezettek (docs/gazdalkodj-okosan-0a-specifikacio.md
- * §3, "más semmi"). Egyébként (AWAITING_ROLL/RESOLVING_SPACE) engedélyezett,
- * ha a játékos épp a 8-as mezőn áll — a mező, nem a fázis a döntő tényező.
+ * Nyitás/befizetés a 8-as mezőn kívül csak AWAITING_ROLL/RESOLVING_SPACE
+ * fázisban engedélyezett (docs/gazdalkodj-okosan-0a-specifikacio.md §3, "más
+ * semmi" a kötelező törlesztés/kártya-megerősítés/fizetés fázisokban) — a
+ * mező, nem maga a fázis a döntő tényező a két megengedett fázison belül.
+ * Pozitív felsorolás (nem csak AWAITING_MANDATORY_INSTALLMENT kizárása),
+ * mert egy Szerencsekártya-hatás elméletileg a 8-as mezőre is mozgathatja a
+ * játékost egy még függő AWAITING_PAYMENT/AWAITING_CHANCE_CARD_ACK közben —
+ * ilyenkor sem szabad engedni a számlanyitást/befizetést.
  */
 export function canOpenBankAccount(state: GazdalkodjOkosanState): boolean {
-  if (state.turnPhase === 'AWAITING_MANDATORY_INSTALLMENT') return false;
+  if (state.turnPhase !== 'AWAITING_ROLL' && state.turnPhase !== 'RESOLVING_SPACE') return false;
   const player = getCurrentPlayer(state);
   return player.position === BANK_SPACE_INDEX && player.bankAccount === null;
 }
 
 export function canDepositToAccount(state: GazdalkodjOkosanState, amount: number): boolean {
-  if (amount <= 0 || state.turnPhase === 'AWAITING_MANDATORY_INSTALLMENT') return false;
+  if (amount <= 0) return false;
+  if (state.turnPhase !== 'AWAITING_ROLL' && state.turnPhase !== 'RESOLVING_SPACE') return false;
   const player = getCurrentPlayer(state);
   if (player.position !== BANK_SPACE_INDEX || player.bankAccount === null) return false;
   return player.cash >= amount;
 }
 
-/** A kivétel mezőtől ÉS fázistól függetlenül, bármikor lehetséges — akár egy esedékes törlesztés kifizetéséhez is szükség lehet rá. */
+/**
+ * A kivétel mezőtől függetlenül, a legtöbb fázisban bármikor lehetséges —
+ * akár egy esedékes törlesztés kifizetéséhez is szükség lehet rá. KIVÉVE
+ * AWAITING_PAYMENT alatt: a SETTLE_PAYMENT split már közvetlenül eléri a
+ * folyószámlát, egy külön kivétel csak megkerülné a "fizetésen kívül semmi
+ * más action nem engedélyezett" szabályt (lásd canSettlePayment/
+ * canCancelPayment — ez az EGYETLEN másik predikátum, ami korábban nem
+ * gátolt AWAITING_PAYMENT alatt).
+ */
 export function canWithdrawFromAccount(state: GazdalkodjOkosanState, amount: number): boolean {
-  if (amount <= 0) return false;
+  if (amount <= 0 || state.turnPhase === 'AWAITING_PAYMENT') return false;
   const player = getCurrentPlayer(state);
   return (player.bankAccount?.balance ?? 0) >= amount;
 }
@@ -162,14 +177,14 @@ export function canBuyInsurance(state: GazdalkodjOkosanState, policy: 'life' | '
   if (getCurrentSpace(state).type !== 'INSURANCE') return false;
   const player = getCurrentPlayer(state);
   if (player.insurance[policy]) return false;
-  return player.cash >= INSURANCE_PRICES[policy];
+  return totalWealth(player) >= INSURANCE_PRICES[policy];
 }
 
 export function canBuyBkvPass(state: GazdalkodjOkosanState): boolean {
   if (state.turnPhase !== 'RESOLVING_SPACE') return false;
   const player = getCurrentPlayer(state);
   if (player.position !== BKV_PASS_SPACE_INDEX || player.hasBkvPass) return false;
-  return player.cash >= (getSpace(state, BKV_PASS_SPACE_INDEX).amount ?? 0);
+  return totalWealth(player) >= (getSpace(state, BKV_PASS_SPACE_INDEX).amount ?? 0);
 }
 
 export function canDrawChanceCard(state: GazdalkodjOkosanState): boolean {
@@ -180,4 +195,14 @@ export function canDrawChanceCard(state: GazdalkodjOkosanState): boolean {
 /** A húzott Szerencsekártya hatásának kötelező megerősítése — amíg ez a fázis tart, minden más `can*` predikátum blokkolva van (mind RESOLVING_SPACE-t követel). */
 export function canAckChanceCard(state: GazdalkodjOkosanState): boolean {
   return state.turnPhase === 'AWAITING_CHANCE_CARD_ACK';
+}
+
+/** Egy pendingPayment vár lezárásra — lásd reducer.ts requestPayment/applySettlePayment. */
+export function canSettlePayment(state: GazdalkodjOkosanState): boolean {
+  return state.turnPhase === 'AWAITING_PAYMENT' && state.pendingPayment !== null;
+}
+
+/** Csak önkéntes (BUY_*) fizetési oknál lehet visszalépni — kötelező mezőfizetésnél/törlesztésnél/Szerencsekártya-büntetésnél nincs "mégse" (nincs adósság-/árverés-mechanika ebben a játékban). */
+export function canCancelPayment(state: GazdalkodjOkosanState): boolean {
+  return canSettlePayment(state) && (state.pendingPayment?.reason.kind.startsWith('BUY_') ?? false);
 }

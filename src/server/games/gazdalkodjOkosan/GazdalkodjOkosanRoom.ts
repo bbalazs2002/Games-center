@@ -65,8 +65,11 @@ function isValidServiceOrTurnAction(candidate: Record<string, unknown>): boolean
     case 'BUY_BKV_PASS':
     case 'DRAW_CHANCE_CARD':
     case 'ACK_CHANCE_CARD':
+    case 'CANCEL_PAYMENT':
     case 'END_TURN':
       return true;
+    case 'SETTLE_PAYMENT':
+      return typeof candidate.cashAmount === 'number' && typeof candidate.bankAmount === 'number';
     default:
       return undefined;
   }

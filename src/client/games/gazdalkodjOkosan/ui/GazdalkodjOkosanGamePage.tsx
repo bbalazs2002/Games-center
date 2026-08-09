@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Quaternion, Vector3 } from 'three';
 import type { GameTransport } from '../../../core/transport/GameTransport';
@@ -18,7 +18,7 @@ import { FURNITURE_CATALOG, ALL_FURNITURE_ITEMS } from '@shared/games/gazdalkodj
 import { createInitialState } from '@shared/games/gazdalkodjOkosan/engine/initialState';
 import { reducer } from '@shared/games/gazdalkodjOkosan/engine/reducer';
 import { getValidActions, getWinner } from '@shared/games/gazdalkodjOkosan/engine/selectors';
-import { totalWealth } from '@shared/games/gazdalkodjOkosan/engine/rules';
+import { canCancelPayment, totalWealth } from '@shared/games/gazdalkodjOkosan/engine/rules';
 import type { GazdalkodjOkosanState, LogEntry, OwnershipStatus, Player, PlayerId } from '@shared/games/gazdalkodjOkosan/engine/state';
 import { CHANCE_CARDS } from '@shared/games/gazdalkodjOkosan/engine/chanceCards';
 import { GazdalkodjOkosanBoardBackground } from './gazdalkodjOkosanBoardLayout';
@@ -38,7 +38,7 @@ import {
 import { OwnershipPanel } from './OwnershipPanel';
 import { BankAccountPanel } from './BankAccountPanel';
 import { CashReadout } from './CashReadout';
-import { FURNITURE_LABELS } from './formatLogEntry';
+import { describePaymentReason, FURNITURE_LABELS } from './formatLogEntry';
 import { GazdalkodjOkosanGameLogPanel } from './GazdalkodjOkosanGameLogPanel';
 import { GazdalkodjOkosanDiceHUD } from './GazdalkodjOkosanDiceHUD';
 import modalTheme from './gazdalkodjOkosanModalTheme.module.css';
@@ -220,7 +220,37 @@ function PurchaseButtons({ valid, dispatch }: { valid: ValidActions; dispatch: D
   );
 }
 
-function BankAndTurnButtons({ valid, dispatch }: { valid: ValidActions; dispatch: Dispatch }) {
+/**
+ * Ha van esedékes extra dobás (pl. Club Tihany kártya), a "Kör vége" gomb
+ * ténylegesen NEM zárja le a kört — a reducer (finishTurn) ilyenkor a soron
+ * lévő játékosnál marad és AWAITING_ROLL-ra vált. Emiatt ehelyett közvetlenül
+ * "Dobás" néven, egy kattintással END_TURN + ROLL_MOVE_DICE-ot is elindítunk
+ * — a játékosnak nem kell egy köztes, félrevezető "Kör vége" gombra
+ * kattintania ahhoz, hogy újra dobhasson. A LocalGameTransport.dispatch
+ * szinkron (azonnal frissíti a state-et mielőtt visszatér), így a második
+ * dispatch már a friss (AWAITING_ROLL) state-en fut — lásd LocalGameTransport.ts.
+ */
+function EndTurnOrExtraRollButton({ dispatch, extraRollsPending }: { dispatch: Dispatch; extraRollsPending: number }) {
+  if (extraRollsPending > 0) {
+    return (
+      <Button
+        onClick={() => {
+          dispatch({ type: 'END_TURN' });
+          dispatch({ type: 'ROLL_MOVE_DICE', value: Math.floor(Math.random() * 6) + 1 });
+        }}
+      >
+        Dobás (extra kör)
+      </Button>
+    );
+  }
+  return (
+    <Button variant="secondary" onClick={() => dispatch({ type: 'END_TURN' })}>
+      Kör vége
+    </Button>
+  );
+}
+
+function BankAndTurnButtons({ valid, dispatch, extraRollsPending }: { valid: ValidActions; dispatch: Dispatch; extraRollsPending: number }) {
   const [depositAmount, setDepositAmount] = useState(1000);
   const [withdrawAmount, setWithdrawAmount] = useState(1000);
   return (
@@ -238,11 +268,7 @@ function BankAndTurnButtons({ valid, dispatch }: { valid: ValidActions; dispatch
           <Button onClick={() => dispatch({ type: 'WITHDRAW_FROM_ACCOUNT', amount: withdrawAmount })}>Kivétel</Button>
         </div>
       )}
-      {valid.canEndTurn && (
-        <Button variant="secondary" onClick={() => dispatch({ type: 'END_TURN' })}>
-          Kör vége
-        </Button>
-      )}
+      {valid.canEndTurn && <EndTurnOrExtraRollButton dispatch={dispatch} extraRollsPending={extraRollsPending} />}
     </>
   );
 }
@@ -280,7 +306,7 @@ function ActionPanel({ state, dispatch }: { state: GazdalkodjOkosanState; dispat
   return (
     <div className={styles.actionGroup}>
       <PurchaseButtons valid={valid} dispatch={dispatch} />
-      <BankAndTurnButtons valid={valid} dispatch={dispatch} />
+      <BankAndTurnButtons valid={valid} dispatch={dispatch} extraRollsPending={player.extraRollsPending} />
     </div>
   );
 }
@@ -432,6 +458,99 @@ function ChanceCardModal({ state, dispatch }: { state: GazdalkodjOkosanState; di
   );
 }
 
+/**
+ * Fizetési forrás (készpénz/folyószámla/megosztva) választása — bármilyen
+ * fizetésnél megjelenik (kötelező mezőfizetés/törlesztés/Szerencsekártya-
+ * büntetés ÉS önkéntes vásárlás is), `turnPhase === 'AWAITING_PAYMENT'`
+ * esetén. A két összeg-mező auto-balanszírozott (egyet állítva a másik
+ * automatikusan a maradékra ugrik), hogy a kettő összege mindig pontosan a
+ * `pendingPayment.amount`-ot adja ki. A `ChanceCardModal`-tól ELTÉRŐEN nem
+ * nyílt infó — csak a soron lévő játékos látja (`isMine`), mert itt tényleges
+ * számszerű döntés kell, nem csak egy ártalmatlan "OK".
+ *
+ * A modál BEZÁRHATÓ (× vagy háttérre kattintás) anélkül, hogy ez lemondaná a
+ * fizetést — kötelező fizetésnél nincs "mégse" lehetőség, de a játékos
+ * megnézheti a táblát, mielőtt dönt. Bezáráskor egy kis "Fizetés" gomb marad
+ * kint, ami újranyitja a modált. A motor (rules.ts canWithdrawFromAccount)
+ * emellett külön biztosítja, hogy a modál bezárt állapotában se lehessen
+ * semmilyen más action-t végrehajtani — a `pendingPayment` a state-ben marad,
+ * a `turnPhase` nem változik, a fizetés `dismissed`-je pusztán kliensoldali,
+ * megjelenítési állapot.
+ */
+// eslint-disable-next-line complexity -- egy modál-komponens szokásos elágazásai (nincs pending/nem az enyém/érvényesség-számítás/bezárt), bontása csak áttekinthetetlenebbé tenné
+function PaymentModal({ state, dispatch, isMine }: { state: GazdalkodjOkosanState; dispatch: Dispatch; isMine: boolean }) {
+  const pending = state.pendingPayment;
+  const player = state.players[state.currentPlayerIndex];
+  const bankBalance = player.bankAccount?.balance ?? 0;
+  const [cashAmount, setCashAmount] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!pending) return;
+    setCashAmount(Math.min(pending.amount, player.cash));
+    setDismissed(false);
+    // Csak akkor kell újra-inicializálni, ha egy ÚJ fizetés jelent meg (más összeg/ok) — a player.cash változása közben (pl. gépelés) nem szabad felülírnia a felhasználó bevitelét.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending?.amount, pending?.reason.kind]);
+
+  if (!pending || !isMine || state.turnPhase !== 'AWAITING_PAYMENT') return null;
+
+  if (dismissed) {
+    return (
+      <button className={styles.collapsedPaymentButton} onClick={() => setDismissed(false)}>
+        Fizetés ({pending.amount.toLocaleString('hu-HU')} EUR)
+      </button>
+    );
+  }
+
+  const maxCash = Math.min(pending.amount, player.cash);
+  const maxBank = Math.min(pending.amount, bankBalance);
+  const bankAmount = pending.amount - cashAmount;
+  const valid = cashAmount >= 0 && bankAmount >= 0 && cashAmount <= player.cash && bankAmount <= bankBalance;
+
+  const settle = () => dispatch({ type: 'SETTLE_PAYMENT', cashAmount, bankAmount });
+  const cancel = () => dispatch({ type: 'CANCEL_PAYMENT' });
+
+  return (
+    <Modal open className={modalTheme.gazdalkodjModal} onClose={() => setDismissed(true)}>
+      <div className={styles.paymentModal}>
+        <h2>{describePaymentReason(pending.reason)}</h2>
+        <p>Fizetendő: {pending.amount.toLocaleString('hu-HU')} EUR</p>
+        <label className={styles.paymentRow}>
+          Készpénzből
+          <input
+            type="number"
+            min={0}
+            max={maxCash}
+            value={cashAmount}
+            onChange={(e) => setCashAmount(Math.max(0, Math.min(maxCash, Number(e.target.value))))}
+          />
+        </label>
+        <label className={styles.paymentRow}>
+          Folyószámláról
+          <input
+            type="number"
+            min={0}
+            max={maxBank}
+            value={bankAmount}
+            onChange={(e) => setCashAmount(pending.amount - Math.max(0, Math.min(maxBank, Number(e.target.value))))}
+          />
+        </label>
+        <div className={styles.paymentActions}>
+          {canCancelPayment(state) && (
+            <Button variant="secondary" onClick={cancel}>
+              Mégse
+            </Button>
+          )}
+          <Button onClick={settle} disabled={!valid}>
+            Fizetés
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 /** Full-page takeover on game end — mirrors Hotel's HotelWinnerScreen. */
 function GazdalkodjOkosanWinnerScreen({
   themeClass,
@@ -514,6 +633,7 @@ export function GazdalkodjOkosanGamePage({ transport: providedTransport, myPlaye
         <PlayerRoster state={state} onInspect={setInspectedPlayerId} />
         <PlayerInfoModal state={state} playerId={inspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />
         <ChanceCardModal state={state} dispatch={dispatch} />
+        <PaymentModal state={state} dispatch={dispatch} isMine={!myPlayer || myPlayer === currentPlayer.id} />
         {isLocalMode && <LocalGameControls gameId="gazdalkodj-okosan" onRequestNewGame={onRequestNewGame} resumable={false} />}
       </div>
     </div>

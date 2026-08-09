@@ -26,6 +26,10 @@ export type GazdalkodjOkosanAction =
   | { type: 'BUY_BKV_PASS' }
   // Szerencsekártya-mezőn (a mező típusától/requiresBkvPass-től függően engedélyezett).
   | { type: 'DRAW_CHANCE_CARD' }
-  // Kizárólag AWAITING_CHANCE_CARD_ACK fázisban — a húzott kártya hatásának megerősítése, mielőtt bármi más action engedélyezett.
+  // Kizárólag AWAITING_CHANCE_CARD_ACK fázisban — a húzott kártya hatásának megerősítése, mielőtt bármi más action engedélyezett (ekkor fut le maga a hatás is, lásd reducer.ts applyAckChanceCard).
   | { type: 'ACK_CHANCE_CARD' }
+  // Kizárólag AWAITING_PAYMENT fázisban — a pendingPayment.amount-ot fedő, készpénz/folyószámla közötti megosztás. cashAmount+bankAmount-nak pontosan az esedékes összeget kell kiadnia.
+  | { type: 'SETTLE_PAYMENT'; cashAmount: number; bankAmount: number }
+  // Kizárólag AWAITING_PAYMENT fázisban, és csak önkéntes (BUY_*) fizetési oknál — lásd rules.ts canCancelPayment.
+  | { type: 'CANCEL_PAYMENT' }
   | { type: 'END_TURN' };

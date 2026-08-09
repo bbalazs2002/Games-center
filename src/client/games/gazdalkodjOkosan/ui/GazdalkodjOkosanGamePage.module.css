@@ -281,6 +281,60 @@
   line-height: 1.4;
 }
 
+.paymentModal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 18rem;
+}
+
+.paymentModal h2 {
+  margin: 0;
+  color: #d4af37;
+}
+
+.paymentModal p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.paymentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.paymentRow input {
+  width: 7rem;
+}
+
+.paymentActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+/* A bezárt (dismissed) fizetés-modál helyett megjelenő újranyitó gomb — felül középen, a LocalGameControls "Kilépés a játékból"/"Új játék" sora ALATT (az is top-center, hogy ne fedjék egymást — lásd LocalGameControls.module.css .topCenterControls). */
+.collapsedPaymentButton {
+  position: absolute;
+  top: 3.2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  padding: 0.6rem 1.1rem;
+  background: rgba(13, 43, 31, 0.6);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  color: #f5f0e0;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 0.35rem 1rem rgba(0, 10, 5, 0.4);
+}
+
 /**
  * Real playtest report (2026-08-08): the game-end screen had no styling at
  * all beyond `.page`'s dark backdrop. `.winnerScreen` centers content inside

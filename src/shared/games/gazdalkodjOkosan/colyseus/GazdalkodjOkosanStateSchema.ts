@@ -99,6 +99,25 @@ export class GazdalkodjOkosanStateSchema extends Schema {
   declare log: ArraySchema<string>;
   /** ChanceCard id-k a jelenlegi pakli-sorrendben — a kártyák saját text/effect mezői statikusak, chanceCards.ts-ből olvasva. */
   declare chanceDeckOrder: ArraySchema<string>;
+  /**
+   * `pendingPayment` lapos leképezése (PaymentReason nincs natívan
+   * támogatva @colyseus/schema-ban) — a `syncOwnership`/`decodeOwnership`
+   * mintáját követve. `pendingPaymentReasonKind`: '' = nincs függő fizetés.
+   * A `pendingChanceCardEffect` mező (state.ts) SZÁNDÉKOSAN nincs itt — a
+   * kliens a kártya szövegét a logból olvassa, a struktúrált hatás csak a
+   * reducer belső, két dispatch közötti emlékezete.
+   */
+  declare pendingPaymentAmount?: number;
+  declare pendingPaymentReasonKind: string;
+  declare pendingPaymentSpaceIndex?: number;
+  declare pendingPaymentThenSkipNextRoll?: boolean;
+  declare pendingPaymentLoan?: string;
+  declare pendingPaymentFinanced?: boolean;
+  declare pendingPaymentItem?: string;
+  declare pendingPaymentPolicy?: string;
+  declare pendingPaymentThenExtraRoll?: boolean;
+  /** Kötelező kártyahúzás vár a soron lévő játékosra — lásd engine/state.ts pendingMandatoryChanceDraw, rules.ts canEndTurn. */
+  declare pendingMandatoryChanceDraw: boolean;
   // GameRoomState fields — every game's Colyseus state carries these.
   declare ready: boolean;
   declare pendingRequests: ArraySchema<PendingJoinRequest>;
@@ -113,6 +132,16 @@ defineTypes(GazdalkodjOkosanStateSchema, {
   winnerId: 'string',
   log: ['string'],
   chanceDeckOrder: ['string'],
+  pendingPaymentAmount: 'number',
+  pendingPaymentReasonKind: 'string',
+  pendingPaymentSpaceIndex: 'number',
+  pendingPaymentThenSkipNextRoll: 'boolean',
+  pendingPaymentLoan: 'string',
+  pendingPaymentFinanced: 'boolean',
+  pendingPaymentItem: 'string',
+  pendingPaymentPolicy: 'string',
+  pendingPaymentThenExtraRoll: 'boolean',
+  pendingMandatoryChanceDraw: 'boolean',
   ready: 'boolean',
   pendingRequests: [PendingJoinRequest],
 });

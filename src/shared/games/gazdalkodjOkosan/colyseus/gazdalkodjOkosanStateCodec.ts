@@ -3,7 +3,7 @@ import { replaceStringArray } from '../../../core/colyseusSyncHelpers';
 import { BOARD_SPACES } from '../engine/boardConfig';
 import { CHANCE_CARDS } from '../engine/chanceCards';
 import { ALL_FURNITURE_ITEMS } from '../engine/furnitureCatalog';
-import type { ChanceCard, FurnitureItemId, GazdalkodjOkosanState, LogEntry, OwnershipStatus, Player, TurnPhase } from '../engine/state';
+import type { ChanceCard, FurnitureItemId, GazdalkodjOkosanState, LogEntry, OwnershipStatus, PaymentReason, PendingPayment, Player, TurnPhase } from '../engine/state';
 import { GazdalkodjOkosanPlayerSchema, GazdalkodjOkosanStateSchema } from './GazdalkodjOkosanStateSchema';
 
 const FURNITURE_SCHEMA_KEY: Record<FurnitureItemId, keyof GazdalkodjOkosanPlayerSchema> = {
@@ -95,6 +95,55 @@ function syncLog(schema: GazdalkodjOkosanStateSchema, log: LogEntry[]): void {
 }
 
 /**
+ * `pendingPayment` lapos leképezése — `syncOwnership`/`decodeOwnership`
+ * mintáját követve (PaymentReason discriminated union nincs natívan
+ * támogatva @colyseus/schema-ban). `pendingPaymentReasonKind === ''` = nincs
+ * függő fizetés.
+ */
+// eslint-disable-next-line complexity -- egyetlen lapos leképezés reason.kind szerint, minden ág egysoros, bontása csak áttekinthetetlenebbé tenné
+function syncPendingPayment(schema: GazdalkodjOkosanStateSchema, pending: PendingPayment | null): void {
+  schema.pendingPaymentAmount = pending?.amount;
+  schema.pendingPaymentReasonKind = pending?.reason.kind ?? '';
+  const reason = pending?.reason;
+  schema.pendingPaymentSpaceIndex = reason?.kind === 'SPACE_PAYMENT' ? reason.spaceIndex : undefined;
+  schema.pendingPaymentThenSkipNextRoll = reason?.kind === 'SPACE_PAYMENT' ? reason.thenSkipNextRoll : undefined;
+  schema.pendingPaymentLoan = reason?.kind === 'INSTALLMENT' ? reason.loan : undefined;
+  schema.pendingPaymentFinanced = reason?.kind === 'BUY_APARTMENT' || reason?.kind === 'BUY_CAR' ? reason.financed : undefined;
+  schema.pendingPaymentItem = reason?.kind === 'BUY_FURNITURE' ? reason.item : undefined;
+  schema.pendingPaymentPolicy = reason?.kind === 'BUY_INSURANCE' ? reason.policy : undefined;
+  schema.pendingPaymentThenExtraRoll = reason?.kind === 'CHANCE_MOVE_THEN_PAY' ? reason.thenExtraRoll : undefined;
+}
+
+function decodePendingPayment(schema: GazdalkodjOkosanStateSchema): PendingPayment | null {
+  const kind = schema.pendingPaymentReasonKind;
+  if (!kind || schema.pendingPaymentAmount === undefined) return null;
+  // eslint-disable-next-line complexity -- egyetlen lapos leképezés reason.kind szerint, minden ág egysoros, bontása csak áttekinthetetlenebbé tenné
+  const reason = ((): PaymentReason => {
+    switch (kind) {
+      case 'SPACE_PAYMENT':
+        return { kind, spaceIndex: schema.pendingPaymentSpaceIndex ?? 0, thenSkipNextRoll: schema.pendingPaymentThenSkipNextRoll ?? false };
+      case 'INSTALLMENT':
+        return { kind, loan: (schema.pendingPaymentLoan ?? 'car') as 'car' | 'apartment' };
+      case 'BUY_APARTMENT':
+      case 'BUY_CAR':
+        return { kind, financed: schema.pendingPaymentFinanced ?? false };
+      case 'BUY_FURNITURE':
+        return { kind, item: (schema.pendingPaymentItem ?? 'konyhabutor') as FurnitureItemId };
+      case 'BUY_INSURANCE':
+        return { kind, policy: (schema.pendingPaymentPolicy ?? 'life') as 'life' | 'home' | 'car' };
+      case 'BUY_BKV_PASS':
+      case 'CHANCE_MONEY_DELTA':
+        return { kind };
+      case 'CHANCE_MOVE_THEN_PAY':
+        return { kind, thenExtraRoll: schema.pendingPaymentThenExtraRoll ?? false };
+      default:
+        throw new Error(`Unknown pending payment reason kind: ${kind}`);
+    }
+  })();
+  return { amount: schema.pendingPaymentAmount, reason };
+}
+
+/**
  * Writes `state` into `schema`, in place. Server-side only (called from
  * GazdalkodjOkosanRoom.syncState()) — see docs/gazdalkodj-okosan-0b-multiplayer-specifikacio.md §3-4.
  */
@@ -113,6 +162,8 @@ export function applyGazdalkodjOkosanStateToSchema(schema: GazdalkodjOkosanState
     schema.chanceDeckOrder,
     state.chanceDeck.map((card) => card.id),
   );
+  syncPendingPayment(schema, state.pendingPayment);
+  schema.pendingMandatoryChanceDraw = state.pendingMandatoryChanceDraw;
 }
 
 function staticChanceCard(id: string): ChanceCard {
@@ -158,6 +209,11 @@ export function decodeGazdalkodjOkosanStateSchema(schema: GazdalkodjOkosanStateS
     currentPlayerIndex: schema.currentPlayerIndex,
     turnPhase: schema.turnPhase as TurnPhase,
     pendingMandatoryInstallments: [...schema.pendingMandatoryInstallments] as ('car' | 'apartment')[],
+    // A struktúrált kártyahatás sose szinkronizált (lásd syncPendingPayment
+    // feletti komment) — a kliens a kártya szövegét a logból olvassa.
+    pendingChanceCardEffect: null,
+    pendingPayment: decodePendingPayment(schema),
+    pendingMandatoryChanceDraw: schema.pendingMandatoryChanceDraw,
     lastDiceRoll: schema.lastDiceRoll ?? null,
     status: schema.status as GazdalkodjOkosanState['status'],
     winnerId: schema.winnerId ?? null,
