@@ -38,7 +38,7 @@ import {
 import { OwnershipPanel } from './OwnershipPanel';
 import { BankAccountPanel } from './BankAccountPanel';
 import { CashReadout } from './CashReadout';
-import { describePaymentReason, FURNITURE_LABELS } from './formatLogEntry';
+import { describePaymentReason, FURNITURE_LABELS, INSURANCE_LABELS } from './formatLogEntry';
 import { GazdalkodjOkosanGameLogPanel } from './GazdalkodjOkosanGameLogPanel';
 import { GazdalkodjOkosanDiceHUD } from './GazdalkodjOkosanDiceHUD';
 import modalTheme from './gazdalkodjOkosanModalTheme.module.css';
@@ -211,7 +211,7 @@ function PurchaseButtons({ valid, dispatch }: { valid: ValidActions; dispatch: D
       ))}
       {valid.buyableInsurancePolicies.map((policy) => (
         <Button key={policy} onClick={() => dispatch({ type: 'BUY_INSURANCE', policy })}>
-          Biztosítás kötése ({policy})
+          {INSURANCE_LABELS[policy]} megkötése
         </Button>
       ))}
       {valid.canBuyBkvPass && <Button onClick={() => dispatch({ type: 'BUY_BKV_PASS' })}>BKV-bérlet vásárlása</Button>}

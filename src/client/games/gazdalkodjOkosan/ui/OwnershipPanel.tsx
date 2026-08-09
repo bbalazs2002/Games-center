@@ -2,29 +2,26 @@ import { ZoomableThumb } from '../../../ui-kit/ZoomableThumb';
 import { ALL_FURNITURE_ITEMS } from '@shared/games/gazdalkodjOkosan/engine/furnitureCatalog';
 import type { FurnitureItemId, OwnershipStatus } from '@shared/games/gazdalkodjOkosan/engine/state';
 import { GAZDALKODJ_CAR_IMAGE, GAZDALKODJ_HOUSE_FURNITURE_IMAGE, gazdalkodjHouseImageUrl } from './gazdalkodjOkosanAssets';
-import { GAZDALKODJ_HOUSE_ITEM_LAYOUT } from './gazdalkodjOkosanHouseLayout.generated';
+import { GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT, GAZDALKODJ_HOUSE_ITEM_LAYOUT } from './gazdalkodjOkosanHouseLayout.generated';
 import modalTheme from './gazdalkodjOkosanModalTheme.module.css';
 import styles from './OwnershipPanel.module.css';
 
-// Extra margin around the combined item bounding box so no card's edge sits flush against the panel border.
-const PADDING = 0.2;
-
-const ITEM_NAMES = Object.keys(GAZDALKODJ_HOUSE_ITEM_LAYOUT);
-
-const BOUNDS = (() => {
-  let xMin = Infinity;
-  let xMax = -Infinity;
-  let zMin = Infinity;
-  let zMax = -Infinity;
-  for (const name of ITEM_NAMES) {
-    const { x, z, scaleX, scaleZ } = GAZDALKODJ_HOUSE_ITEM_LAYOUT[name];
-    xMin = Math.min(xMin, x - scaleX);
-    xMax = Math.max(xMax, x + scaleX);
-    zMin = Math.min(zMin, z - scaleZ);
-    zMax = Math.max(zMax, z + scaleZ);
-  }
-  return { xMin: xMin - PADDING, xMax: xMax + PADDING, zMin: zMin - PADDING, zMax: zMax + PADDING };
-})();
+/**
+ * The reference frame for positioning item photos MUST be the background
+ * plane's own bounds (GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT) — NOT a bounding
+ * box derived from the item nodes themselves (the previous approach). The
+ * background image is rendered to fill this exact box (see .background's
+ * object-fit: fill below), so every item's x/z/scaleX/scaleZ — already in
+ * the same house.glb local-unit coordinate space — maps onto it precisely.
+ * Real alignment bug found via live user testing/screenshots (2026-08-09) —
+ * see docs/gazdalkodj-okosan-0c-vizual-specifikacio.md §10 addendum.
+ */
+const BOUNDS = {
+  xMin: GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT.x - GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT.scaleX,
+  xMax: GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT.x + GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT.scaleX,
+  zMin: GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT.z - GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT.scaleZ,
+  zMax: GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT.z + GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT.scaleZ,
+};
 
 const BOUNDS_WIDTH = BOUNDS.xMax - BOUNDS.xMin;
 const BOUNDS_HEIGHT = BOUNDS.zMax - BOUNDS.zMin;
@@ -32,11 +29,13 @@ const BOUNDS_HEIGHT = BOUNDS.zMax - BOUNDS.zMin;
 /** Clicking a card zooms it — the position/size (§ extracted from house.glb) lives on the ZoomableThumb wrapper button, the visual styling (object-fit/border/shadow) on the inner image. */
 function ItemCard({ imageName }: { imageName: string }) {
   const layout = GAZDALKODJ_HOUSE_ITEM_LAYOUT[imageName];
-  // z maps to the vertical (top) axis, flipped — house.glb's ground plane
-  // convention (like the board's own) has +z reading "up" visually, not
-  // inverted, matching how the physical tracker sheet was laid out.
+  // z maps directly to the vertical (top) axis, UNflipped — +z is visually
+  // DOWN on the background image. (The previous "1 - " inversion here was
+  // wrong — confirmed by live user testing/screenshot 2026-08-09: it put
+  // the appliance row where the living-room/kitchen-cabinet row belongs,
+  // and vice versa.)
   const left = ((layout.x - BOUNDS.xMin) / BOUNDS_WIDTH) * 100;
-  const top = (1 - (layout.z - BOUNDS.zMin) / BOUNDS_HEIGHT) * 100;
+  const top = ((layout.z - BOUNDS.zMin) / BOUNDS_HEIGHT) * 100;
   const width = ((layout.scaleX * 2) / BOUNDS_WIDTH) * 100;
   const height = ((layout.scaleZ * 2) / BOUNDS_HEIGHT) * 100;
   return (

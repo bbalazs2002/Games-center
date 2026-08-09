@@ -7,12 +7,13 @@
   border: 1px solid rgba(212, 175, 55, 0.4);
 }
 
+/* object-fit: fill (NOT cover) — the panel's aspect-ratio is set to exactly match GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT's own ratio, so the image should never need cropping; `cover` would silently crop on any tiny mismatch, shifting the image out of sync with the item overlays positioned in that same coordinate space. */
 .background {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: fill;
   opacity: 0.9;
 }
 
@@ -22,8 +23,7 @@
   transform: translate(-50%, -50%);
 }
 
+/* Szándékosan nincs keret/árnyék (border-radius, box-shadow) — a felhasználó explicit kérése (2026-08-09): a berendezési tárgyak fotói nem illeszkednek pontosan a rács celláira, és egy díszkeret csak még jobban kiemelte ezt a pontatlanságot. */
 .item {
   object-fit: contain;
-  border-radius: 0.2rem;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
 }

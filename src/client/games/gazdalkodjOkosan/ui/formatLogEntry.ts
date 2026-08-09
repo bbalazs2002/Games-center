@@ -10,6 +10,12 @@ export const FURNITURE_LABELS: Record<FurnitureItemId, string> = {
   szobabutor: 'Szobabútor',
 };
 
+export const INSURANCE_LABELS: Record<'life' | 'home' | 'car', string> = {
+  life: 'Életbiztosítás',
+  home: 'Lakásbiztosítás',
+  car: 'Autóbiztosítás',
+};
+
 function playerName(state: GazdalkodjOkosanState, playerId: PlayerId): string {
   return state.players.find((p) => p.id === playerId)?.name ?? playerId;
 }
@@ -40,7 +46,7 @@ export function describePaymentReason(reason: PaymentReason): string {
     case 'BUY_FURNITURE':
       return `${FURNITURE_LABELS[reason.item]} vásárlása`;
     case 'BUY_INSURANCE':
-      return `Biztosítás kötése (${reason.policy})`;
+      return `${INSURANCE_LABELS[reason.policy]} megkötése`;
     case 'BUY_BKV_PASS':
       return 'BKV-bérlet vásárlása';
     case 'CHANCE_MONEY_DELTA':
@@ -79,7 +85,7 @@ export function formatLogEntry(entry: LogEntry, state: GazdalkodjOkosanState): s
     case 'INTEREST_PAID':
       return `${name(entry.playerId)} ${entry.amount.toLocaleString('hu-HU')} EUR kamatot kapott`;
     case 'INSURANCE_BOUGHT':
-      return `${name(entry.playerId)} biztosítást kötött (${entry.policy})${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
+      return `${name(entry.playerId)} megkötötte: ${INSURANCE_LABELS[entry.policy]}${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'APARTMENT_PURCHASED':
       return `${name(entry.playerId)} lakást vásárolt${entry.financed ? ' (hitelre)' : ''}${paymentBreakdown(entry.cashAmount, entry.bankAmount)}`;
     case 'CAR_PURCHASED':

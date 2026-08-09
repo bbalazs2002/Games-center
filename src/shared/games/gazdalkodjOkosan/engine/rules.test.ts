@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from './initialState';
-import { canAckChanceCard, canCancelPayment, canSettlePayment, canWithdrawFromAccount, getPlayer, renamePlayer, updatePlayer } from './rules';
+import { canAckChanceCard, canBuyInsurance, canCancelPayment, canDrawChanceCard, canSettlePayment, canWithdrawFromAccount, getPlayer, renamePlayer, updatePlayer } from './rules';
 
 describe('renamePlayer', () => {
   it('replaces the placeholder name with the real one, leaving everything else untouched', () => {
@@ -65,5 +65,30 @@ describe('canWithdrawFromAccount', () => {
         500,
       ),
     ).toBe(false);
+  });
+});
+
+describe('canDrawChanceCard', () => {
+  it('csak akkor igaz, ha a mezőn állva van kötelezően teljesítendő húzás (pendingMandatoryChanceDraw)', () => {
+    const state = createInitialState(['1. játékos', '2. játékos']);
+    const onChanceSpace = { ...updatePlayer(state, 'player-1', { position: 3 }), turnPhase: 'RESOLVING_SPACE' as const };
+    expect(canDrawChanceCard(onChanceSpace)).toBe(false); // nincs beállítva a kötelezettség
+    expect(canDrawChanceCard({ ...onChanceSpace, pendingMandatoryChanceDraw: true })).toBe(true);
+    const notOnChanceSpace = { ...updatePlayer(state, 'player-1', { position: 1 }), turnPhase: 'RESOLVING_SPACE' as const, pendingMandatoryChanceDraw: true };
+    expect(canDrawChanceCard(notOnChanceSpace)).toBe(false);
+  });
+});
+
+describe('canBuyInsurance', () => {
+  it('autóbiztosításhoz autó, lakásbiztosításhoz lakás szükséges, életbiztosításhoz semmi', () => {
+    const state = createInitialState(['1. játékos', '2. játékos']);
+    const on9 = { ...updatePlayer(state, 'player-1', { position: 9 }), turnPhase: 'RESOLVING_SPACE' as const };
+    expect(canBuyInsurance(on9, 'car')).toBe(false);
+    expect(canBuyInsurance(on9, 'home')).toBe(false);
+    expect(canBuyInsurance(on9, 'life')).toBe(true);
+    const withCar = updatePlayer(on9, 'player-1', { car: { kind: 'OWNED_CASH', pricePaid: 10000 } });
+    expect(canBuyInsurance(withCar, 'car')).toBe(true);
+    const withApartment = updatePlayer(on9, 'player-1', { apartment: { kind: 'OWNED_CASH', pricePaid: 30000 } });
+    expect(canBuyInsurance(withApartment, 'home')).toBe(true);
   });
 });

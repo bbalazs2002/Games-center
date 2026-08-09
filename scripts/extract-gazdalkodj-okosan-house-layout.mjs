@@ -28,27 +28,67 @@ const TARGET = join(
   'gazdalkodjOkosanHouseLayout.generated.ts',
 );
 
+// Real bug found via live user testing/screenshots (2026-08-09): the item
+// photos didn't line up with the background grid's printed cells. Root
+// cause was twofold — (1) the background ("house") node's own bounding box
+// was never captured at all (item positions were normalized against a bbox
+// derived from the ITEMS themselves, which doesn't match the background
+// plane's real extent), and (2) even for the items, `node.getScale()` was
+// wrongly assumed to equal each card's half-extent directly — i.e. that
+// every node's underlying mesh is an exact 2x2-unit quad centered on its own
+// origin. Inspecting the raw POSITION accessor data (2026-08-09) showed this
+// is false: e.g. `fridge`/`oven`/`washingMachine`'s local mesh geometry
+// isn't even centered at their own local origin. The correct, geometry-
+// agnostic approach — used here for EVERY node, background included — is to
+// read the mesh's actual local-space bounding box and combine it with the
+// node's translation+scale to get the true world-space center/half-extent,
+// rather than trusting the transform's translation/scale alone.
+function worldBounds(node) {
+  const mesh = node.getMesh();
+  const primitive = mesh.listPrimitives()[0];
+  const position = primitive.getAttribute('POSITION');
+  const [localMinX, , localMinZ] = position.getMin([]);
+  const [localMaxX, , localMaxZ] = position.getMax([]);
+  const [tx, , tz] = node.getTranslation();
+  const [sx, , sz] = node.getScale();
+  const worldMinX = tx + localMinX * sx;
+  const worldMaxX = tx + localMaxX * sx;
+  const worldMinZ = tz + localMinZ * sz;
+  const worldMaxZ = tz + localMaxZ * sz;
+  return {
+    x: (worldMinX + worldMaxX) / 2,
+    z: (worldMinZ + worldMaxZ) / 2,
+    scaleX: (worldMaxX - worldMinX) / 2,
+    scaleZ: (worldMaxZ - worldMinZ) / 2,
+  };
+}
+
 async function main() {
   const io = new NodeIO();
   const document = await io.read(SOURCE);
   const root = document.getRoot();
 
   const items = {};
+  let background;
   for (const node of root.listNodes()) {
     const mesh = node.getMesh();
     if (!mesh) continue;
     const material = mesh.listPrimitives()[0]?.getMaterial();
     const imageName = material?.getBaseColorTexture()?.getName();
-    if (!imageName || imageName === 'house') continue;
-    const [x, , z] = node.getTranslation();
-    const [scaleX, , scaleZ] = node.getScale();
-    items[imageName] = { x, z, scaleX, scaleZ };
+    if (!imageName) continue;
+    const bounds = worldBounds(node);
+    if (imageName === 'house') {
+      background = bounds;
+      continue;
+    }
+    items[imageName] = bounds;
   }
 
   const expected = ['car', 'kitchen', 'livingroom', 'fridge', 'oven', 'dishwasher', 'washingMachine'];
   for (const name of expected) {
     if (!items[name]) throw new Error(`Missing expected house.glb item: ${name}`);
   }
+  if (!background) throw new Error('Missing house.glb background ("house") node — needed so the overlay item positions and the background image share the same coordinate space.');
 
   const formatEntry = ({ x, z, scaleX, scaleZ }) =>
     `{ x: ${x.toFixed(6)}, z: ${z.toFixed(6)}, scaleX: ${scaleX.toFixed(6)}, scaleZ: ${scaleZ.toFixed(6)} }`;
@@ -65,9 +105,17 @@ async function main() {
 // image-name <-> FurnitureItemId mapping.
 //
 // x/z are house.glb's own local units (Y dropped — every card lies flat on
-// one shared ground plane); scaleX/scaleZ are the card's own half-extent in
-// the same units. OwnershipPanel normalizes these into CSS percentages
-// against this dataset's own combined bounding box.
+// one shared ground plane), each node's TRUE world-space center — NOT its
+// raw translation, which for several nodes (fridge/oven/washingMachine) is
+// off-center relative to their own mesh geometry. scaleX/scaleZ are each
+// card's real half-extent (translation/scale combined with the mesh's own
+// local-space bounding box) — NOT the node's raw scale property, which does
+// not equal the half-extent unless the underlying mesh happens to be an exact
+// 2x2-unit quad (it isn't, for several items). OwnershipPanel normalizes
+// these into CSS percentages against GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT's
+// own bounds (computed the same way) so the overlaid item photos and the
+// background image share one coordinate space. See docs §10 addendum
+// (2026-08-09) for the full story of the alignment bug this fixed.
 
 export interface GazdalkodjHouseItemLayout {
   readonly x: number;
@@ -75,6 +123,8 @@ export interface GazdalkodjHouseItemLayout {
   readonly scaleX: number;
   readonly scaleZ: number;
 }
+
+export const GAZDALKODJ_HOUSE_BACKGROUND_LAYOUT: GazdalkodjHouseItemLayout = ${formatEntry(background)};
 
 export const GAZDALKODJ_HOUSE_ITEM_LAYOUT: Readonly<Record<string, GazdalkodjHouseItemLayout>> = {
 ${Object.entries(items)

@@ -141,11 +141,16 @@ export function canBuyFurniture(state: GazdalkodjOkosanState, item: FurnitureIte
  * Pozitív felsorolás (nem csak AWAITING_MANDATORY_INSTALLMENT kizárása),
  * mert egy Szerencsekártya-hatás elméletileg a 8-as mezőre is mozgathatja a
  * játékost egy még függő AWAITING_PAYMENT/AWAITING_CHANCE_CARD_ACK közben —
- * ilyenkor sem szabad engedni a számlanyitást/befizetést.
+ * ilyenkor sem szabad engedni a számlanyitást/befizetést. A csőd immár nem
+ * adja át automatikusan a kört (lásd reducer.ts bankruptPlayer), így a
+ * csődbe ment, de még "soron lévő" játékos is elméletileg ide juthatna
+ * "Kör vége" kattintás előtt — egy csődbe ment játékosnak (0 készpénz, nincs
+ * folyószámla) üres számlanyitása semmi értelme, ezért explicit kizárva.
  */
 export function canOpenBankAccount(state: GazdalkodjOkosanState): boolean {
   if (state.turnPhase !== 'AWAITING_ROLL' && state.turnPhase !== 'RESOLVING_SPACE') return false;
   const player = getCurrentPlayer(state);
+  if (player.bankrupt) return false;
   return player.position === BANK_SPACE_INDEX && player.bankAccount === null;
 }
 
@@ -172,11 +177,14 @@ export function canWithdrawFromAccount(state: GazdalkodjOkosanState, amount: num
   return (player.bankAccount?.balance ?? 0) >= amount;
 }
 
+/** Autóbiztosítás csak autóval, lakásbiztosítás csak lakással köthető — életbiztosításnál nincs ilyen előfeltétel. */
 export function canBuyInsurance(state: GazdalkodjOkosanState, policy: 'life' | 'home' | 'car'): boolean {
   if (state.turnPhase !== 'RESOLVING_SPACE') return false;
   if (getCurrentSpace(state).type !== 'INSURANCE') return false;
   const player = getCurrentPlayer(state);
   if (player.insurance[policy]) return false;
+  if (policy === 'car' && player.car.kind === 'NONE') return false;
+  if (policy === 'home' && player.apartment.kind === 'NONE') return false;
   return totalWealth(player) >= INSURANCE_PRICES[policy];
 }
 
@@ -187,9 +195,18 @@ export function canBuyBkvPass(state: GazdalkodjOkosanState): boolean {
   return totalWealth(player) >= (getSpace(state, BKV_PASS_SPACE_INDEX).amount ?? 0);
 }
 
+/**
+ * A húzás gomb csak akkor jelenjen meg/legyen érvényes, ha van kötelezően
+ * teljesítendő húzás ezen a landoláson — lásd state.ts pendingMandatoryChanceDraw.
+ * Ez egyszerre zárja ki (1) a hiányzó BKV-bérlet miatt eleve hatástalan
+ * mezőt (a gomb korábban tévesen megjelent, bár a hatás úgyis no-op volt),
+ * ÉS (2) az ismételt húzást, ha a legutóbb húzott kártyának nem volt
+ * mozgás-hatása, tehát a játékos továbbra is ugyanazon a mezőn áll.
+ */
 export function canDrawChanceCard(state: GazdalkodjOkosanState): boolean {
   if (state.turnPhase !== 'RESOLVING_SPACE') return false;
-  return getCurrentSpace(state).type === 'CHANCE';
+  if (getCurrentSpace(state).type !== 'CHANCE') return false;
+  return state.pendingMandatoryChanceDraw;
 }
 
 /** A húzott Szerencsekártya hatásának kötelező megerősítése — amíg ez a fázis tart, minden más `can*` predikátum blokkolva van (mind RESOLVING_SPACE-t követel). */

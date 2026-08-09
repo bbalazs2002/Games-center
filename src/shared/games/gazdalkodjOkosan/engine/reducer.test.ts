@@ -149,8 +149,11 @@ describe('reducer — kötelező hitel-törlesztés csak dobás utáni START-ker
     const hugeInstallment: OwnershipStatus = { kind: 'FINANCED', plan: { totalPrice: 15000, remainingBalance: 13000, perTurnPayment: 5000 } };
     const state = updatePlayer(twoPlayerState(), 'player-1', { position: 40, car: hugeInstallment, cash: 100 });
     const afterRoll = reducer(state, { type: 'ROLL_MOVE_DICE', value: 3 }); // +2.000 START bónusz, de 2.100 < 5.000 törlesztő
-    const next = reducer(afterRoll, { type: 'PAY_CAR_INSTALLMENT' });
-    expect(getPlayer(next, 'player-1').bankrupt).toBe(true);
+    const afterBankrupt = reducer(afterRoll, { type: 'PAY_CAR_INSTALLMENT' });
+    expect(getPlayer(afterBankrupt, 'player-1').bankrupt).toBe(true);
+    expect(afterBankrupt.turnPhase).toBe('RESOLVING_SPACE'); // a kör NEM adódik át automatikusan, "Kör vége" kell hozzá
+    expect(afterBankrupt.currentPlayerIndex).toBe(0);
+    const next = reducer(afterBankrupt, { type: 'END_TURN' });
     expect(next.currentPlayerIndex).toBe(1);
   });
 });
@@ -158,7 +161,11 @@ describe('reducer — kötelező hitel-törlesztés csak dobás utáni START-ker
 describe('reducer — Szerencsekártya mezőváltás (MOVE_TO), mindig előre haladva', () => {
   it('a szabálykönyv példája: 16-os mezőn húzott kártya a 8-asra küld, a Starton átmenve jár a 2.000 EUR', () => {
     // A 16-os mező Szerencsekártya-mező; kézzel behelyezzük a "víz/gáz -> 8, 40 EUR" kártyát a pakli tetejére.
-    const state: GazdalkodjOkosanState = { ...updatePlayer(twoPlayerState(), 'player-1', { position: 16 }), turnPhase: 'RESOLVING_SPACE' };
+    const state: GazdalkodjOkosanState = {
+      ...updatePlayer(twoPlayerState(), 'player-1', { position: 16 }),
+      turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
+    };
     const withCardOnTop: GazdalkodjOkosanState = {
       ...state,
       chanceDeck: [state.chanceDeck.find((c) => c.effect.kind === 'MOVE_TO' && c.effect.targetIndex === 8 && c.effect.thenPay === 40)!, ...state.chanceDeck.filter((c) => !(c.effect.kind === 'MOVE_TO' && c.effect.targetIndex === 8 && c.effect.thenPay === 40))],
@@ -178,7 +185,11 @@ describe('reducer — Szerencsekártya mezőváltás (MOVE_TO), mindig előre ha
     const state = twoPlayerState();
     const clubTihanyCard = state.chanceDeck.find((c) => c.effect.kind === 'MOVE_TO' && c.effect.targetIndex === 21)!;
     const reordered: GazdalkodjOkosanState = { ...state, chanceDeck: [clubTihanyCard, ...state.chanceDeck.filter((c) => c !== clubTihanyCard)] };
-    const positioned: GazdalkodjOkosanState = { ...updatePlayer(reordered, 'player-1', { position: 3 }), turnPhase: 'RESOLVING_SPACE' };
+    const positioned: GazdalkodjOkosanState = {
+      ...updatePlayer(reordered, 'player-1', { position: 3 }),
+      turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
+    };
     const afterDraw = reducer(positioned, { type: 'DRAW_CHANCE_CARD' });
     const afterAck = reducer(afterDraw, { type: 'ACK_CHANCE_CARD' });
     expect(getPlayer(afterAck, 'player-1').position).toBe(21);
@@ -226,6 +237,7 @@ describe('reducer — Szerencsekerék mezőn a kártyahúzás kötelező (dobás
     const state: GazdalkodjOkosanState = {
       ...updatePlayer(base, 'player-1', { position: 16 }),
       turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
       chanceDeck: [chanceOnChance, ...base.chanceDeck],
     };
     const afterDraw = reducer(state, { type: 'DRAW_CHANCE_CARD' });
@@ -244,6 +256,7 @@ describe('reducer — Szerencsekerék mezőn a kártyahúzás kötelező (dobás
     const state: GazdalkodjOkosanState = {
       ...updatePlayer(base, 'player-1', { position: 16, hasBkvPass: false }),
       turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
       chanceDeck: [chanceOnChance, ...base.chanceDeck],
     };
     const afterDraw = reducer(state, { type: 'DRAW_CHANCE_CARD' });
@@ -252,11 +265,33 @@ describe('reducer — Szerencsekerék mezőn a kártyahúzás kötelező (dobás
     expect(afterAck.pendingMandatoryChanceDraw).toBe(false);
     expect(reducer(afterAck, { type: 'END_TURN' })).not.toBe(afterAck);
   });
+
+  it('ha a húzott kártyának nincs mozgás-hatása, ugyanazon a mezőn állva nem húzható újabb kártya', () => {
+    const base = updatePlayer(twoPlayerState(), 'player-1', { position: 3 });
+    const card = base.chanceDeck.find((c) => c.id === 'card-07')!; // MONEY_DELTA +2500, nem mozgat
+    const state: GazdalkodjOkosanState = {
+      ...base,
+      turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
+      chanceDeck: [card, ...base.chanceDeck.filter((c) => c !== card)],
+    };
+    const afterDraw = reducer(state, { type: 'DRAW_CHANCE_CARD' });
+    const afterAck = reducer(afterDraw, { type: 'ACK_CHANCE_CARD' });
+    expect(getPlayer(afterAck, 'player-1').position).toBe(3); // nem mozdult
+    expect(afterAck.pendingMandatoryChanceDraw).toBe(false);
+
+    const attemptedSecondDraw = reducer(afterAck, { type: 'DRAW_CHANCE_CARD' });
+    expect(attemptedSecondDraw).toBe(afterAck); // no-op — a kötelező húzás már teljesült ezen a landoláson
+  });
 });
 
 describe('reducer — Szerencsekártya megerősítés (AWAITING_CHANCE_CARD_ACK)', () => {
   it('kártyahúzás után AWAITING_CHANCE_CARD_ACK-ba lép, minden más action blokkolva marad ACK_CHANCE_CARD-ig', () => {
-    const base: GazdalkodjOkosanState = { ...updatePlayer(twoPlayerState(), 'player-1', { position: 3 }), turnPhase: 'RESOLVING_SPACE' };
+    const base: GazdalkodjOkosanState = {
+      ...updatePlayer(twoPlayerState(), 'player-1', { position: 3 }),
+      turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
+    };
     // card-07: MONEY_DELTA +2500, fizetés nélkül — a teszt a fázisváltást vizsgálja, nem egy konkrét hatást, ezért egy fizetés-mentes kártyát rögzítünk a pakli tetejére (a deck alapértelmezett első kártyája thenPay-es lenne, ami AWAITING_PAYMENT-be vinné az ACK utáni fázist).
     const card = base.chanceDeck.find((c) => c.id === 'card-07')!;
     const state: GazdalkodjOkosanState = { ...base, chanceDeck: [card, ...base.chanceDeck.filter((c) => c !== card)] };
@@ -288,7 +323,11 @@ describe('reducer — MOVED log-bejegyzés source mezője', () => {
   });
 
   it('Szerencsekártya MOVE_TO hatásánál source: CHANCE_CARD', () => {
-    const state: GazdalkodjOkosanState = { ...updatePlayer(twoPlayerState(), 'player-1', { position: 16 }), turnPhase: 'RESOLVING_SPACE' };
+    const state: GazdalkodjOkosanState = {
+      ...updatePlayer(twoPlayerState(), 'player-1', { position: 16 }),
+      turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
+    };
     const withCardOnTop: GazdalkodjOkosanState = {
       ...state,
       chanceDeck: [state.chanceDeck.find((c) => c.effect.kind === 'MOVE_TO')!, ...state.chanceDeck.filter((c) => c.effect.kind !== 'MOVE_TO')],
@@ -431,17 +470,42 @@ describe('reducer — bútor', () => {
   });
 });
 
+const OWNED_CAR: OwnershipStatus = { kind: 'OWNED_CASH', pricePaid: 10000 };
+
 describe('reducer — biztosítás', () => {
-  it('megköthető a 9-es mezőn', () => {
-    const state = atSpace({ position: 9 });
+  it('megköthető a 9-es mezőn, ha van autója', () => {
+    const state = atSpace({ position: 9, car: OWNED_CAR });
     const requested = reducer(state, { type: 'BUY_INSURANCE', policy: 'car' });
     const next = reducer(requested, { type: 'SETTLE_PAYMENT', cashAmount: 100, bankAmount: 0 });
     expect(getPlayer(next, 'player-1').insurance.car).toBe(true);
     expect(getPlayer(next, 'player-1').cash).toBe(18000 - 100);
   });
 
+  it('autóbiztosítás NEM köthető, amíg a játékosnak nincs autója', () => {
+    const state = atSpace({ position: 9 });
+    expect(reducer(state, { type: 'BUY_INSURANCE', policy: 'car' })).toBe(state);
+  });
+
+  it('életbiztosítás autó/lakás nélkül is köthető (nincs előfeltétele)', () => {
+    const state = atSpace({ position: 9 });
+    const requested = reducer(state, { type: 'BUY_INSURANCE', policy: 'life' });
+    expect(requested.turnPhase).toBe('AWAITING_PAYMENT');
+  });
+
+  it('megköthető a lakásbiztosítás, ha van lakása', () => {
+    const state = atSpace({ position: 9, apartment: { kind: 'OWNED_CASH', pricePaid: 30000 } });
+    const requested = reducer(state, { type: 'BUY_INSURANCE', policy: 'home' });
+    const next = reducer(requested, { type: 'SETTLE_PAYMENT', cashAmount: 100, bankAmount: 0 });
+    expect(getPlayer(next, 'player-1').insurance.home).toBe(true);
+  });
+
+  it('lakásbiztosítás NEM köthető, amíg a játékosnak nincs lakása', () => {
+    const state = atSpace({ position: 9 });
+    expect(reducer(state, { type: 'BUY_INSURANCE', policy: 'home' })).toBe(state);
+  });
+
   it('alacsony készpénzű, de elég folyószámla-egyenlegű játékos is megkötheti (totalWealth alapú affordability)', () => {
-    const state = atSpace({ position: 9, cash: 50, bankAccount: { balance: 500 } });
+    const state = atSpace({ position: 9, cash: 50, bankAccount: { balance: 500 }, car: OWNED_CAR });
     const requested = reducer(state, { type: 'BUY_INSURANCE', policy: 'car' });
     expect(requested.turnPhase).toBe('AWAITING_PAYMENT');
     const next = reducer(requested, { type: 'SETTLE_PAYMENT', cashAmount: 50, bankAmount: 50 });
@@ -449,13 +513,32 @@ describe('reducer — biztosítás', () => {
     expect(getPlayer(next, 'player-1').cash).toBe(0);
     expect(getPlayer(next, 'player-1').bankAccount).toEqual({ balance: 450 });
   });
+
+  it('autólopás után elvész az autóbiztosítás is', () => {
+    const base = twoPlayerState();
+    const card = base.chanceDeck.find((c) => c.effect.kind === 'CAR_THEFT')!;
+    const withPlayer = updatePlayer(base, 'player-1', { position: 3, insurance: { life: false, home: false, car: true }, car: OWNED_CAR });
+    const state: GazdalkodjOkosanState = {
+      ...withPlayer,
+      turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
+      chanceDeck: [card, ...withPlayer.chanceDeck.filter((c) => c !== card)],
+    };
+    const afterDraw = reducer(state, { type: 'DRAW_CHANCE_CARD' });
+    const next = reducer(afterDraw, { type: 'ACK_CHANCE_CARD' });
+    expect(getPlayer(next, 'player-1').car).toEqual({ kind: 'NONE' });
+    expect(getPlayer(next, 'player-1').insurance.car).toBe(false);
+  });
 });
 
 describe('reducer — kórház', () => {
-  it('landolás a 13-as mezőn azonnal véget vet a körnek', () => {
+  it('landolás a 13-as mezőn kórházba küldi, de a kör csak "Kör vége"-re adódik át', () => {
     const state = updatePlayer(twoPlayerState(), 'player-1', { position: 12 });
-    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 }); // 12 -> 13
-    expect(getPlayer(next, 'player-1').inHospital).toBe(true);
+    const afterRoll = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 }); // 12 -> 13
+    expect(getPlayer(afterRoll, 'player-1').inHospital).toBe(true);
+    expect(afterRoll.turnPhase).toBe('RESOLVING_SPACE');
+    expect(afterRoll.currentPlayerIndex).toBe(0);
+    const next = reducer(afterRoll, { type: 'END_TURN' });
     expect(next.currentPlayerIndex).toBe(1);
   });
 
@@ -466,11 +549,14 @@ describe('reducer — kórház', () => {
     expect(getPlayer(next, 'player-1').position).toBe(19);
   });
 
-  it('nem-1/6 dobással bent marad, a kör véget ér, de a próbálkozás számít', () => {
+  it('nem-1/6 dobással bent marad, a próbálkozás számít, de a kör csak "Kör vége"-re adódik át', () => {
     const state = updatePlayer(twoPlayerState(), 'player-1', { position: 13, inHospital: true });
-    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 3 });
-    expect(getPlayer(next, 'player-1').inHospital).toBe(true);
-    expect(getPlayer(next, 'player-1').hospitalRollAttempts).toBe(1);
+    const afterRoll = reducer(state, { type: 'ROLL_MOVE_DICE', value: 3 });
+    expect(getPlayer(afterRoll, 'player-1').inHospital).toBe(true);
+    expect(getPlayer(afterRoll, 'player-1').hospitalRollAttempts).toBe(1);
+    expect(afterRoll.turnPhase).toBe('RESOLVING_SPACE');
+    expect(afterRoll.currentPlayerIndex).toBe(0);
+    const next = reducer(afterRoll, { type: 'END_TURN' });
     expect(next.currentPlayerIndex).toBe(1);
   });
 
@@ -492,11 +578,14 @@ describe('reducer — 41-es mező (italbolt büntetés)', () => {
     expect(getPlayer(next, 'player-1').skipNextRoll).toBe(true);
   });
 
-  it('a következő körben nem mozdul, a kör azonnal továbbáll', () => {
+  it('a következő körben nem mozdul, a kör csak "Kör vége"-re adódik át', () => {
     const withPenalty = updatePlayer(twoPlayerState(), 'player-1', { skipNextRoll: true });
-    const next = reducer(withPenalty, { type: 'ROLL_MOVE_DICE', value: 5 });
-    expect(getPlayer(next, 'player-1').position).toBe(0); // nem mozdult
-    expect(getPlayer(next, 'player-1').skipNextRoll).toBe(false);
+    const afterRoll = reducer(withPenalty, { type: 'ROLL_MOVE_DICE', value: 5 });
+    expect(getPlayer(afterRoll, 'player-1').position).toBe(0); // nem mozdult
+    expect(getPlayer(afterRoll, 'player-1').skipNextRoll).toBe(false);
+    expect(afterRoll.turnPhase).toBe('RESOLVING_SPACE');
+    expect(afterRoll.currentPlayerIndex).toBe(0);
+    const next = reducer(afterRoll, { type: 'END_TURN' });
     expect(next.currentPlayerIndex).toBe(1);
   });
 });
@@ -506,7 +595,12 @@ describe('reducer — tűzeset és autólopás Szerencsekártyák', () => {
     const base = twoPlayerState();
     const card = base.chanceDeck.find((c) => c.effect.kind === effectKind)!;
     const withPlayer = updatePlayer(base, 'player-1', { position: 3, ...playerPatch });
-    return { ...withPlayer, turnPhase: 'RESOLVING_SPACE', chanceDeck: [card, ...withPlayer.chanceDeck.filter((c) => c !== card)] };
+    return {
+      ...withPlayer,
+      turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
+      chanceDeck: [card, ...withPlayer.chanceDeck.filter((c) => c !== card)],
+    };
   }
 
   it('tűzeset biztosítással: a berendezés teljes árát kifizeti, majd elveszik a bútor', () => {
@@ -556,6 +650,7 @@ describe('reducer — azonnali kamat-Szerencsekártya (id 8, 15%)', () => {
     const state: GazdalkodjOkosanState = {
       ...withAccount,
       turnPhase: 'RESOLVING_SPACE',
+      pendingMandatoryChanceDraw: true,
       chanceDeck: [card, ...withAccount.chanceDeck.filter((c) => c !== card)],
     };
     const afterDraw = reducer(state, { type: 'DRAW_CHANCE_CARD' });
@@ -571,10 +666,13 @@ describe('reducer — csőd', () => {
       cash: 10,
       furniture: { konyhabutor: true, mosogep: false, hutoszekreny: false, mosogatogep: false, tuzhely: false, szobabutor: false },
     });
-    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 }); // 27 -> 28-as mező, TESCO 300 EUR
-    expect(getPlayer(next, 'player-1').bankrupt).toBe(true);
-    expect(getPlayer(next, 'player-1').cash).toBe(0);
-    expect(getPlayer(next, 'player-1').furniture.konyhabutor).toBe(false);
+    const afterBankrupt = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 }); // 27 -> 28-as mező, TESCO 300 EUR
+    expect(getPlayer(afterBankrupt, 'player-1').bankrupt).toBe(true);
+    expect(getPlayer(afterBankrupt, 'player-1').cash).toBe(0);
+    expect(getPlayer(afterBankrupt, 'player-1').furniture.konyhabutor).toBe(false);
+    expect(afterBankrupt.turnPhase).toBe('RESOLVING_SPACE'); // a kör NEM adódik át automatikusan
+    expect(afterBankrupt.currentPlayerIndex).toBe(0);
+    const next = reducer(afterBankrupt, { type: 'END_TURN' });
     expect(next.currentPlayerIndex).toBe(1);
   });
 });

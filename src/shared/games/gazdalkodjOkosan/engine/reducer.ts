@@ -49,7 +49,15 @@ function creditPlayer(state: GazdalkodjOkosanState, playerId: PlayerId, amount: 
   return updatePlayer(state, playerId, { cash: player.cash + amount });
 }
 
-/** Aki nem tudja kifizetni a kötelező összeget, azonnal kiesik — nincs adósság-/árverés-mechanika ebben a játékban (docs/gazdalkodj-okosan-0a-specifikacio.md §2.1). */
+/**
+ * Aki nem tudja kifizetni a kötelező összeget, azonnal kiesik — nincs
+ * adósság-/árverés-mechanika ebben a játékban
+ * (docs/gazdalkodj-okosan-0a-specifikacio.md §2.1). A kör átadása viszont
+ * NEM automatikus itt sem (lásd resolveHospitalSpace/skipNextRoll/
+ * hospital-roll-failed ágak) — a felhasználó kifejezett kérése (2026-08-09),
+ * hogy a kört MINDIG manuálisan, "Kör vége" gombbal adja át a játékos, még
+ * akkor is, ha időközben csődbe ment.
+ */
 function bankruptPlayer(state: GazdalkodjOkosanState, playerId: PlayerId): GazdalkodjOkosanState {
   let next = updatePlayer(state, playerId, {
     bankrupt: true,
@@ -59,7 +67,7 @@ function bankruptPlayer(state: GazdalkodjOkosanState, playerId: PlayerId): Gazda
   });
   next = { ...next, pendingMandatoryInstallments: [] };
   next = appendLog(next, { type: 'BANKRUPT', playerId });
-  return finishTurn(next);
+  return { ...next, turnPhase: 'RESOLVING_SPACE' };
 }
 
 /**
@@ -279,9 +287,10 @@ function computePendingInstallments(player: Player): ('car' | 'apartment')[] {
   return pending;
 }
 
+/** A kórházba kerülés NEM adja át automatikusan a kört — a felhasználó kifejezett kérése (2026-08-09), hogy itt is (és mindenhol) manuálisan, "Kör vége" gombbal adja tovább a játékos. */
 function resolveHospitalSpace(state: GazdalkodjOkosanState, playerId: PlayerId): GazdalkodjOkosanState {
   const next = updatePlayer(state, playerId, { inHospital: true, hospitalRollAttempts: 0 });
-  return finishTurn(appendLog(next, { type: 'HOSPITAL_ENTERED', playerId }));
+  return { ...appendLog(next, { type: 'HOSPITAL_ENTERED', playerId }), turnPhase: 'RESOLVING_SPACE' };
 }
 
 function resolvePaySpace(state: GazdalkodjOkosanState, playerId: PlayerId, space: BoardSpace): GazdalkodjOkosanState {
@@ -400,12 +409,13 @@ function applyFireEventEffect(state: GazdalkodjOkosanState, playerId: PlayerId):
   return insured ? next : sendToInsuranceField(next, playerId);
 }
 
+/** Az autó elvesztésével az autóbiztosítás is elvész — nincs autó, nincs mit biztosítani (canBuyInsurance('car') úgyis megköveteli az autó meglétét egy új biztosítás megkötéséhez). */
 function applyCarTheftEffect(state: GazdalkodjOkosanState, playerId: PlayerId): GazdalkodjOkosanState {
   const player = getPlayer(state, playerId);
   const paidSoFar = player.car.kind === 'OWNED_CASH' ? player.car.pricePaid : player.car.kind === 'FINANCED' ? player.car.plan.totalPrice - player.car.plan.remainingBalance : 0;
   const insured = player.insurance.car;
   const payout = insured ? Math.min(paidSoFar, CAR_THEFT_MAX_PAYOUT) : 0;
-  let next = updatePlayer(state, playerId, { car: { kind: 'NONE' } });
+  let next = updatePlayer(state, playerId, { car: { kind: 'NONE' }, insurance: { ...player.insurance, car: false } });
   next = creditPlayer(next, playerId, payout);
   next = appendLog(next, { type: 'CAR_THEFT', playerId, insured, payout });
   return insured ? next : sendToInsuranceField(next, playerId);
@@ -455,14 +465,14 @@ function applyRollMoveDice(state: GazdalkodjOkosanState, diceValue: number): Gaz
 
   if (player.skipNextRoll) {
     next = updatePlayer(next, player.id, { skipNextRoll: false });
-    return finishTurn(appendLog(next, { type: 'SKIPPED_TURN', playerId: player.id }));
+    return { ...appendLog(next, { type: 'SKIPPED_TURN', playerId: player.id }), turnPhase: 'RESOLVING_SPACE' };
   }
 
   if (player.inHospital) {
     const canLeave = diceValue === 1 || diceValue === 6 || player.hospitalRollAttempts >= 2;
     if (!canLeave) {
       next = updatePlayer(next, player.id, { hospitalRollAttempts: player.hospitalRollAttempts + 1 });
-      return finishTurn(appendLog(next, { type: 'HOSPITAL_ROLL_FAILED', playerId: player.id, value: diceValue }));
+      return { ...appendLog(next, { type: 'HOSPITAL_ROLL_FAILED', playerId: player.id, value: diceValue }), turnPhase: 'RESOLVING_SPACE' };
     }
     next = updatePlayer(next, player.id, { inHospital: false, hospitalRollAttempts: 0 });
     next = appendLog(next, { type: 'HOSPITAL_EXITED', playerId: player.id });
