@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialState } from './initialState';
 import { reducer } from './reducer';
 import { getPlayer, updatePlayer } from './rules';
-import type { GazdalkodjOkosanState, OwnershipStatus, Player } from './state';
+import type { GazdalkodjOkosanState, LogEntry, OwnershipStatus, Player } from './state';
 
 function twoPlayerState(): GazdalkodjOkosanState {
   return createInitialState(['Alice', 'Bob']);
@@ -123,8 +123,11 @@ describe('reducer — kötelező hitel-törlesztés csak dobás utáni START-ker
     const withCardOnTop: GazdalkodjOkosanState = { ...afterRoll, chanceDeck: [base, ...afterRoll.chanceDeck.filter((c) => c !== base)] };
     const afterDraw = reducer(withCardOnTop, { type: 'DRAW_CHANCE_CARD' });
     expect(getPlayer(afterDraw, 'player-1').position).toBe(0);
-    expect(afterDraw.turnPhase).toBe('RESOLVING_SPACE'); // NEM AWAITING_MANDATORY_INSTALLMENT
+    expect(afterDraw.turnPhase).toBe('AWAITING_CHANCE_CARD_ACK'); // NEM AWAITING_MANDATORY_INSTALLMENT
     expect(afterDraw.pendingMandatoryInstallments).toEqual([]);
+    const afterAck = reducer(afterDraw, { type: 'ACK_CHANCE_CARD' });
+    expect(afterAck.turnPhase).toBe('RESOLVING_SPACE');
+    expect(afterAck.pendingMandatoryInstallments).toEqual([]);
   });
 
   it('ha a játékos nem tudja kifizetni a kötelező törlesztést, csődbe megy', () => {
@@ -160,6 +163,47 @@ describe('reducer — Szerencsekártya mezőváltás (MOVE_TO), mindig előre ha
     expect(getPlayer(next, 'player-1').position).toBe(21);
     expect(getPlayer(next, 'player-1').cash).toBe(18000 - 280);
     expect(getPlayer(next, 'player-1').extraRollsPending).toBe(1); // Club Tihany: "Még egyszer dobhatsz"
+  });
+});
+
+describe('reducer — Szerencsekártya megerősítés (AWAITING_CHANCE_CARD_ACK)', () => {
+  it('kártyahúzás után AWAITING_CHANCE_CARD_ACK-ba lép, minden más action blokkolva marad ACK_CHANCE_CARD-ig', () => {
+    const state: GazdalkodjOkosanState = { ...updatePlayer(twoPlayerState(), 'player-1', { position: 3 }), turnPhase: 'RESOLVING_SPACE' };
+    const afterDraw = reducer(state, { type: 'DRAW_CHANCE_CARD' });
+    expect(afterDraw.turnPhase).toBe('AWAITING_CHANCE_CARD_ACK');
+
+    // Egy tetszőleges másik action no-op amíg nincs megerősítve.
+    const attemptedEndTurn = reducer(afterDraw, { type: 'END_TURN' });
+    expect(attemptedEndTurn).toEqual(afterDraw);
+
+    const afterAck = reducer(afterDraw, { type: 'ACK_CHANCE_CARD' });
+    expect(afterAck.turnPhase).toBe('RESOLVING_SPACE');
+  });
+
+  it('ACK_CHANCE_CARD no-op RESOLVING_SPACE fázisban (nincs mit megerősíteni)', () => {
+    const state: GazdalkodjOkosanState = { ...twoPlayerState(), turnPhase: 'RESOLVING_SPACE' };
+    const next = reducer(state, { type: 'ACK_CHANCE_CARD' });
+    expect(next).toEqual(state);
+  });
+});
+
+describe('reducer — MOVED log-bejegyzés source mezője', () => {
+  it('dobással történő mozgásnál source: DICE', () => {
+    const state = twoPlayerState();
+    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 3 });
+    const movedEntry = next.log.find((entry): entry is Extract<LogEntry, { type: 'MOVED' }> => entry.type === 'MOVED')!;
+    expect(movedEntry.source).toBe('DICE');
+  });
+
+  it('Szerencsekártya MOVE_TO hatásánál source: CHANCE_CARD', () => {
+    const state: GazdalkodjOkosanState = { ...updatePlayer(twoPlayerState(), 'player-1', { position: 16 }), turnPhase: 'RESOLVING_SPACE' };
+    const withCardOnTop: GazdalkodjOkosanState = {
+      ...state,
+      chanceDeck: [state.chanceDeck.find((c) => c.effect.kind === 'MOVE_TO')!, ...state.chanceDeck.filter((c) => c.effect.kind !== 'MOVE_TO')],
+    };
+    const next = reducer(withCardOnTop, { type: 'DRAW_CHANCE_CARD' });
+    const movedEntry = next.log.find((entry): entry is Extract<LogEntry, { type: 'MOVED' }> => entry.type === 'MOVED')!;
+    expect(movedEntry.source).toBe('CHANCE_CARD');
   });
 });
 

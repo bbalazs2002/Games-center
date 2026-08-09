@@ -1,138 +1,131 @@
+/**
+ * Full-viewport, never-scrolling layout — mirrors Hotel's own
+ * HotelGamePage.module.css `.page`/`.canvasWrapper` shell exactly (see
+ * docs/gazdalkodj-okosan-0c-vizual-specifikacio.md's UI-redesign addendum).
+ * The 3D board fills the whole page; every other panel is a floating glass
+ * overlay anchored to a corner/edge of `.canvasWrapper`, collapsible or
+ * modal when it wouldn't otherwise fit.
+ */
 .page {
-  position: relative;
-  isolation: isolate;
-  min-height: 100vh;
-  padding: 4rem 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
   background: #0d2b1f;
   color: #f5f0e0;
 }
 
-.page h1 {
-  text-align: center;
+.canvasWrapper {
+  position: relative;
+  flex: 1;
+  min-height: 24rem;
+  width: 100%;
+}
+
+.buttonThumb {
+  width: 1.4rem;
+  height: 1.4rem;
+  object-fit: cover;
+  border-radius: 0.2rem;
+  vertical-align: middle;
+  margin-right: 0.4rem;
+}
+
+/* Shared glass-panel look, applied individually (CSS Modules classes can't
+   be composed across files without a build-time `composes:`, and every
+   consumer here needs slightly different position/size on top of it
+   anyway) — kept as one literal block per panel, matching Hotel's own
+   per-panel repetition rather than introducing an abstraction for four
+   call sites. */
+
+.ownedPanel {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  width: 16rem;
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+  background: rgba(13, 43, 31, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(0, 10, 5, 0.4),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+}
+
+.ownedPanel h3 {
   margin: 0 0 0.5rem;
-}
-
-.turnReadout,
-.winnerBanner {
-  text-align: center;
+  font-size: 1rem;
   font-weight: 600;
-}
-
-.winnerBanner {
   color: #d4af37;
-  font-size: 1.3rem;
 }
 
-.layout {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 1rem;
+.ownedEmpty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(245, 240, 224, 0.65);
 }
 
-.board {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(6rem, 1fr));
-  gap: 0.3rem;
-  max-width: 55rem;
-}
-
-.space {
+.collapsedActionButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  border-radius: 999px;
   border: 1px solid rgba(212, 175, 55, 0.4);
-  border-radius: 0.3rem;
-  padding: 0.3rem;
-  background: rgba(0, 0, 0, 0.2);
-  font-size: 0.7rem;
-  min-height: 4rem;
+  padding: 0.6rem 1.1rem;
+  background: rgba(13, 43, 31, 0.6);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  color: #f5f0e0;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 0.35rem 1rem rgba(0, 10, 5, 0.4);
+}
+
+.actionPanelFloating {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 18rem;
+  max-height: calc(100% - 2rem);
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  background: rgba(13, 43, 31, 0.6);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border-radius: 1rem;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(0, 10, 5, 0.4),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+  overflow: hidden;
 }
 
-.type-START,
-.type-BANK {
-  background: rgba(212, 175, 55, 0.25);
-}
-
-.type-HOSPITAL {
-  background: rgba(150, 40, 40, 0.3);
-}
-
-.type-CHANCE {
-  background: rgba(80, 60, 160, 0.3);
-}
-
-.spaceIndex {
-  font-weight: 700;
-  opacity: 0.7;
-}
-
-.spaceLabel {
-  flex: 1;
-}
-
-.spaceAmount {
-  opacity: 0.75;
-}
-
-.tokens {
-  display: flex;
-  gap: 0.2rem;
-  flex-wrap: wrap;
-}
-
-.token {
-  width: 1.1rem;
-  height: 1.1rem;
-  border-radius: 50%;
-  background: #d4af37;
-  color: #0d2b1f;
-  font-weight: 700;
-  font-size: 0.65rem;
+.actionPanelHeader {
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.sidebar {
-  width: 22rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.players {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.playerCard {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.4rem;
+  justify-content: space-between;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  font-weight: 600;
+  color: #d4af37;
 }
 
-.playerCard h3 {
-  margin: 0 0 0.3rem;
-  font-size: 0.95rem;
+.actionPanelHeader button {
+  border: none;
+  background: transparent;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #f5f0e0;
 }
 
-.playerCard p {
-  margin: 0.1rem 0;
-  font-size: 0.8rem;
-}
-
-.current {
-  border-color: #d4af37;
-  box-shadow: 0 0 0 1px #d4af37;
-}
-
-.bankrupt {
-  opacity: 0.5;
+.actionPanelBody {
+  padding: 0.75rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .actionGroup {
@@ -150,31 +143,190 @@
   width: 6rem;
 }
 
-.chanceCard {
-  border: 1px solid rgba(212, 175, 55, 0.5);
+.statusChip {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgba(13, 43, 31, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  box-shadow:
+    0 0.5rem 1.5rem rgba(0, 10, 5, 0.4),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+}
+
+.colorSwatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.statusName {
+  font-weight: 600;
+}
+
+.bankBalance {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  border-left: 1px solid rgba(212, 175, 55, 0.35);
+  padding-left: 0.6rem;
+}
+
+.roster {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  background: rgba(13, 43, 31, 0.5);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(0, 10, 5, 0.4),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+}
+
+.rosterRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  background: none;
+  padding: 0.2rem 0.3rem;
   border-radius: 0.4rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
-  font-size: 0.85rem;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
 }
 
-.chanceCard h4 {
-  margin: 0 0 0.3rem;
+.rosterRow:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
 }
 
-.log {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.4rem;
-  padding: 0.5rem 0.75rem;
-  max-height: 16rem;
-  overflow-y: auto;
-  font-size: 0.75rem;
+.rosterRow:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
-.log h4 {
-  margin: 0 0 0.3rem;
+.rosterRowBankrupt .rosterCash {
+  font-style: italic;
 }
 
-.log p {
-  margin: 0.15rem 0;
+.rosterName {
+  font-weight: 600;
+}
+
+.rosterCash {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.playerInfoModal h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.5rem;
+}
+
+.playerInfoModal h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.playerInfoModal p {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+}
+
+.playerInfoModal .ownedPanel {
+  position: static;
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.chanceCardModal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 22rem;
+}
+
+.chanceCardModal h2 {
+  margin: 0;
+  color: #d4af37;
+}
+
+.chanceCardModal p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+/**
+ * Real playtest report (2026-08-08): the game-end screen had no styling at
+ * all beyond `.page`'s dark backdrop. `.winnerScreen` centers content inside
+ * the already-full-height `.page` flex column; `.winnerBanner` is the
+ * "glass" card, matching the retro green/gold language used everywhere else
+ * in this game (gazdalkodjOkosanTheme.module.css and the panels above)
+ * rather than inventing a new look — mirrors Hotel's own HotelWinnerScreen.
+ */
+.winnerScreen {
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.winnerBanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2.5rem 3rem;
+  background: rgba(13, 43, 31, 0.5);
+  border: 2px solid #d4af37;
+  border-radius: 0.75rem;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.25);
+  backdrop-filter: blur(6px);
+}
+
+.winnerBanner h1 {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: 0.02em;
+  color: #d4af37;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.winnerBanner p {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.winnerActions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
 }

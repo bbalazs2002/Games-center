@@ -21,6 +21,37 @@ export interface LoopTrackToken<TToken> {
   offTrackPosition?: Vector3;
   /** Optional orientation to use together with `offTrackPosition`. Defaults to no rotation (identity) when omitted. */
   offTrackRotation?: Quaternion;
+  /**
+   * Overrides the board's own `positions` for JUST this token — one entry
+   * per space, same length/order as `spaces`. For a game whose raw asset
+   * already has hand-authored, per-player-slot anchor points (e.g.
+   * Gazdálkodj okosan's `full-board.glb`, which bakes 6 distinct,
+   * collision-free "lanes" — see feedback_loop_track_baked_positions in
+   * project memory), supplying this per-token is strictly better than the
+   * board-level `tokenSpreadRadius`'s procedural offset: that offset is
+   * computed from a token's position in the flat `tokens` array, independent
+   * of actual space size/occupancy, and on a tightly-packed real board can
+   * visibly push a token past its own cell into a neighbor's. When set, this
+   * token's procedural spread offset is skipped entirely (the supplied
+   * position is already final).
+   */
+  positions?: Vector3[];
+  /** Paired with `positions` — per-space orientation for JUST this token. Omit for no per-space facing (same fallback as the board-level `rotations`). */
+  rotations?: Quaternion[];
+  /**
+   * When true, the NEXT time this token's `spaceIndex` changes, it snaps
+   * straight to the new position/rotation instead of hopping through every
+   * intermediate space (the default `stepPath`-driven walk every other
+   * transition uses). For a game where some moves are a physical walk
+   * (dice) and others are an instant effect-driven jump (e.g. Gazdálkodj
+   * okosan's Szerencsekártya "lépj a X-es mezőre") — an animated straight-
+   * line slide between two non-adjacent perimeter positions was considered
+   * and rejected: it would visibly cut across the board's interior instead
+   * of following the track, reading worse than either hopping or snapping.
+   * Omit (or false) for the default hop-by-hop walk — Hotel's own usage is
+   * unaffected either way, since it has no non-adjacent moves.
+   */
+  instantTransition?: boolean;
 }
 
 /** Unit XZ vector pointing from a space toward the loop's center — lets a game place content beside the track, on the inside or outside. */
@@ -145,6 +176,8 @@ interface AnimatedTokenProps {
   tokenHeightOffset: number;
   offTrackPosition?: Vector3;
   offTrackRotation?: Quaternion;
+  /** See `LoopTrackToken.instantTransition` — snaps straight to the new spot on the next spaceIndex change instead of hopping through stepPath. */
+  instant?: boolean;
   onAnimatingChange?: (id: string, animating: boolean) => void;
   children: ReactNode;
 }
@@ -167,6 +200,7 @@ function AnimatedToken({
   tokenHeightOffset,
   offTrackPosition,
   offTrackRotation,
+  instant,
   onAnimatingChange,
   children,
 }: AnimatedTokenProps) {
@@ -202,6 +236,10 @@ function AnimatedToken({
       api.set({ position: groupPositionAt(spaceIndex), quaternion: groupQuaternionAt(spaceIndex) });
       return;
     }
+    if (instant) {
+      api.set({ position: groupPositionAt(spaceIndex), quaternion: groupQuaternionAt(spaceIndex) });
+      return;
+    }
     const path = stepPath(from, spaceIndex, positions.length);
     // Anchored to the spring's ACTUAL current value (not the logical "from"
     // node's own baked quaternion) — matters if this move interrupts an
@@ -225,7 +263,7 @@ function AnimatedToken({
     ).then(() => onAnimatingChange?.(id, false));
     // groupPositionAt/groupQuaternionAt close over positions/rotations/offTrackPosition/offTrackRotation, so those are the real dependencies alongside spaceIndex.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spaceIndex, positions, rotations, offTrackPosition, offTrackRotation]);
+  }, [spaceIndex, positions, rotations, offTrackPosition, offTrackRotation, instant]);
 
   // @react-spring/three's SpringValue and @react-three/fiber's own
   // `position`/`quaternion` JSX typing don't quite line up in the currently
@@ -307,22 +345,25 @@ export function LoopTrackBoard3D<TSpaceData, TToken>({
           {renderSpace(space.data, inwardDirection(positions[index]))}
         </group>
       ))}
-      {tokens.map(({ id, spaceIndex, token, offTrackPosition, offTrackRotation }, tokenIndex) => (
-        <AnimatedToken
-          key={id}
-          id={id}
-          spaceIndex={spaceIndex}
-          positions={positions}
-          rotations={rotations}
-          offset={tokenOffset(tokenIndex, resolvedTokenSpreadRadius)}
-          tokenHeightOffset={resolvedTokenHeightOffset}
-          offTrackPosition={offTrackPosition}
-          offTrackRotation={offTrackRotation}
-          onAnimatingChange={handleTokenAnimatingChange}
-        >
-          {renderToken(token)}
-        </AnimatedToken>
-      ))}
+      {tokens.map(
+        ({ id, spaceIndex, token, offTrackPosition, offTrackRotation, positions: tokenPositions, rotations: tokenRotations, instantTransition }, tokenIndex) => (
+          <AnimatedToken
+            key={id}
+            id={id}
+            spaceIndex={spaceIndex}
+            positions={tokenPositions ?? positions}
+            rotations={tokenRotations ?? rotations}
+            offset={tokenPositions ? [0, 0] : tokenOffset(tokenIndex, resolvedTokenSpreadRadius)}
+            tokenHeightOffset={resolvedTokenHeightOffset}
+            offTrackPosition={offTrackPosition}
+            offTrackRotation={offTrackRotation}
+            instant={instantTransition}
+            onAnimatingChange={handleTokenAnimatingChange}
+          >
+            {renderToken(token)}
+          </AnimatedToken>
+        ),
+      )}
     </Canvas>
   );
 }

@@ -80,6 +80,7 @@ const ALL_GAMES: GameDescriptor[] = [
     label: 'Gazdálkodj okosan!',
     load: () => import('../games/gazdalkodjOkosan'),
     online: { playerCountRange: [2, 6] }, // 0b: multiplayer bekötve, AI nélkül — lásd docs/gazdalkodj-okosan-0b-multiplayer-specifikacio.md
+    theme: () => import('../games/gazdalkodjOkosan/ui/gazdalkodjOkosanTheme.module.css').then((m) => ({ default: m.default.theme })),
     rules: () => import('../games/gazdalkodjOkosan/ui/GazdalkodjOkosanRules'),
     coverImage: assetUrl('/assets/gazdalkodj-okosan/box.jpg'),
   },

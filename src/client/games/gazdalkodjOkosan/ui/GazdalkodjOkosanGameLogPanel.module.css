@@ -1,0 +1,84 @@
+.toggleButton {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  background: rgba(13, 43, 31, 0.6);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  color: #f5f0e0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  box-shadow: 0 0.35rem 1rem rgba(0, 10, 5, 0.4);
+}
+
+.panel {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  width: 22rem;
+  max-width: calc(100vw - 2rem);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 43, 31, 0.65);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border-radius: 1rem;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(0, 10, 5, 0.4),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+  overflow: hidden;
+  color: #f5f0e0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+}
+
+.header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #d4af37;
+}
+
+.header button {
+  border: none;
+  background: transparent;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #f5f0e0;
+}
+
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: rgba(245, 240, 224, 0.85);
+}
+
+.entries li {
+  border-bottom: 1px solid rgba(212, 175, 55, 0.12);
+  padding-bottom: 0.4rem;
+}
+
+.entries li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.empty {
+  color: rgba(245, 240, 224, 0.45);
+}

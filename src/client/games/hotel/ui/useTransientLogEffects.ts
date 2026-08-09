@@ -1,25 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNewItemsSince } from '../../../core/useNewItemsSince';
+import { useCashFlourishes as useSharedCashFlourishes, type CashDelta, type CashFlourish, FLOURISH_LIFETIME_MS } from '../../../core/useCashFlourishes';
 import type { LogEntry, PlayerId } from '@shared/games/hotel/engine/state';
 
-export const FLOURISH_LIFETIME_MS = 1200;
-
-export interface CashFlourish {
-  id: number;
-  amount: number;
-  /** Short (2-3 word) Hungarian label of WHAT the movement was — a real
-      playtest request (2026-07-30): the amount alone didn't say whether it
-      was rent, a purchase, a bonus, etc. Longer, full-sentence descriptions
-      already exist for the game-log panel (see formatLogEntry.ts), but
-      those are too long to float next to the cash figure — this is a
-      separate, deliberately short vocabulary. */
-  label: string;
-}
-
-interface CashDelta {
-  amount: number;
-  label: string;
-}
+export { FLOURISH_LIFETIME_MS };
+export type { CashFlourish };
 
 /**
  * Only the paying guest has a permanently visible cash figure to animate
@@ -85,27 +70,15 @@ export function cashDeltaForPlayer(entry: LogEntry, playerId: PlayerId): CashDel
   return cashDeltaForActingPlayer(entry, playerId) ?? cashDeltaForBeneficiary(entry, playerId);
 }
 
-/** Floating +/- numbers next to a player's cash figure — purely decorative, auto-expiring after FLOURISH_LIFETIME_MS. See docs/hotel-animacio-specifikacio.md §4.2. */
+/**
+ * Floating +/- numbers next to a player's cash figure — purely decorative,
+ * auto-expiring after FLOURISH_LIFETIME_MS. See
+ * docs/hotel-animacio-specifikacio.md §4.2. Thin wrapper around the shared,
+ * game-agnostic `useCashFlourishes` (`src/client/core/useCashFlourishes.ts`)
+ * — only `cashDeltaForPlayer` (Hotel's own log-parsing) lives here now.
+ */
 export function useCashFlourishes(log: LogEntry[], playerId: PlayerId): CashFlourish[] {
-  const newEntries = useNewItemsSince(log);
-  const [flourishes, setFlourishes] = useState<CashFlourish[]>([]);
-  const nextIdRef = useRef(0);
-
-  useEffect(() => {
-    const deltas = newEntries.map((entry) => cashDeltaForPlayer(entry, playerId)).filter((delta) => delta !== null);
-    if (deltas.length === 0) return;
-
-    const added = deltas.map((delta) => ({ id: nextIdRef.current++, amount: delta.amount, label: delta.label }));
-    setFlourishes((prev) => [...prev, ...added]);
-    const timeoutId = setTimeout(() => {
-      setFlourishes((prev) => prev.filter((flourish) => !added.includes(flourish)));
-    }, FLOURISH_LIFETIME_MS);
-    return () => clearTimeout(timeoutId);
-    // newEntries is a fresh array every render by design (useNewItemsSince) — only its CONTENT (via log) should retrigger this.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [log, playerId]);
-
-  return flourishes;
+  return useSharedCashFlourishes(log, playerId, cashDeltaForPlayer);
 }
 
 export interface RecentLotPurchase {

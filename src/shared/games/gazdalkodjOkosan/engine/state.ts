@@ -108,7 +108,7 @@ export interface ChanceCard {
  */
 export type LogEntry =
   | { type: 'DICE_ROLLED'; playerId: PlayerId; value: number }
-  | { type: 'MOVED'; playerId: PlayerId; fromIndex: number; toIndex: number; startBonus: 0 | 2000 | 4000 }
+  | { type: 'MOVED'; playerId: PlayerId; fromIndex: number; toIndex: number; startBonus: 0 | 2000 | 4000; source: 'DICE' | 'CHANCE_CARD' }
   | { type: 'SPACE_PAYMENT'; playerId: PlayerId; spaceIndex: number; amount: number }
   | { type: 'CHANCE_CARD_DRAWN'; playerId: PlayerId; cardId: string }
   | { type: 'CHANCE_CARD_SKIPPED_NO_PASS'; playerId: PlayerId }
@@ -137,6 +137,8 @@ export type TurnPhase =
   | 'AWAITING_ROLL'
   /** A START mezőn dobással történő áthaladás/rálépés miatt esedékes törlesztés(ek) vár(nak) — lásd pendingMandatoryInstallments. Amíg nem üres, más action nem engedélyezett. */
   | 'AWAITING_MANDATORY_INSTALLMENT'
+  /** Húzott Szerencsekártya hatása már lefutott, de a soron lévő játékosnak meg kell erősítenie (ACK_CHANCE_CARD) mielőtt bármi más action engedélyezett — lásd docs/gazdalkodj-okosan-0c-vizual-specifikacio.md UX-kiegészítés szakasza. */
+  | 'AWAITING_CHANCE_CARD_ACK'
   /** A landolt mező típusától függő döntésre vár (vásárlás/biztosítás/bútor — opcionális akciók). */
   | 'RESOLVING_SPACE'
   | 'TURN_COMPLETE';

@@ -11,6 +11,7 @@ import {
 import { ALL_FURNITURE_ITEMS, FURNITURE_CATALOG } from './furnitureCatalog';
 import {
   appendLog,
+  canAckChanceCard,
   canBuyApartment,
   canAffordApartment,
   canBuyBkvPass,
@@ -132,11 +133,11 @@ function applyBankInterestIfAny(state: GazdalkodjOkosanState, playerId: PlayerId
   return appendLog(next, { type: 'INTEREST_PAID', playerId, amount: interest, source: 'FIELD_8' });
 }
 
-function moveAndLog(state: GazdalkodjOkosanState, playerId: PlayerId, steps: number): AdvanceResult {
+function moveAndLog(state: GazdalkodjOkosanState, playerId: PlayerId, steps: number, source: 'DICE' | 'CHANCE_CARD'): AdvanceResult {
   const fromIndex = getPlayer(state, playerId).position;
   const { state: moved, startBonus } = advanceForward(state, playerId, steps);
   const toIndex = getPlayer(moved, playerId).position;
-  return { state: appendLog(moved, { type: 'MOVED', playerId, fromIndex, toIndex, startBonus }), startBonus };
+  return { state: appendLog(moved, { type: 'MOVED', playerId, fromIndex, toIndex, startBonus, source }), startBonus };
 }
 
 function stepsToward(state: GazdalkodjOkosanState, playerId: PlayerId, targetIndex: number): number {
@@ -199,7 +200,7 @@ function resolveLandedSpace(state: GazdalkodjOkosanState, playerId: PlayerId): G
 
 /** A tűzeset/autólopás kártya biztosítás nélküli ága a 9-es (biztosítási) mezőre küldi a játékost — ugyanazt az előre-lépő mechanikát használva, mint bármely más mozgás. */
 function sendToInsuranceField(state: GazdalkodjOkosanState, playerId: PlayerId): GazdalkodjOkosanState {
-  return moveAndLog(state, playerId, stepsToward(state, playerId, 9)).state;
+  return moveAndLog(state, playerId, stepsToward(state, playerId, 9), 'CHANCE_CARD').state;
 }
 
 function applyMoveToEffect(
@@ -207,7 +208,7 @@ function applyMoveToEffect(
   playerId: PlayerId,
   effect: Extract<ChanceCardEffect, { kind: 'MOVE_TO' }>,
 ): GazdalkodjOkosanState {
-  const { state: moved } = moveAndLog(state, playerId, stepsToward(state, playerId, effect.targetIndex));
+  const { state: moved } = moveAndLog(state, playerId, stepsToward(state, playerId, effect.targetIndex), 'CHANCE_CARD');
   let next = moved;
   if (effect.thenPay) {
     next = chargePlayer(next, playerId, effect.thenPay);
@@ -316,7 +317,7 @@ function applyRollMoveDice(state: GazdalkodjOkosanState, diceValue: number): Gaz
     next = appendLog(next, { type: 'HOSPITAL_EXITED', playerId: player.id });
   }
 
-  const { state: moved, startBonus } = moveAndLog(next, player.id, diceValue);
+  const { state: moved, startBonus } = moveAndLog(next, player.id, diceValue, 'DICE');
   next = moved;
 
   const pending = startBonus > 0 ? computePendingInstallments(getPlayer(next, player.id)) : [];
@@ -409,6 +410,8 @@ function dispatchTurnAndMoney(state: GazdalkodjOkosanState, action: GazdalkodjOk
       return applyWithdraw(state, action.amount);
     case 'END_TURN':
       return applyEndTurn(state);
+    case 'ACK_CHANCE_CARD':
+      return applyAckChanceCard(state);
     default:
       return undefined;
   }
@@ -473,7 +476,17 @@ function applyDrawChanceCard(state: GazdalkodjOkosanState): GazdalkodjOkosanStat
 
   const [card, ...rest] = state.chanceDeck;
   const next: GazdalkodjOkosanState = appendLog({ ...state, chanceDeck: [...rest, card] }, { type: 'CHANCE_CARD_DRAWN', playerId: player.id, cardId: card.id });
-  return applyChanceCardEffect(next, player.id, card.effect);
+  const resolved = applyChanceCardEffect(next, player.id, card.effect);
+  // Csődbe jutott a hatástól — a meglévő minta szerint (pl. resolvePaySpace)
+  // nem erőltetjük az ack-fázist, a turnPhase változatlan marad.
+  if (getPlayer(resolved, player.id).bankrupt) return resolved;
+  return { ...resolved, turnPhase: 'AWAITING_CHANCE_CARD_ACK' };
+}
+
+/** A húzott kártya hatásának kötelező megerősítése — amíg ez meg nem történik, minden más action blokkolva van (mind a `can*` predikátum RESOLVING_SPACE-t követel, lásd rules.ts canAckChanceCard). */
+function applyAckChanceCard(state: GazdalkodjOkosanState): GazdalkodjOkosanState {
+  if (!canAckChanceCard(state)) return state;
+  return { ...state, turnPhase: 'RESOLVING_SPACE' };
 }
 
 function dispatchPurchases(state: GazdalkodjOkosanState, action: GazdalkodjOkosanAction): GazdalkodjOkosanState | undefined {

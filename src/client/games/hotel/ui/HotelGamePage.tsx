@@ -13,6 +13,7 @@ import { Button } from '../../../ui-kit/Button';
 import { useReportFeedbackContext } from '../../../ui-kit/useFeedbackContext';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { Modal } from '../../../ui-kit/Modal';
+import { CashFlourishOverlay as SharedCashFlourishOverlay } from '../../../ui-kit/CashFlourishOverlay';
 import { useGameTheme } from '../../../shell/useGameTheme';
 import { cloneWithOpacity, cloneWithTint } from '../../../renderers/models/materialTint';
 import { useGLTFScene } from '../../../renderers/models/useGLTFScene';
@@ -510,25 +511,7 @@ function cashNoteFor(amount: number): string {
  */
 function CashFlourishOverlay({ log, playerId }: { log: HotelState['log']; playerId: PlayerId }) {
   const flourishes = useCashFlourishes(log, playerId);
-  if (flourishes.length === 0) return null;
-  return (
-    <div className={styles.cashFlourishStack}>
-      {flourishes.map((flourish) => (
-        <span
-          key={flourish.id}
-          className={[styles.cashFlourish, flourish.amount >= 0 ? styles.cashFlourishGain : styles.cashFlourishLoss].join(
-            ' ',
-          )}
-        >
-          <span className={styles.cashFlourishLabel}>{flourish.label}</span>
-          <span className={styles.cashFlourishAmount}>
-            {flourish.amount >= 0 ? '+' : '−'}
-            {Math.abs(flourish.amount).toLocaleString('hu-HU')}
-          </span>
-        </span>
-      ))}
-    </div>
-  );
+  return <SharedCashFlourishOverlay flourishes={flourishes} />;
 }
 
 /** Floating glass status chip — current player, color, and cash (with a real banknote flourish) live right beside the wheel that drives the whole turn, per the "organize around the wheel" request. */

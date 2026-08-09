@@ -1,0 +1,33 @@
+/**
+ * Shared "retro board-game" glass theme for every Gazdálkodj okosan modal —
+ * mirrors hotelModalTheme.module.css's role/reasoning exactly, just with
+ * this game's own green/gold palette (gazdalkodjOkosanTheme.module.css)
+ * instead of Hotel's navy/gold.
+ *
+ * ALSO redefines the `--shell-*` tokens (not just background/text) — the
+ * shared ui-kit `Modal` portals straight to `document.body`, OUTSIDE the
+ * themed page root's DOM subtree, so CSS custom properties set there never
+ * reach a modal's content through inheritance. Without this, any `<Button>`
+ * inside a Gazdálkodj okosan modal would silently fall back to the generic
+ * blue/gray default (the exact bug Hotel's own modal theme documents fixing).
+ */
+.gazdalkodjModal {
+  --shell-surface: rgba(13, 43, 31, 0.5);
+  --shell-ink: #f5f0e0;
+  --shell-ink-soft: rgba(245, 240, 224, 0.65);
+  --shell-accent: #d4af37;
+  --shell-line: rgba(212, 175, 55, 0.4);
+
+  background: rgba(13, 43, 31, 0.92);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  color: #f5f0e0;
+  box-shadow:
+    0 0.5rem 1.5rem rgba(0, 10, 5, 0.4),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.2);
+}
+
+.gazdalkodjModal h2,
+.gazdalkodjModal h3 {
+  color: #d4af37;
+}

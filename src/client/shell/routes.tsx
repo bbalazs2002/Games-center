@@ -20,6 +20,8 @@ const HotelOnlineGamePage = lazy(() => import('../games/hotel/ui/HotelOnlineGame
 const RamsesOnlineGamePage = lazy(() => import('../games/ramses/ui/RamsesOnlineGamePage'));
 // Debug-only raw .glb inspector — see docs/hotel-0c-specifikacio.md §5.7.
 const HotelModelViewerPage = lazy(() => import('../games/hotel/ui/HotelModelViewerPage'));
+// Debug-only raw .glb inspector — see docs/gazdalkodj-okosan-0c-vizual-specifikacio.md.
+const GazdalkodjOkosanModelViewerPage = lazy(() => import('../games/gazdalkodjOkosan/ui/GazdalkodjOkosanModelViewerPage'));
 
 // Vite's BASE_URL always mirrors vite.config.ts's `base` (build-time
 // VITE_BASE_PATH, e.g. "/game-center/" in production — see
@@ -50,6 +52,14 @@ export const router = createBrowserRouter([
         element: (
           <Suspense fallback={<LoadingScreen gameId="hotel" />}>
             <HotelModelViewerPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/games/gazdalkodj-okosan/model-viewer',
+        element: (
+          <Suspense fallback={<LoadingScreen gameId="gazdalkodj-okosan" />}>
+            <GazdalkodjOkosanModelViewerPage />
           </Suspense>
         ),
       },

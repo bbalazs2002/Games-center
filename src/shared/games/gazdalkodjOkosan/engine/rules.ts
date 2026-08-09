@@ -176,3 +176,8 @@ export function canDrawChanceCard(state: GazdalkodjOkosanState): boolean {
   if (state.turnPhase !== 'RESOLVING_SPACE') return false;
   return getCurrentSpace(state).type === 'CHANCE';
 }
+
+/** A húzott Szerencsekártya hatásának kötelező megerősítése — amíg ez a fázis tart, minden más `can*` predikátum blokkolva van (mind RESOLVING_SPACE-t követel). */
+export function canAckChanceCard(state: GazdalkodjOkosanState): boolean {
+  return state.turnPhase === 'AWAITING_CHANCE_CARD_ACK';
+}

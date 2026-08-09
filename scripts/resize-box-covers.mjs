@@ -29,6 +29,7 @@ const SOURCES = {
   dama: join(repoRoot, 'assets', 'Checkers', 'box.png'),
   hotel: join(repoRoot, 'assets', 'Hotel', 'png', 'box.png'),
   ramses: join(repoRoot, 'assets', 'Ramses', 'png', 'box.png'),
+  'gazdalkodj-okosan': join(repoRoot, 'assets', 'GazdalkodjOkosan', 'images', 'box.png'),
 };
 
 async function main() {

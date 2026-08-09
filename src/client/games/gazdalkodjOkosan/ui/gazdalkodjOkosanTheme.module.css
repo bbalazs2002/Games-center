@@ -1,0 +1,23 @@
+/**
+ * Gazdálkodj okosan's own visual language, exposed as a reusable, gameId-
+ * driven theme — the dark-green/gold palette already hardcoded throughout
+ * GazdalkodjOkosanGamePage.module.css, extracted into one importable class
+ * so shell-level pages that don't know this game's internals (LobbyPage,
+ * GameModeSelectPage, RulesModal, LoadingScreen) can adopt it too. Mirrors
+ * hotelTheme.module.css's role. No new colors invented here.
+ */
+.theme {
+  --shell-ground: radial-gradient(ellipse at 50% 0%, #163925 0%, #0d2b1f 55%, #081a13 100%);
+  --shell-surface: rgba(13, 43, 31, 0.5);
+  --shell-ink: #f5f0e0;
+  --shell-ink-soft: rgba(245, 240, 224, 0.65);
+  --shell-accent: #d4af37;
+  --shell-line: rgba(212, 175, 55, 0.4);
+
+  /* Always-dark regardless of OS preference — matches hotelTheme.module.css's
+     own fix for native form controls (e.g. a <select>'s dropdown) otherwise
+     falling back to a light default. */
+  color-scheme: dark;
+  background: var(--shell-ground);
+  color: var(--shell-ink);
+}

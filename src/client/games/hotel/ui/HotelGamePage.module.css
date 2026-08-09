@@ -123,58 +123,9 @@
   box-shadow: 0 0.1rem 0.4rem rgba(0, 0, 0, 0.5);
 }
 
-/** Floating +/- numbers above the cash figure — see docs/hotel-animacio-specifikacio.md §4.2. */
-.cashFlourishStack {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
-  pointer-events: none;
-}
-
-.cashFlourish {
-  animation: cash-flourish-rise 1.2s ease-out forwards;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  white-space: nowrap;
-  text-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.6);
-}
-
-.cashFlourishLabel {
-  font-size: 0.68rem;
-  font-weight: 600;
-  opacity: 0.85;
-}
-
-.cashFlourishAmount {
-  font-weight: 700;
-}
-
-.cashFlourishGain {
-  color: #6fcf97;
-}
-
-.cashFlourishLoss {
-  color: #e08585;
-}
-
-@keyframes cash-flourish-rise {
-  from {
-    opacity: 0;
-    transform: translateY(0.2rem);
-  }
-  15% {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-1.4rem);
-  }
-}
+/* Floating +/- cash-flourish numbers — moved to the shared
+   src/client/ui-kit/CashFlourishOverlay.module.css (see
+   docs/hotel-animacio-specifikacio.md §4.2 for the original context). */
 
 .ownedLots {
   position: absolute;

@@ -1,0 +1,13 @@
+.readout {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.note {
+  height: 1.1rem;
+  width: auto;
+  border-radius: 0.15rem;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+}

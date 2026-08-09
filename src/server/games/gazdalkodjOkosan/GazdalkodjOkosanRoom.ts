@@ -64,6 +64,7 @@ function isValidServiceOrTurnAction(candidate: Record<string, unknown>): boolean
     case 'OPEN_BANK_ACCOUNT':
     case 'BUY_BKV_PASS':
     case 'DRAW_CHANCE_CARD':
+    case 'ACK_CHANCE_CARD':
     case 'END_TURN':
       return true;
     default:

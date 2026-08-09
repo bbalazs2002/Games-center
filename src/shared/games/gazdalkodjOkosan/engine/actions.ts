@@ -26,4 +26,6 @@ export type GazdalkodjOkosanAction =
   | { type: 'BUY_BKV_PASS' }
   // Szerencsekártya-mezőn (a mező típusától/requiresBkvPass-től függően engedélyezett).
   | { type: 'DRAW_CHANCE_CARD' }
+  // Kizárólag AWAITING_CHANCE_CARD_ACK fázisban — a húzott kártya hatásának megerősítése, mielőtt bármi más action engedélyezett.
+  | { type: 'ACK_CHANCE_CARD' }
   | { type: 'END_TURN' };

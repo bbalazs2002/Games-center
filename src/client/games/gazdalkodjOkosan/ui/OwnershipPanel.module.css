@@ -1,0 +1,29 @@
+.panel {
+  position: relative;
+  width: 100%;
+  border-radius: 0.4rem;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
+.background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.9;
+}
+
+/* Position/size (ZoomableThumb's wrapper button) vs. visual styling (its inner img) split into two classes — see ItemCard's own comment. */
+.itemWrapper {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.item {
+  object-fit: contain;
+  border-radius: 0.2rem;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
