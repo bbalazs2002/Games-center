@@ -34,7 +34,8 @@
     "gwent:card-editor:lan": "tsx scripts/gwent-card-editor.ts --lan",
     "ai:simulate-hotel": "tsx scripts/simulate-hotel-ai-games.ts",
     "ai:simulate-ramses": "tsx scripts/simulate-ramses-ai-games.ts",
-    "ai:simulate-dama": "tsx scripts/simulate-dama-ai-games.ts"
+    "ai:simulate-dama": "tsx scripts/simulate-dama-ai-games.ts",
+    "ai:simulate-gazdalkodj-okosan": "tsx scripts/simulate-gazdalkodj-okosan-ai-games.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

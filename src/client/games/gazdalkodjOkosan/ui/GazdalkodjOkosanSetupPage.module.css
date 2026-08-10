@@ -27,6 +27,19 @@
   flex: 1;
 }
 
+.aiToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.difficultyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .buttonRow {
   display: flex;
   gap: 0.5rem;

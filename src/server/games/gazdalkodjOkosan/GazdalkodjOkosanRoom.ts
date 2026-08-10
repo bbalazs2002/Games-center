@@ -1,5 +1,6 @@
 import type { AuthPayload } from '../../auth/jwt';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
+import { chooseGazdalkodjOkosanAiAction, GAZDALKODJ_OKOSAN_AI_MOVE_DELAY_MS, isGazdalkodjOkosanAiDifficulty, type GazdalkodjOkosanAiDifficulty } from '@shared/games/gazdalkodjOkosan/ai';
 import { rollD6 } from '@shared/games/gazdalkodjOkosan/dice';
 import type { GazdalkodjOkosanAction } from '@shared/games/gazdalkodjOkosan/engine/actions';
 import { createInitialState as createGazdalkodjOkosanInitialState } from '@shared/games/gazdalkodjOkosan/engine/initialState';
@@ -13,6 +14,7 @@ const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 const FURNITURE_ITEMS = new Set<FurnitureItemId>(['konyhabutor', 'mosogep', 'hutoszekreny', 'mosogatogep', 'tuzhely', 'szobabutor']);
 const INSURANCE_POLICIES = new Set(['life', 'home', 'car']);
+const DEFAULT_AI_DIFFICULTY: GazdalkodjOkosanAiDifficulty = 'MEDIUM';
 
 function resolvePlayerCount(requested: unknown): number {
   const parsed = typeof requested === 'number' ? Math.trunc(requested) : MIN_PLAYERS;
@@ -81,11 +83,13 @@ export class GazdalkodjOkosanRoom extends GameRoom<GazdalkodjOkosanState, Gazdal
   // Placeholder until onCreate resolves the real player count from options —
   // onCreate always reassigns this before the base class ever calls it.
   protected createInitialState = () => createGazdalkodjOkosanInitialState(placeholderPlayerNames(MIN_PLAYERS));
+  private aiDifficulty: GazdalkodjOkosanAiDifficulty = DEFAULT_AI_DIFFICULTY;
 
   async onCreate(options: GameRoomCreateOptions): Promise<void> {
     const playerCount = resolvePlayerCount(options.playerCount);
     this.maxClients = playerCount;
     this.createInitialState = () => createGazdalkodjOkosanInitialState(placeholderPlayerNames(playerCount));
+    if (isGazdalkodjOkosanAiDifficulty(options.aiDifficulty)) this.aiDifficulty = options.aiDifficulty;
     await super.onCreate(options);
   }
 
@@ -124,8 +128,12 @@ export class GazdalkodjOkosanRoom extends GameRoom<GazdalkodjOkosanState, Gazdal
     return action;
   }
 
-  protected computeAiMove(): GazdalkodjOkosanAction | null {
-    return null; // AI ellenfél nincs ebben a körben (0d feladata)
+  protected computeAiMove(state: GazdalkodjOkosanState, slot: PlayerId): GazdalkodjOkosanAction | null {
+    return chooseGazdalkodjOkosanAiAction(state, slot, this.aiDifficulty);
+  }
+
+  protected aiMoveDelayMs(): number {
+    return GAZDALKODJ_OKOSAN_AI_MOVE_DELAY_MS;
   }
 
   protected syncState(): void {

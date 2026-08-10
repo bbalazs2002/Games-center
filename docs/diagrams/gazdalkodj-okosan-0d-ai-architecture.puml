@@ -1,0 +1,97 @@
+@startuml gazdalkodj-okosan-0d-ai-architecture
+title Gazdálkodj okosan-0d — megosztott AI-modul, hot-seat ÉS online egyszerre (2026-08-09, tervezet)
+
+package "shared/games/gazdalkodjOkosan/ai" {
+  class "heuristic.ts" as Heuristic {
+    {static} evaluateState(state, forPlayerId): number
+    ..tulajdon-teljesítettség (domináns)..
+    ..totalWealth (cash+bank összevonva)..
+    ..csőd-közelségi büntetés (totalWealth-re, nem cash-re)..
+    ..ritka-alkalom bónusz elérhető BUY_*-ra..
+  }
+
+  class "actionEnumerator.ts" as Enumerator {
+    {static} enumerateCandidateActions(state, actorId): Action[]
+    {static} isChanceNodePhase(state): boolean
+    {static} chanceOutcomes(state): ChanceOutcome[]
+    ..folytonos döntések (split/túlfizetés/\nbefizetés) kanonikus jelöltre redukálva..
+  }
+  note right of Enumerator
+    getValidActions()/rules.ts can*
+    felett épül — sosem tud illegális
+    lépést adni. WITHDRAW_FROM_ACCOUNT
+    szándékosan kihagyva (SETTLE_PAYMENT
+    split-je már eléri a bankot).
+  end note
+
+  class "expectimax.ts" as Expectimax {
+    {static} chooseBestAction(state, actorId, ownPlies): Action?
+    ..aszimmetrikus expectimax..
+    ..gyökér: teljes mélységig kifejtve..
+    ..mások: 1-lépéses mohó (greedyAction)..
+    ..ROLL_MOVE_DICE = egyetlen chance node..
+    ..200ms budget + max csomópont-mélység..
+  }
+  Expectimax ..> Enumerator : jelöltek
+  Expectimax ..> Heuristic : levél-kiértékelés
+
+  class "index.ts" as Barrel {
+    {static} chooseGazdalkodjOkosanAiAction(state, slot, difficulty): Action?
+    GAZDALKODJ_OKOSAN_AI_MOVE_DELAY_MS
+    DIFFICULTY_DEPTH = {EASY:1, MEDIUM:2, HARD:3}
+  }
+  note bottom of Barrel
+    AWAITING_ROLL -> valódi rollD6()
+    (nem keresés) — minden más fázis
+    -> expectimax.chooseBestAction.
+    Nincs kívül-a-soron cselekvés
+    (Dáma/Gwent mintája): csak
+    getCurrentPlayer(state).id===slot
+    dönthet.
+  end note
+  Barrel ..> Expectimax
+  Barrel ..> Enumerator : isChanceNodePhase
+
+  class "simulate.ts" as Simulate {
+    {static} simulateGazdalkodjOkosanGame(configs): Result
+  }
+  Simulate ..> Barrel : manuális AI-vs-AI\nbatch-futtató (súlyhangolás)
+}
+
+package "server" {
+  class GazdalkodjOkosanRoom {
+    -aiDifficulty: GazdalkodjOkosanAiDifficulty = 'MEDIUM'
+    +onCreate(options)
+    +computeAiMove(state, slot): Action?
+    +aiMoveDelayMs(): number
+  }
+  GazdalkodjOkosanRoom ..> Barrel : computeAiMove()-ban\nchooseGazdalkodjOkosanAiAction(state, slot, aiDifficulty)
+}
+note left of GazdalkodjOkosanRoom
+  aiOpponentCount/aiDifficulty már ma is
+  game-agnosztikus mezők a
+  GameRoomCreateOptions-on (Hotel-0d óta) —
+  Gazdálkodj okosan csak kitölti a
+  meglévő szerződést, nincs core-változtatás.
+end note
+
+package "client" {
+  class GazdalkodjOkosanSetupPage <<módosítva>> {
+    Játékosnévenkénti AI jelölőnégyzet + nehézség
+    started -> GazdalkodjOkosanGamePage(hotSeatAiSlots)
+  }
+  class "useGazdalkodjOkosanHotSeatAi()" as HotSeatHook <<ÚJ>> {
+    LocalGameTransport-ot figyeli
+    AI körén: chooseGazdalkodjOkosanAiAction + dispatch
+  }
+  class GazdalkodjOkosanGamePage <<módosítva>>
+  GazdalkodjOkosanSetupPage --> GazdalkodjOkosanGamePage : hotSeatAiSlots:\nPartial<Record<PlayerId,GazdalkodjOkosanAiDifficulty>>
+  GazdalkodjOkosanGamePage ..> HotSeatHook : felhasználja (isLocalMode)
+}
+HotSeatHook ..> Barrel : chooseGazdalkodjOkosanAiAction(state, slot, difficulty)
+
+note "Ugyanaz a chooseGazdalkodjOkosanAiAction hívás\nmindkét oldalon — a döntéshozó logika\nSOHA nincs duplikálva (Hotel §9/Dáma-0d elve)." as N1
+N1 .. GazdalkodjOkosanRoom
+N1 .. HotSeatHook
+
+@enduml

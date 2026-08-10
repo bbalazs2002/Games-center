@@ -38,6 +38,7 @@ import {
 import { OwnershipPanel } from './OwnershipPanel';
 import { BankAccountPanel } from './BankAccountPanel';
 import { CashReadout } from './CashReadout';
+import { useGazdalkodjOkosanHotSeatAi, type GazdalkodjOkosanHotSeatAiSlots } from './useGazdalkodjOkosanHotSeatAi';
 import { describePaymentReason, FURNITURE_LABELS, INSURANCE_LABELS } from './formatLogEntry';
 import { GazdalkodjOkosanGameLogPanel } from './GazdalkodjOkosanGameLogPanel';
 import { GazdalkodjOkosanDiceHUD } from './GazdalkodjOkosanDiceHUD';
@@ -340,14 +341,17 @@ function FloatingActionPanel({ state, dispatch }: { state: GazdalkodjOkosanState
   );
 }
 
-/** Bottom-center "whose turn / how much cash" pill — mirrors Hotel's StatusChip (minus the AI-thinking text, no AI opponent in this game yet). Shows cash AND (if open) the folyószámla balance side by side — the user explicitly asked for both, not just the total. */
-function StatusChip({ state }: { state: GazdalkodjOkosanState }) {
+/** Bottom-center "whose turn / how much cash" pill — mirrors Hotel's StatusChip, including the hot-seat "AI gondolkodik…" label (isCurrentPlayerAi is always false in online mode, see GazdalkodjOkosanGamePage's own hotSeatAiSlots wiring). Shows cash AND (if open) the folyószámla balance side by side — the user explicitly asked for both, not just the total. */
+function StatusChip({ state, isCurrentPlayerAi }: { state: GazdalkodjOkosanState; isCurrentPlayerAi: boolean }) {
   const player = state.players[state.currentPlayerIndex];
   const colorIndex = state.currentPlayerIndex % GAZDALKODJ_PLAYER_COLORS.length;
   return (
     <div className={styles.statusChip}>
       <span className={styles.colorSwatch} style={{ backgroundColor: GAZDALKODJ_PLAYER_COLORS[colorIndex] }} />
-      <span className={styles.statusName}>{player.name} köre</span>
+      <span className={styles.statusName}>
+        {player.name} köre
+        {isCurrentPlayerAi && ' (AI gondolkodik…)'}
+      </span>
       <CashReadout amount={player.cash} playerId={player.id} log={state.log} />
       {player.bankAccount && <span className={styles.bankBalance}>Folyószámla: {player.bankAccount.balance.toLocaleString('hu-HU')} EUR</span>}
     </div>
@@ -581,15 +585,28 @@ function GazdalkodjOkosanWinnerScreen({
   );
 }
 
+/** Hot-seat only (hotSeatAiSlots is undefined/empty in online mode) — hides the action panel/payment modal during an AI-controlled player's own turn, so a human sharing the same screen can't accidentally race the AI hook's dispatch. */
+function isHotSeatAiControlled(hotSeatAiSlots: GazdalkodjOkosanHotSeatAiSlots | undefined, playerId: PlayerId): boolean {
+  return (hotSeatAiSlots ?? {})[playerId] !== undefined;
+}
+
 export interface GazdalkodjOkosanGamePageProps {
   transport?: GameTransport<GazdalkodjOkosanState, GazdalkodjOkosanAction>;
   /** Online mode only — which player slot the local viewer controls; the ActionPanel only shows when it's their turn (nyílt infó, csak a köröd aktív, a Ramses-0b mintája). */
   myPlayer?: PlayerId;
   playerNames?: string[];
+  /** Hot-seat only — which player slots are AI-controlled (built in GazdalkodjOkosanSetupPage), empty for an all-human game. See docs/gazdalkodj-okosan-0d-ai-specifikacio.md §5. */
+  hotSeatAiSlots?: GazdalkodjOkosanHotSeatAiSlots;
   onRequestNewGame?: () => void;
 }
 
-export function GazdalkodjOkosanGamePage({ transport: providedTransport, myPlayer, playerNames, onRequestNewGame }: GazdalkodjOkosanGamePageProps = {}) {
+export function GazdalkodjOkosanGamePage({
+  transport: providedTransport,
+  myPlayer,
+  playerNames,
+  hotSeatAiSlots,
+  onRequestNewGame,
+}: GazdalkodjOkosanGamePageProps = {}) {
   const isLocalMode = providedTransport === undefined;
   const localTransport = useMemo(
     () => new LocalGameTransport<GazdalkodjOkosanState, GazdalkodjOkosanAction>(reducer, createInitialState(playerNames ?? ['Játékos 1', 'Játékos 2'])),
@@ -602,6 +619,8 @@ export function GazdalkodjOkosanGamePage({ transport: providedTransport, myPlaye
   const loggedLocalTransport = useLocalGameLogger(localTransport, 'gazdalkodjOkosan');
   const transport = providedTransport ?? loggedLocalTransport;
   const [state, dispatch] = useGameTransport(transport);
+  // hotSeatAiSlots is empty in online mode (prop unset), so this is a no-op there.
+  useGazdalkodjOkosanHotSeatAi(isLocalMode ? transport : null, hotSeatAiSlots ?? {});
   useReportFeedbackContext('gazdalkodj-okosan', state);
   const navigate = useNavigate();
 
@@ -609,6 +628,8 @@ export function GazdalkodjOkosanGamePage({ transport: providedTransport, myPlaye
   const winner = getWinner(state);
   const currentPlayer = state.players[state.currentPlayerIndex];
   const themeClass = useGameTheme('gazdalkodj-okosan');
+  const isCurrentPlayerAi = isHotSeatAiControlled(hotSeatAiSlots, currentPlayer.id);
+  const actionsAreMine = (!myPlayer || myPlayer === currentPlayer.id) && !isCurrentPlayerAi;
 
   if (winner) {
     return (
@@ -627,13 +648,13 @@ export function GazdalkodjOkosanGamePage({ transport: providedTransport, myPlaye
       <div className={styles.canvasWrapper}>
         <GazdalkodjOkosanBoard state={state} />
         <CurrentPlayerOwnershipPanel player={currentPlayer} />
-        {(!myPlayer || myPlayer === currentPlayer.id) && <FloatingActionPanel state={state} dispatch={dispatch} />}
-        <StatusChip state={state} />
+        {actionsAreMine && <FloatingActionPanel state={state} dispatch={dispatch} />}
+        <StatusChip state={state} isCurrentPlayerAi={isCurrentPlayerAi} />
         <GazdalkodjOkosanGameLogPanel state={state} />
         <PlayerRoster state={state} onInspect={setInspectedPlayerId} />
         <PlayerInfoModal state={state} playerId={inspectedPlayerId} onClose={() => setInspectedPlayerId(null)} />
         <ChanceCardModal state={state} dispatch={dispatch} />
-        <PaymentModal state={state} dispatch={dispatch} isMine={!myPlayer || myPlayer === currentPlayer.id} />
+        <PaymentModal state={state} dispatch={dispatch} isMine={actionsAreMine} />
         {isLocalMode && <LocalGameControls gameId="gazdalkodj-okosan" onRequestNewGame={onRequestNewGame} resumable={false} />}
       </div>
     </div>
