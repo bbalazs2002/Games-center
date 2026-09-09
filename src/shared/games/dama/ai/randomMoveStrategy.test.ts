@@ -19,6 +19,7 @@ describe('pickRandomMove', () => {
       board: Array.from({ length: 8 }, () => Array(8).fill(null)),
       currentPlayer: 'LIGHT',
       status: 'IN_PROGRESS',
+      outcome: null,
       chainCaptureFrom: null,
       log: [],
     };

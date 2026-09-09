@@ -23,7 +23,7 @@ function appendLog(log: MoveLogEntry[], entry: MoveLogEntry): MoveLogEntry[] {
 function withWinCheck(state: DamaState): DamaState {
   if (hasAnyLegalMove(state, state.currentPlayer)) return state;
   const winner = opponentOf(state.currentPlayer);
-  return { ...state, status: winner === 'LIGHT' ? 'LIGHT_WON' : 'DARK_WON' };
+  return { ...state, status: 'FINISHED', outcome: winner === 'LIGHT' ? 'LIGHT_WON' : 'DARK_WON' };
 }
 
 function applySimpleMove(state: DamaState, from: Position, to: Position): DamaState {
@@ -38,6 +38,7 @@ function applySimpleMove(state: DamaState, from: Position, to: Position): DamaSt
     board,
     currentPlayer: opponentOf(state.currentPlayer),
     status: 'IN_PROGRESS',
+    outcome: null,
     chainCaptureFrom: null,
     log: appendLog(state.log, { player: piece.player, from, to, captured: null, becameKing: promotes }),
   });
@@ -71,6 +72,7 @@ function applyCapture(state: DamaState, from: Position, move: CaptureMove): Dama
       board,
       currentPlayer: opponentOf(state.currentPlayer),
       status: 'IN_PROGRESS',
+      outcome: null,
       chainCaptureFrom: null,
       log,
     });
@@ -80,6 +82,7 @@ function applyCapture(state: DamaState, from: Position, move: CaptureMove): Dama
     board,
     currentPlayer: state.currentPlayer,
     status: 'IN_PROGRESS',
+    outcome: null,
     chainCaptureFrom: move.to,
     log,
   };

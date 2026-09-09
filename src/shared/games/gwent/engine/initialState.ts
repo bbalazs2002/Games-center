@@ -85,6 +85,7 @@ export function createInitialState(playerConfigs: [GwentPlayerConfig, GwentPlaye
     activeWeatherRows: [],
     phase: 'MULLIGAN',
     winnerIds: [],
+    status: 'IN_PROGRESS',
     log: [],
   };
   // Surface Emhyr The White Flame's always-on cancellation in the log right

@@ -7,7 +7,7 @@ import type { GameTransport } from '../../../core/transport/GameTransport';
 import { assetUrl } from '../../../core/assetUrl';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
-import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { useLocalSessionPersistence } from '../../../core/transport/useLocalSessionPersistence';
 import { useNewItemsSince } from '../../../core/useNewItemsSince';
 import { Button } from '../../../ui-kit/Button';
 import { useReportFeedbackContext } from '../../../ui-kit/useFeedbackContext';
@@ -35,6 +35,7 @@ import { type StaircasePlacementMode } from './hotelMenuLevels';
 import modalTheme from './hotelModalTheme.module.css';
 import { useHotelParkingPositions, type HotelParkingTransform } from './useHotelParkingPositions';
 import { useHotelSpacePositions } from './useHotelSpacePositions';
+import { isFinished } from '@shared/core/gameCompletion';
 import type { HotelAction } from '@shared/games/hotel/engine/actions';
 import { createInitialState } from '@shared/games/hotel/engine/initialState';
 import { reducer } from '@shared/games/hotel/engine/reducer';
@@ -924,10 +925,10 @@ export function HotelGamePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [playerNames],
   );
-  const loggedLocalTransport = useLocalGameLogger(localTransport, 'hotel');
-  const transport = providedTransport ?? loggedLocalTransport;
+  const transport = providedTransport ?? localTransport;
   const [state, dispatch] = useGameTransport(transport);
   useReportFeedbackContext('hotel', state);
+  useLocalSessionPersistence('hotel', isLocalMode, state, isFinished(state));
 
   const spaces: LoopTrackSpace<null>[] = useMemo(
     () => state.board.map((space) => ({ id: space.id, data: null })),

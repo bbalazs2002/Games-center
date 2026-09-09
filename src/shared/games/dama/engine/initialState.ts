@@ -28,6 +28,7 @@ export function createInitialState(): DamaState {
     board: createInitialBoard(),
     currentPlayer: 'LIGHT',
     status: 'IN_PROGRESS',
+    outcome: null,
     chainCaptureFrom: null,
     log: [],
   };

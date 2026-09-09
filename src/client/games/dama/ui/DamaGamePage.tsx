@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
-import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { useLocalSessionPersistence } from '../../../core/transport/useLocalSessionPersistence';
 import { useReportFeedbackContext } from '../../../ui-kit/useFeedbackContext';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { GridBoard2D, type GridPosition } from '../../../renderers/grid-2d/GridBoard2D';
 import theme from '../../../renderers/grid-2d/clusterBTheme.module.css';
+import { isFinished } from '@shared/core/gameCompletion';
 import type { DamaAction } from '@shared/games/dama/engine/actions';
 import { createInitialState } from '@shared/games/dama/engine/initialState';
 import { reducer } from '@shared/games/dama/engine/reducer';
@@ -143,12 +144,12 @@ export function DamaGamePage({
     () => new LocalGameTransport<DamaState, DamaAction>(reducer, createInitialState()),
     [],
   );
-  const loggedLocalTransport = useLocalGameLogger(localTransport, 'dama');
-  const transport = providedTransport ?? loggedLocalTransport;
+  const transport = providedTransport ?? localTransport;
   const [state, dispatch] = useGameTransport(transport);
   const effectiveHotSeatAiSlots = hotSeatAiSlots ?? {};
   useDamaHotSeatAi(transport, effectiveHotSeatAiSlots);
   useReportFeedbackContext('dama', state);
+  useLocalSessionPersistence('dama', isLocalMode, state, isFinished(state));
   const [selected, setSelected] = useState<GridPosition | null>(null);
 
   const winner = getWinner(state);

@@ -58,7 +58,7 @@ function driveOneStep(state: GwentState, difficultyOf: (id: PlayerId) => GwentAi
     const actorId = state.players[state.currentPlayerIndex].id;
     const action = chooseGwentAiAction(state, actorId, difficultyOf(actorId));
     // PASS is always a legal candidate for the current (not-yet-passed) player — shouldn't happen, defensive only.
-    if (!action) return { ...state, phase: 'FINISHED', winnerIds: [] };
+    if (!action) return { ...state, phase: 'FINISHED', winnerIds: [], status: 'FINISHED' };
     return reducer(state, action);
   }
 

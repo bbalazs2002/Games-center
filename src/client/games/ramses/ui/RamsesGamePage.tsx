@@ -6,7 +6,7 @@ import { assetUrl } from '../../../core/assetUrl';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
-import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { useLocalSessionPersistence } from '../../../core/transport/useLocalSessionPersistence';
 import { Button } from '../../../ui-kit/Button';
 import { useReportFeedbackContext } from '../../../ui-kit/useFeedbackContext';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
@@ -16,6 +16,7 @@ import { MaskedRamsesTransport } from './MaskedRamsesTransport';
 import { RamsesActionWheel } from './RamsesActionWheel';
 import ramsesModalTheme from './ramsesModalTheme.module.css';
 import { useRamsesHotSeatAi, type HotSeatAiSlots } from './useRamsesHotSeatAi';
+import { isFinished } from '@shared/core/gameCompletion';
 import type { RamsesAction } from '@shared/games/ramses/engine/actions';
 import { createInitialState } from '@shared/games/ramses/engine/initialState';
 import { reducer } from '@shared/games/ramses/engine/reducer';
@@ -688,19 +689,21 @@ export function RamsesGamePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [playerNames],
   );
-  // Logs the TRUE (unmasked) state, deliberately wrapped before masking below
-  // — see LoggingGameTransport.ts. Only ever feeds into the `providedTransport
-  // ?? ...` fallback, so online play (which supplies its own transport) is
-  // unaffected, same as localTransport itself already was.
-  const loggedLocalTransport = useLocalGameLogger(localTransport, 'ramses');
   // Always wrapped — see docs/ramses-0c-ai-specifikacio.md §3.2: no consumer
   // (rendering OR the hot-seat AI hook below) ever sees the true state,
   // structurally, regardless of hot-seat or online mode.
   const transport = useMemo(
-    () => new MaskedRamsesTransport(providedTransport ?? loggedLocalTransport),
-    [providedTransport, loggedLocalTransport],
+    () => new MaskedRamsesTransport(providedTransport ?? localTransport),
+    [providedTransport, localTransport],
   );
   const [state, dispatch] = useGameTransport(transport);
+  // Persists the TRUE (unmasked) state, deliberately read off localTransport
+  // directly rather than the masked `state` above — see
+  // useLocalSessionPersistence.ts. A no-op in online mode: `isLocalMode` gates
+  // the actual save, so subscribing to localTransport's (unused, throwaway)
+  // state here is harmless.
+  const [trueLocalState] = useGameTransport(localTransport);
+  useLocalSessionPersistence('ramses', isLocalMode, trueLocalState, isFinished(trueLocalState));
   const effectiveHotSeatAiSlots = hotSeatAiSlots ?? {};
   // Real playtest report (2026-08-08): while a pyramid is still mid-slide,
   // neither a human click NOR the hot-seat AI may queue up the next move —

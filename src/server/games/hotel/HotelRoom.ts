@@ -1,4 +1,5 @@
 import type { AuthPayload } from '../../auth/jwt';
+import { isFinished } from '@shared/core/gameCompletion';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 import { HotelStateSchema } from '@shared/games/hotel/colyseus/HotelStateSchema';
 import { applyHotelStateToSchema } from '@shared/games/hotel/colyseus/hotelStateCodec';
@@ -83,6 +84,7 @@ export class HotelRoom extends GameRoom<HotelState, HotelAction, PlayerId, Hotel
   // Placeholder until onCreate resolves the real player count from options —
   // onCreate always reassigns this before the base class ever calls it.
   protected createInitialState = () => createHotelInitialState(placeholderPlayerNames(MIN_PLAYERS));
+  protected isGameFinished = isFinished;
   private aiDifficulty: HotelAiDifficulty = DEFAULT_AI_DIFFICULTY;
 
   async onCreate(options: GameRoomCreateOptions): Promise<void> {

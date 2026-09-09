@@ -42,7 +42,7 @@ function driveOneStep(state: DamaState, difficultyOf: (player: Player) => DamaAi
   // leaves a player IN_PROGRESS if they have a legal move — see
   // withWinCheck/hasAnyLegalMove in reducer.ts/rules.ts) — but a simulation
   // runner must never hang, so treat "nothing to do" as a forced stop.
-  if (!action) return { ...state, status: 'DRAW' };
+  if (!action) return { ...state, status: 'FINISHED', outcome: 'DRAW' };
   return reducer(state, action);
 }
 
@@ -68,7 +68,7 @@ export function simulateDamaGame(config: SimulationConfig, maxSteps = DEFAULT_MA
   }
 
   const winner: Player | null =
-    state.status === 'LIGHT_WON' ? 'LIGHT' : state.status === 'DARK_WON' ? 'DARK' : null;
+    state.outcome === 'LIGHT_WON' ? 'LIGHT' : state.outcome === 'DARK_WON' ? 'DARK' : null;
 
   return {
     config,

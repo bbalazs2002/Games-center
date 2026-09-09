@@ -9,7 +9,7 @@ import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { authRouter } from './auth/authRoutes';
 import { feedbackRouter } from './core/feedbackRoutes';
-import { localGameLogRouter } from './core/localGameLogRoutes';
+import { localSessionRouter } from './core/localSessionRoutes';
 import { DamaRoom } from './games/dama/DamaRoom';
 import { GwentRoom } from './games/gwent/GwentRoom';
 import { HotelRoom } from './games/hotel/HotelRoom';
@@ -34,7 +34,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRouter);
-app.use('/api/game-log', localGameLogRouter);
+app.use('/api/local-sessions', localSessionRouter);
 app.use('/api/feedback', feedbackRouter);
 
 /**
