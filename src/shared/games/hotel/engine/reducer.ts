@@ -337,7 +337,7 @@ function applyChooseFreeStaircaseSpace(state: HotelState, lotId: string, spaceId
   if (!canChooseFreeStaircaseSpace(state, lotId, spaceId)) return state;
   const player = getCurrentPlayer(state);
   const next = updateSpace(state, spaceId, { staircaseForLotId: lotId });
-  const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId: player.id, lotId, payoutReceived: 0 });
+  const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId: player.id, lotId, spaceId, payoutReceived: 0 });
   return afterFreeStaircaseResolved(logged, player.id);
 }
 
@@ -357,7 +357,7 @@ function applyClaimFreeStaircasePayout(state: HotelState): HotelState {
   const owned = ownedLotsOf(state, player.id);
   const payout = owned.length === 0 ? 100 : Math.max(...owned.map((lot) => lot.staircasePrice));
   const next = payFromBank(state, player.id, payout);
-  const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId: player.id, lotId: null, payoutReceived: payout });
+  const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId: player.id, lotId: null, spaceId: null, payoutReceived: payout });
   return afterFreeStaircaseResolved(logged, player.id);
 }
 
@@ -460,7 +460,7 @@ function applyBuyStaircaseRight(state: HotelState, lotId: string, spaceId: strin
   let next = updatePlayer(state, player.id, { cash: player.cash - lot.staircasePrice });
   next = updateSpace(next, spaceId, { staircaseForLotId: lotId });
   next = { ...next, lotsWithStaircasePurchasedThisTurn: [...next.lotsWithStaircasePurchasedThisTurn, lotId] };
-  return appendLog(next, { type: 'STAIRCASE_RIGHT_BOUGHT', playerId: player.id, lotId, price: lot.staircasePrice });
+  return appendLog(next, { type: 'STAIRCASE_RIGHT_BOUGHT', playerId: player.id, lotId, spaceId, price: lot.staircasePrice });
 }
 
 function applyStartAuction(state: HotelState, lotId: string): HotelState {

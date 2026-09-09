@@ -30,6 +30,11 @@ function lotName(state: HotelState, lotId: string): string {
   return getLot(state, lotId).name;
 }
 
+/** 1-based, matching the board's own `space-N` numbering (and HotelGamePage's identical `spaceIndex + 1` convention) — used to tell a player exactly which physical mező a staircase landed on in the log. */
+function spaceNumber(state: HotelState, spaceId: string): number {
+  return state.board.findIndex((space) => space.id === spaceId) + 1;
+}
+
 function describeConstructionPlan(state: HotelState, plan: ConstructionPlanItem[]): string {
   return plan
     .map((item) => {
@@ -62,7 +67,9 @@ function formatNightsStay(entry: Extract<LogEntry, { type: 'NIGHTS_STAY' }>, sta
 
 function formatFreeStaircase(entry: Extract<LogEntry, { type: 'FREE_STAIRCASE_GRANTED' }>, state: HotelState): string {
   const name = playerName(state, entry.playerId);
-  if (entry.lotId) return `${name}: ingyen lépcsőt kapott itt: ${lotName(state, entry.lotId)}`;
+  if (entry.lotId && entry.spaceId) {
+    return `${name}: ingyen lépcsőt kapott itt: ${lotName(state, entry.lotId)}, ${spaceNumber(state, entry.spaceId)}. mezőn`;
+  }
   return `${name}: ingyen lépcső helyett ${entry.payoutReceived} készpénzt kapott a banktól`;
 }
 
@@ -109,7 +116,7 @@ function formatPropertyEvent(entry: LogEntry, state: HotelState): string | undef
     case 'FREE_BUILDING_GRANTED':
       return formatFreeBuilding(entry, state);
     case 'STAIRCASE_RIGHT_BOUGHT':
-      return `${playerName(state, entry.playerId)}: lépcsőjogot vásárolt itt: ${lotName(state, entry.lotId)} (${entry.price})`;
+      return `${playerName(state, entry.playerId)}: lépcsőt vásárolt itt: ${lotName(state, entry.lotId)} (${entry.price}), ${spaceNumber(state, entry.spaceId)}. mezőn`;
     default:
       return undefined;
   }
