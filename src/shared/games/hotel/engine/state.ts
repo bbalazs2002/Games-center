@@ -80,7 +80,7 @@ export type TurnPhase =
   | 'AWAITING_BUILDING_PERMIT'
   | 'AWAITING_DEBT_RESOLUTION'
   | 'AUCTION_IN_PROGRESS'
-  /** Landed on FREE_STAIRCASE, owns at least one lot with room for one — waiting on the player to pick which lot/space (docs/hotel-0a-specifikacio.md §9.2). */
+  /** Landed on FREE_STAIRCASE — ALWAYS waits for an explicit player action now (2026-09-09), even with no owned lots or no room anywhere: either CHOOSE_FREE_STAIRCASE_SPACE (docs/hotel-0a-specifikacio.md §9.2) or, when there's nowhere to place it, CLAIM_FREE_STAIRCASE_PAYOUT for the cash fallback. */
   | 'AWAITING_FREE_STAIRCASE_CHOICE'
   | 'TURN_COMPLETE';
 

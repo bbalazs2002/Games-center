@@ -1,5 +1,6 @@
 import {
   canBuyLot,
+  canClaimFreeStaircasePayout,
   canEndTurn,
   canForfeit,
   canRollMoveDice,
@@ -66,9 +67,11 @@ export interface HotelValidActions {
   canRollNights: boolean;
   canBuyStaircaseRight: boolean;
   staircaseEligibleLots: HotelLot[];
-  /** Landed on FREE_STAIRCASE with somewhere to put it — see docs/hotel-0a-specifikacio.md §9.2. */
+  /** Landed on FREE_STAIRCASE, awaiting the player's explicit choice — see docs/hotel-0a-specifikacio.md §9.2. True regardless of whether there's anywhere to place it; check freeStaircaseCandidates/canClaimFreeStaircasePayout to tell which. */
   canChooseFreeStaircaseSpace: boolean;
   freeStaircaseCandidates: FreeStaircaseCandidate[];
+  /** True once awaiting the free-staircase choice with genuinely nowhere to place it (no owned lots, or no room on any of them) — the only time CLAIM_FREE_STAIRCASE_PAYOUT is legal. */
+  canClaimFreeStaircasePayout: boolean;
   canStartAuction: boolean;
   auctionableLots: HotelLot[];
   canBid: boolean;
@@ -97,6 +100,7 @@ export function getValidActions(state: HotelState): HotelValidActions {
     staircaseEligibleLots: getStaircaseEligibleLots(state, player.id),
     canChooseFreeStaircaseSpace: state.turnPhase === 'AWAITING_FREE_STAIRCASE_CHOICE',
     freeStaircaseCandidates: getFreeStaircaseCandidates(state, player.id),
+    canClaimFreeStaircasePayout: canClaimFreeStaircasePayout(state),
     // Voluntary (RESOLVING_SPACE, any owned lot, anytime on your own turn) OR
     // the forced debt-raising path (AWAITING_DEBT_RESOLUTION) — see rules.ts's
     // own canStartAuction/getAuctionableLots. Gated on auctionableLots being

@@ -327,6 +327,12 @@ export function canChooseFreeStaircaseSpace(state: HotelState, lotId: string, sp
   return getStaircaseSpaceOptions(state, lotId).some((space) => space.id === spaceId);
 }
 
+/** The cash-fallback claim (see actions.ts's CLAIM_FREE_STAIRCASE_PAYOUT) — legal only while awaiting the choice AND there's genuinely nothing to place it on (no owned lots, or every owned lot's adjacent spaces already taken). */
+export function canClaimFreeStaircasePayout(state: HotelState): boolean {
+  if (state.turnPhase !== 'AWAITING_FREE_STAIRCASE_CHOICE') return false;
+  return getFreeStaircaseCandidates(state, getCurrentPlayer(state).id).length === 0;
+}
+
 /**
  * A lot's owner may put it up for auction either voluntarily, any time
  * during the free part of their own turn (2026-08-04 redesign — previously

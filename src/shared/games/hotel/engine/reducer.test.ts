@@ -211,11 +211,15 @@ describe('reducer — BUILD_WITHOUT_PERMIT (garden-only, no die roll)', () => {
   });
 });
 
-describe('reducer — free spaces resolve automatically on landing (no repeatable claim action)', () => {
-  it('FREE_STAIRCASE pays 100 flat if the player owns no lots', () => {
+describe('reducer — free spaces (FREE_BUILDING resolves automatically on landing; FREE_STAIRCASE always waits for an explicit player action — felhasználói döntés, 2026-09-09)', () => {
+  it('FREE_STAIRCASE with no owned lots still waits for the player to explicitly claim the flat 100 (no auto-payout)', () => {
     const state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 }); // one step from space-7 (index 6)
-    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
-    expect(getPlayer(next, 'player-1').position).toBe(6);
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(getPlayer(landed, 'player-1').position).toBe(6);
+    expect(landed.turnPhase).toBe('AWAITING_FREE_STAIRCASE_CHOICE');
+    expect(getPlayer(landed, 'player-1').cash).toBe(15000); // untouched until explicitly claimed
+
+    const next = reducer(landed, { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
     expect(getPlayer(next, 'player-1').cash).toBe(15000 + 100);
     expect(next.turnPhase).toBe('RESOLVING_SPACE');
   });
@@ -229,7 +233,7 @@ describe('reducer — free spaces resolve automatically on landing (no repeatabl
     expect(getPlayer(next, 'player-1').cash).toBe(15000); // untouched until the choice is actually made
   });
 
-  it('FREE_STAIRCASE pays the owned lot\'s staircase price when it has no room left and the landing space is unrelated', () => {
+  it('FREE_STAIRCASE with owned lots but no room left waits for the player to explicitly claim the priciest owned lot\'s staircase price', () => {
     let state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 }); // lands on space-7, adjacent only to fujiyama
     state = updateLot(state, 'boomerang', { ownerId: 'player-1' }); // owned lot unrelated to the landing space
     // Occupy every space adjacent to boomerang so it has no room left.
@@ -238,9 +242,44 @@ describe('reducer — free spaces resolve automatically on landing (no repeatabl
         state = updateSpace(state, space.id, { staircaseForLotId: 'boomerang' });
       }
     }
-    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(landed.turnPhase).toBe('AWAITING_FREE_STAIRCASE_CHOICE');
+    expect(getPlayer(landed, 'player-1').cash).toBe(15000); // untouched until explicitly claimed
+
+    const next = reducer(landed, { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
     expect(next.turnPhase).toBe('RESOLVING_SPACE');
     expect(getPlayer(next, 'player-1').cash).toBe(15000 + getLot(next, 'boomerang').staircasePrice);
+  });
+
+  it('CLAIM_FREE_STAIRCASE_PAYOUT is a no-op while a placement candidate still exists — the player must place it, not claim cash', () => {
+    let state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 });
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(landed.turnPhase).toBe('AWAITING_FREE_STAIRCASE_CHOICE');
+
+    const next = reducer(landed, { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
+    expect(next).toBe(landed);
+  });
+
+  it('CLAIM_FREE_STAIRCASE_PAYOUT is a no-op outside AWAITING_FREE_STAIRCASE_CHOICE', () => {
+    const state = twoPlayerState();
+    const next = reducer(state, { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
+    expect(next).toBe(state);
+  });
+
+  it('CLAIM_FREE_STAIRCASE_PAYOUT still charges rent owed on the landed-on space itself (same shared tail as CHOOSE_FREE_STAIRCASE_SPACE)', () => {
+    let state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 }); // lands on space-7 (FREE_STAIRCASE, adjacent to fujiyama)
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 1 }); // another player's built lot
+    state = updateSpace(state, 'space-7', { staircaseForLotId: 'fujiyama' }); // ...whose staircase already sits on the landing space
+    // player-1 owns no lots at all, so there's genuinely nothing to place the free staircase on.
+
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(landed.turnPhase).toBe('AWAITING_FREE_STAIRCASE_CHOICE');
+
+    const next = reducer(landed, { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
+    expect(getPlayer(next, 'player-1').cash).toBe(15000 + 100); // the flat cash fallback, granted regardless
+    expect(next.turnPhase).toBe('AWAITING_NIGHTS_ROLL'); // ...but rent is still owed on the landed-on space
+    expect(next.pendingNightsRollLotId).toBe('fujiyama');
   });
 
   it('CHOOSE_FREE_STAIRCASE_SPACE places the staircase on the chosen space and resumes the turn', () => {
@@ -253,6 +292,21 @@ describe('reducer — free spaces resolve automatically on landing (no repeatabl
     expect(next.board.find((s) => s.id === 'space-2')?.staircaseForLotId).toBe('fujiyama');
     expect(getPlayer(next, 'player-1').cash).toBe(15000); // free — no charge, no payout
     expect(next.turnPhase).toBe('RESOLVING_SPACE');
+  });
+
+  it('CHOOSE_FREE_STAIRCASE_SPACE still charges rent owed on the landed-on space itself (regression, 2026-09-09: the rent check was skipped entirely whenever a free-staircase choice was required)', () => {
+    let state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 }); // lands on space-7 (FREE_STAIRCASE, adjacent to fujiyama)
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 1 }); // another player's built lot
+    state = updateSpace(state, 'space-7', { staircaseForLotId: 'fujiyama' }); // ...whose staircase already sits on the landing space
+    state = updateLot(state, 'boomerang', { ownerId: 'player-1' }); // player-1's own lot, unrelated, gives them a free-staircase choice
+
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(landed.turnPhase).toBe('AWAITING_FREE_STAIRCASE_CHOICE');
+
+    const next = reducer(landed, { type: 'CHOOSE_FREE_STAIRCASE_SPACE', lotId: 'boomerang', spaceId: 'space-3' });
+    expect(next.board.find((s) => s.id === 'space-3')?.staircaseForLotId).toBe('boomerang'); // the free staircase was placed as chosen
+    expect(next.turnPhase).toBe('AWAITING_NIGHTS_ROLL'); // ...but the turn is NOT free to continue yet — rent is still owed
+    expect(next.pendingNightsRollLotId).toBe('fujiyama');
   });
 
   it('CHOOSE_FREE_STAIRCASE_SPACE refuses a space not adjacent to the given lot', () => {
@@ -270,18 +324,18 @@ describe('reducer — free spaces resolve automatically on landing (no repeatabl
     expect(next).toBe(state);
   });
 
-  it('the reward can not be re-claimed by "clicking again" (re-dispatching) after landing', () => {
+  it('the reward can not be re-claimed by "clicking again" (re-dispatching CLAIM_FREE_STAIRCASE_PAYOUT) after it already resolved the turn', () => {
     const state = updatePlayer(twoPlayerState(), 'player-1', { position: 5 });
-    const afterLanding = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
-    expect(afterLanding.turnPhase).toBe('RESOLVING_SPACE'); // no longer AWAITING_ROLL
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    const claimed = reducer(landed, { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
+    expect(claimed.turnPhase).toBe('RESOLVING_SPACE'); // no longer AWAITING_FREE_STAIRCASE_CHOICE
+    expect(getPlayer(claimed, 'player-1').cash).toBe(15000 + 100);
 
-    // The only thing that used to make this repeatable was a player-facing
-    // button dispatching TAKE_FREE_STAIRCASE again; that action type no
-    // longer exists, and re-sending the move roll is rejected outright since
-    // it requires AWAITING_ROLL.
-    const repeated = reducer(afterLanding, { type: 'ROLL_MOVE_DICE', value: 1 });
-    expect(repeated).toBe(afterLanding);
-    expect(getPlayer(repeated, 'player-1').cash).toBe(15000 + 100);
+    // Re-dispatching is rejected outright — canClaimFreeStaircasePayout
+    // requires AWAITING_FREE_STAIRCASE_CHOICE, which is already left behind.
+    const repeated = reducer(claimed, { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
+    expect(repeated).toBe(claimed);
+    expect(getPlayer(repeated, 'player-1').cash).toBe(15000 + 100); // still just once
   });
 
   it('FREE_BUILDING does nothing if the player owns no lots', () => {
@@ -384,13 +438,23 @@ describe('reducer — FREE_BUILDING/FREE_STAIRCASE must resolve even when the SA
     expect(next.turnPhase).toBe('RESOLVING_SPACE');
   });
 
-  it('grants the free staircase\'s own payout AND still asks for the nights roll, when the FREE_STAIRCASE space itself carries an opponent\'s built staircase', () => {
+  it('parks the turn on the free-staircase choice first (never skipping it), THEN — once resolved — still asks for the nights roll, when the FREE_STAIRCASE space itself carries an opponent\'s built staircase', () => {
+    // FREE_STAIRCASE no longer resolves within the same ROLL_MOVE_DICE
+    // dispatch at all (felhasználói döntés, 2026-09-09) — this test now
+    // covers the two-step version of the same real playtest bug: the choice
+    // and the rent it may owe are independent, and must both actually fire,
+    // regardless of HOW the choice resolves. See also the dedicated
+    // CLAIM_FREE_STAIRCASE_PAYOUT/CHOOSE_FREE_STAIRCASE_SPACE regression
+    // tests above, which cover this same tail from each of the two sides.
     let state = twoPlayerState();
     state = updateLot(state, 'fujiyama', { ownerId: 'player-2', buildingsBuilt: 2 });
     state = updateSpace(state, 'space-7', { staircaseForLotId: 'fujiyama' }); // space-7 (index 6, FREE_STAIRCASE) also carrying fujiyama's staircase
-    state = updatePlayer(state, 'player-1', { position: 5 }); // +1 roll lands on space-7 — owns no lots, so the flat 100 payout applies
+    state = updatePlayer(state, 'player-1', { position: 5 }); // +1 roll lands on space-7 — owns no lots, so the flat 100 fallback applies
 
-    const next = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    const landed = reducer(state, { type: 'ROLL_MOVE_DICE', value: 1 });
+    expect(landed.turnPhase).toBe('AWAITING_FREE_STAIRCASE_CHOICE'); // not skipped straight into AWAITING_NIGHTS_ROLL
+
+    const next = reducer(landed, { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
     expect(getPlayer(next, 'player-1').cash).toBe(15000 + 100); // FREE_STAIRCASE's own payout, granted regardless
     // The normal rent flow still applies on top — the FREE_STAIRCASE grant doesn't replace it.
     expect(next.turnPhase).toBe('AWAITING_NIGHTS_ROLL');

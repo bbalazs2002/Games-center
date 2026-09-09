@@ -6,6 +6,7 @@ import {
   canBuyLot,
   canBuyStaircaseRight,
   canChooseFreeStaircaseSpace,
+  canClaimFreeStaircasePayout,
   canEndTurn,
   canForfeit,
   canPassBid,
@@ -23,7 +24,6 @@ import {
   eligibleBidderIds,
   getConstructionEligibleLots,
   getCurrentPlayer,
-  getFreeStaircaseCandidates,
   getLot,
   getNextConstructionStep,
   getPlayer,
@@ -200,20 +200,26 @@ function applyRollMoveDice(state: HotelState, value: number): HotelState {
   // nothing to do with the space's OWN action — so the specified resolution
   // order is: dobás -> +2000 mező -> Ingyen épület/lépcső -> éjszakázás ->
   // kötelező árverezés -> Vásárlás/építkezés/lépcső vásárlás/árverezés/kör
-  // vége. Neither resolveFreeBuilding nor resolveFreeStaircaseLanding
-  // touches `space` itself (staircase PLACEMENT only ever happens via a
-  // separately dispatched CHOOSE_FREE_STAIRCASE_SPACE, once the player
-  // picks a lot), so `space.staircaseForLotId` below still correctly
-  // reflects whatever this exact space already carries.
+  // vége. resolveFreeBuilding doesn't touch `space` itself (staircase
+  // PLACEMENT only ever happens via CHOOSE_FREE_STAIRCASE_SPACE/
+  // BUY_STAIRCASE_RIGHT, once the player picks a lot), so
+  // `space.staircaseForLotId` below still correctly reflects whatever this
+  // exact space already carries.
   if (space.type === 'FREE_BUILDING') {
     next = resolveFreeBuilding(next, player.id);
   }
+  // FREE_STAIRCASE never auto-resolves (felhasználói döntés, 2026-09-09) —
+  // ALWAYS parks the turn here, even with no owned lots or no room anywhere,
+  // instead of branching between an inline auto-payout and this pause the
+  // way it used to. That old branch was exactly the bug: whichever path
+  // returned early here skipped the rent check below entirely, and the ONE
+  // path that later resolved the pause (applyChooseFreeStaircaseSpace) had
+  // its own, easily-forgotten copy of that same check. Now both ways the
+  // pause can resolve (CHOOSE_FREE_STAIRCASE_SPACE or the cash-fallback
+  // CLAIM_FREE_STAIRCASE_PAYOUT) funnel through the ONE shared tail,
+  // afterFreeStaircaseResolved, so the rent check can't be skipped by either.
   if (space.type === 'FREE_STAIRCASE') {
-    next = resolveFreeStaircaseLanding(next, player.id);
-    // The player must pick a lot/space first (AWAITING_FREE_STAIRCASE_CHOICE)
-    // — nothing past this point (the rent check included) may run until
-    // CHOOSE_FREE_STAIRCASE_SPACE resolves that separately.
-    if (next.turnPhase === 'AWAITING_FREE_STAIRCASE_CHOICE') return next;
+    return { ...next, turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
   }
   const owedStaircaseLotId = staircaseLotWithPossibleRent(next, player.id, space);
   if (owedStaircaseLotId) {
@@ -308,27 +314,23 @@ function applyRollBuildingPermit(state: HotelState, value: BuildingPermitResult)
 }
 
 /**
- * Only auto-resolves the cash fallback, when there's genuinely nothing to
- * choose from (no lots, or no room anywhere); otherwise parks the turn in
- * AWAITING_FREE_STAIRCASE_CHOICE for the player to pick which lot/space —
- * see docs/hotel-0a-specifikacio.md §9.2 and applyChooseFreeStaircaseSpace.
+ * The single place that decides what turn phase follows once the
+ * FREE_STAIRCASE pause is done, however it resolved (a chosen placement, or
+ * the cash fallback) — checks the ORIGINAL landed-on space for rent owed to
+ * some OTHER lot's staircase, exactly like applyRollMoveDice's own
+ * owedStaircaseLotId check does for every other space type. Called from both
+ * applyChooseFreeStaircaseSpace and applyClaimFreeStaircasePayout so this
+ * check can never again be implemented twice and drift — the original
+ * 2026-09-09 bug was exactly that: only one of the two ways to resolve the
+ * pause remembered to run it.
  */
-function resolveFreeStaircaseLanding(state: HotelState, playerId: PlayerId): HotelState {
-  const owned = ownedLotsOf(state, playerId);
-  if (owned.length === 0) {
-    const next = payFromBank(state, playerId, 100);
-    const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId, lotId: null, payoutReceived: 100 });
-    return { ...logged, turnPhase: 'RESOLVING_SPACE' };
+function afterFreeStaircaseResolved(state: HotelState, playerId: PlayerId): HotelState {
+  const landedSpace = state.board[getPlayer(state, playerId).position];
+  const owedStaircaseLotId = staircaseLotWithPossibleRent(state, playerId, landedSpace);
+  if (owedStaircaseLotId) {
+    return { ...state, turnPhase: 'AWAITING_NIGHTS_ROLL', pendingNightsRollLotId: owedStaircaseLotId };
   }
-
-  if (getFreeStaircaseCandidates(state, playerId).length === 0) {
-    const maxPrice = Math.max(...owned.map((lot) => lot.staircasePrice));
-    const next = payFromBank(state, playerId, maxPrice);
-    const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId, lotId: null, payoutReceived: maxPrice });
-    return { ...logged, turnPhase: 'RESOLVING_SPACE' };
-  }
-
-  return { ...state, turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+  return { ...state, turnPhase: 'RESOLVING_SPACE' };
 }
 
 function applyChooseFreeStaircaseSpace(state: HotelState, lotId: string, spaceId: string): HotelState {
@@ -336,7 +338,27 @@ function applyChooseFreeStaircaseSpace(state: HotelState, lotId: string, spaceId
   const player = getCurrentPlayer(state);
   const next = updateSpace(state, spaceId, { staircaseForLotId: lotId });
   const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId: player.id, lotId, payoutReceived: 0 });
-  return { ...logged, turnPhase: 'RESOLVING_SPACE' };
+  return afterFreeStaircaseResolved(logged, player.id);
+}
+
+/**
+ * The cash fallback for FREE_STAIRCASE — now always an explicit action
+ * (felhasználói döntés, 2026-09-09) rather than auto-applied at landing, so
+ * it needs its own dispatchable action instead of being folded silently into
+ * ROLL_MOVE_DICE. Legal only per canClaimFreeStaircasePayout: awaiting the
+ * choice, AND genuinely nowhere to place it (no owned lots, or every owned
+ * lot's adjacent spaces already taken). Pays the same amounts the old
+ * auto-resolve did — flat 100 with no lots at all, else the priciest owned
+ * lot's staircase price — just now on the player's own request.
+ */
+function applyClaimFreeStaircasePayout(state: HotelState): HotelState {
+  if (!canClaimFreeStaircasePayout(state)) return state;
+  const player = getCurrentPlayer(state);
+  const owned = ownedLotsOf(state, player.id);
+  const payout = owned.length === 0 ? 100 : Math.max(...owned.map((lot) => lot.staircasePrice));
+  const next = payFromBank(state, player.id, payout);
+  const logged = appendLog(next, { type: 'FREE_STAIRCASE_GRANTED', playerId: player.id, lotId: null, payoutReceived: payout });
+  return afterFreeStaircaseResolved(logged, player.id);
 }
 
 interface FreeBuildOption {
@@ -574,6 +596,8 @@ function dispatchStaircaseAuctionAndTurn(state: HotelState, action: HotelAction)
       return applyBuyStaircaseRight(state, action.lotId, action.spaceId);
     case 'CHOOSE_FREE_STAIRCASE_SPACE':
       return applyChooseFreeStaircaseSpace(state, action.lotId, action.spaceId);
+    case 'CLAIM_FREE_STAIRCASE_PAYOUT':
+      return applyClaimFreeStaircasePayout(state);
     case 'START_AUCTION':
       return applyStartAuction(state, action.lotId);
     case 'PLACE_BID':

@@ -67,6 +67,17 @@ describe('getValidActions', () => {
     expect(valid.auctionableLots).toEqual([]);
   });
 
+  it('exposes canClaimFreeStaircasePayout only once awaiting the free-staircase choice with nowhere to place it', () => {
+    const state = createInitialState(['Alice', 'Bob']); // AWAITING_ROLL, no owned lots
+    expect(getValidActions(state).canClaimFreeStaircasePayout).toBe(false);
+
+    const noLots: typeof state = { ...state, turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+    expect(getValidActions(noLots).canClaimFreeStaircasePayout).toBe(true); // no owned lots — nothing to place it on
+
+    const withCandidate = updateLot(noLots, 'fujiyama', { ownerId: 'player-1' });
+    expect(getValidActions(withCandidate).canClaimFreeStaircasePayout).toBe(false); // has somewhere to place it instead
+  });
+
   it('exposes the remaining bidders, whose turn it is, and the minimum legal bid amount during an auction', () => {
     let state = createInitialState(['Alice', 'Bob', 'Carol']);
     state = {

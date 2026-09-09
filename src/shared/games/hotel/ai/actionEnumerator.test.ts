@@ -36,3 +36,22 @@ describe('enumerateCandidateActions — AI auction restraint', () => {
     expect(actions.some((a) => a.type === 'START_AUCTION')).toBe(false);
   });
 });
+
+describe('enumerateCandidateActions — FREE_STAIRCASE never auto-resolves (2026-09-09), so the AI must always see a legal move while awaiting the choice', () => {
+  it('offers CLAIM_FREE_STAIRCASE_PAYOUT when there is nowhere to place the free staircase — without it the AI would see zero legal actions and stall', () => {
+    const state: HotelState = { ...createInitialState(['Alice', 'Bob']), turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' }; // no owned lots
+
+    const actions = enumerateCandidateActions(state, 'player-1');
+    expect(actions).toContainEqual({ type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
+    expect(actions.some((a) => a.type === 'CHOOSE_FREE_STAIRCASE_SPACE')).toBe(false);
+  });
+
+  it('offers CHOOSE_FREE_STAIRCASE_SPACE, NOT the cash fallback, once a placement candidate exists', () => {
+    let state: HotelState = { ...createInitialState(['Alice', 'Bob']), turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
+
+    const actions = enumerateCandidateActions(state, 'player-1');
+    expect(actions.some((a) => a.type === 'CHOOSE_FREE_STAIRCASE_SPACE')).toBe(true);
+    expect(actions.some((a) => a.type === 'CLAIM_FREE_STAIRCASE_PAYOUT')).toBe(false);
+  });
+});

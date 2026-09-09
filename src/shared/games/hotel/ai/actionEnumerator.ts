@@ -97,6 +97,11 @@ function turnFlowActions(state: HotelState, valid: HotelValidActions): HotelActi
     for (const candidate of valid.freeStaircaseCandidates) {
       actions.push({ type: 'CHOOSE_FREE_STAIRCASE_SPACE', lotId: candidate.lotId, spaceId: candidate.spaceId });
     }
+    // FREE_STAIRCASE never auto-resolves anymore (2026-09-09) — when there's
+    // genuinely nowhere to place it (freeStaircaseCandidates is empty), the
+    // cash fallback is now itself an explicit action the AI must enumerate,
+    // or it would see zero legal moves in this phase and stall.
+    if (valid.canClaimFreeStaircasePayout) actions.push({ type: 'CLAIM_FREE_STAIRCASE_PAYOUT' });
   }
 
   // Real playtest report: the AI opportunistically auctioned off lots just
