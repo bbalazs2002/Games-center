@@ -58,7 +58,12 @@ localSessionRouter.put('/:sessionId', async (req: Request, res: Response) => {
 
   const finished = isFinished(state);
   const userId = tryGetUserId(req.headers.authorization);
-  const stateJson = state as Prisma.InputJsonValue;
+  // hasGameStatus narrowed `state` to the minimal HasGameStatus shape (just
+  // `.status`), which has no index signature — TS won't cast that directly
+  // to InputJsonValue even though the actual runtime object (already
+  // validated as a non-null object above) is fine. Through `unknown` first,
+  // per the compiler's own suggestion.
+  const stateJson = state as unknown as Prisma.InputJsonValue;
 
   try {
     await prisma.gameSession.upsert({
