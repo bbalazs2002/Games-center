@@ -146,13 +146,15 @@ export type LogEntry =
   | { type: 'NIGHTS_STAY'; playerId: PlayerId; lotId: string; nights: number; rentAmount: number; toPlayerId: PlayerId | null }
   /**
    * FREE_STAIRCASE/FREE_BUILDING are bonus spaces — either the player gets
-   * the physical staircase/building placed for free (lotId set, payout 0),
-   * or when that's not possible (no eligible lot/room) the BANK pays them
-   * cash instead (lotId null, payout > 0). Never a fee paid BY the player.
+   * the physical staircase/building placed for free (lotId set, payout 0;
+   * FREE_STAIRCASE also carries the spaceId it was placed on, for the log's
+   * "X. mezőn" display), or when that's not possible (no eligible lot/room)
+   * the BANK pays them cash instead (lotId/spaceId null, payout > 0). Never a
+   * fee paid BY the player.
    */
-  | { type: 'FREE_STAIRCASE_GRANTED'; playerId: PlayerId; lotId: string | null; payoutReceived: number }
+  | { type: 'FREE_STAIRCASE_GRANTED'; playerId: PlayerId; lotId: string | null; spaceId: string | null; payoutReceived: number }
   | { type: 'FREE_BUILDING_GRANTED'; playerId: PlayerId; lotId: string | null; payoutReceived: number }
-  | { type: 'STAIRCASE_RIGHT_BOUGHT'; playerId: PlayerId; lotId: string; price: number }
+  | { type: 'STAIRCASE_RIGHT_BOUGHT'; playerId: PlayerId; lotId: string; spaceId: string; price: number }
   | { type: 'AUCTION_STARTED'; playerId: PlayerId; lotId: string; openingBid: number }
   | { type: 'BID_PLACED'; playerId: PlayerId; lotId: string; amount: number }
   | { type: 'BID_PASSED'; playerId: PlayerId; lotId: string }
