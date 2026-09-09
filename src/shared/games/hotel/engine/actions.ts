@@ -20,12 +20,18 @@ export type HotelAction =
   // building isn't placed on a specific board space the way a staircase is).
   | { type: 'ROLL_NIGHTS'; value: number }
   | { type: 'BUY_STAIRCASE_RIGHT'; lotId: string; spaceId: string }
-  // Landing on FREE_STAIRCASE with somewhere to put it parks the turn in
-  // AWAITING_FREE_STAIRCASE_CHOICE instead of auto-picking — the player
-  // chooses which of their own lots, and which of ITS available spaces (see
-  // docs/hotel-0a-specifikacio.md §9.2). Only auto-resolves (no action needed)
-  // when there's genuinely nothing to choose from (no lots, or no room anywhere).
+  // Landing on FREE_STAIRCASE always parks the turn in
+  // AWAITING_FREE_STAIRCASE_CHOICE — felhasználói döntés (2026-09-09): never
+  // auto-resolved, even when there's only one, or genuinely zero, valid
+  // destination. With somewhere to put it, the player chooses which of their
+  // own lots, and which of ITS available spaces (see
+  // docs/hotel-0a-specifikacio.md §9.2). With nowhere to put it (no owned
+  // lots, or no room on any of them), they instead explicitly claim the cash
+  // fallback via CLAIM_FREE_STAIRCASE_PAYOUT below — both funnel into the
+  // same rent-check tail (reducer.ts's afterFreeStaircaseResolved), so
+  // neither path can silently skip it (the original bug this replaced).
   | { type: 'CHOOSE_FREE_STAIRCASE_SPACE'; lotId: string; spaceId: string }
+  | { type: 'CLAIM_FREE_STAIRCASE_PAYOUT' }
   | { type: 'START_AUCTION'; lotId: string }
   // During an auction it's NOT the current player acting — any other player
   // can bid, so unlike every other action here (which implicitly targets

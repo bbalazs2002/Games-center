@@ -6,6 +6,7 @@ import {
   canBuyLot,
   canBuyStaircaseRight,
   canChooseFreeStaircaseSpace,
+  canClaimFreeStaircasePayout,
   canForceBuyFromOwner,
   canPassBid,
   canPlaceBid,
@@ -344,6 +345,35 @@ describe('getFreeStaircaseCandidates / canChooseFreeStaircaseSpace', () => {
   it("canChooseFreeStaircaseSpace rejects a lot the player doesn't own", () => {
     const state: HotelState = { ...createInitialState(['Alice', 'Bob']), turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
     expect(canChooseFreeStaircaseSpace(state, 'fujiyama', 'space-2')).toBe(false);
+  });
+});
+
+describe('canClaimFreeStaircasePayout', () => {
+  it('requires the AWAITING_FREE_STAIRCASE_CHOICE phase', () => {
+    const state = createInitialState(['Alice', 'Bob']); // AWAITING_ROLL, no owned lots
+    expect(canClaimFreeStaircasePayout(state)).toBe(false);
+  });
+
+  it('is true once awaiting the choice with no owned lots at all', () => {
+    const state: HotelState = { ...createInitialState(['Alice', 'Bob']), turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+    expect(canClaimFreeStaircasePayout(state)).toBe(true);
+  });
+
+  it('is false while at least one placement candidate exists — the player must place it, not claim cash', () => {
+    let state = createInitialState(['Alice', 'Bob']);
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
+    state = { ...state, turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+    expect(canClaimFreeStaircasePayout(state)).toBe(false);
+  });
+
+  it('is true once every owned lot has no room left', () => {
+    let state = createInitialState(['Alice', 'Bob']);
+    state = updateLot(state, 'fujiyama', { ownerId: 'player-1' });
+    for (const space of state.board.filter((s) => s.adjacentLotIds.includes('fujiyama'))) {
+      state = updateSpace(state, space.id, { staircaseForLotId: 'fujiyama' });
+    }
+    state = { ...state, turnPhase: 'AWAITING_FREE_STAIRCASE_CHOICE' };
+    expect(canClaimFreeStaircasePayout(state)).toBe(true);
   });
 });
 

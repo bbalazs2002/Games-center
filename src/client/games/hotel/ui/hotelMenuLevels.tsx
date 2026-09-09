@@ -104,10 +104,17 @@ export function rootSlices(
     },
     {
       id: 'free-staircase-choice',
-      label: 'Lépcső elhelyezése',
+      // FREE_STAIRCASE never auto-resolves (2026-09-09) — this slice now
+      // always requires a tap, even when there's genuinely nowhere to place
+      // it (no owned lots, or no room on any of them), where it claims the
+      // cash fallback directly instead of arming the (empty) board picker.
+      label: valid.freeStaircaseCandidates.length > 0 ? 'Lépcső elhelyezése' : 'Jutalom átvétele',
       icon: <Milestone />,
       disabled: !valid.canChooseFreeStaircaseSpace,
-      onSelect: () => onStartStaircasePlacement({ kind: 'free' }),
+      onSelect: () =>
+        valid.freeStaircaseCandidates.length > 0
+          ? onStartStaircasePlacement({ kind: 'free' })
+          : dispatch({ type: 'CLAIM_FREE_STAIRCASE_PAYOUT' }),
     },
     {
       id: 'auction',
