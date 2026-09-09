@@ -4,7 +4,8 @@ import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
-import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { useLocalSessionPersistence } from '../../../core/transport/useLocalSessionPersistence';
+import { isFinished } from '@shared/core/gameCompletion';
 import { createPlaceholderGwentState } from '@shared/games/gwent/engine/initialState';
 import { reducer } from '@shared/games/gwent/engine/reducer';
 import type { GwentAction } from '@shared/games/gwent/engine/actions';
@@ -115,11 +116,11 @@ export function GwentGamePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  const loggedLocalTransport = useLocalGameLogger(localTransport, 'gwent');
-  const transport = providedTransport ?? loggedLocalTransport;
+  const transport = providedTransport ?? localTransport;
   const [state, dispatch] = useGameTransport(transport);
   const effectiveHotSeatAiSlots = hotSeatAiSlots ?? {};
   useGwentHotSeatAi(isLocalMode ? transport : null, effectiveHotSeatAiSlots);
+  useLocalSessionPersistence('gwent', isLocalMode, state, isFinished(state));
 
   // Gwent-0c.3 §7: warm the image cache for the whole match right away —
   // only safe/meaningful in local hot-seat mode, where `initialState` is

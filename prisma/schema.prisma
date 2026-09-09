@@ -33,7 +33,9 @@ model User {
 model GameSession {
   id        String              @id @default(uuid())
   gameType  String
-  status    String              @default("WAITING")
+  status    String              @default("WAITING") // see src/server/core/gameSessionStatus.ts's GAME_SESSION_STATUS
+  mode      String              @default("ONLINE") // "ONLINE" | "LOCAL" — see GAME_SESSION_MODE; LOCAL rows are hot-seat upserts (localSessionRoutes.ts), not real Colyseus rooms
+  userId    String? // LOCAL only: the hot-seat session's owner if logged in; NULL for anonymous hot-seat, or for every ONLINE row (player identity there already lives in GameSessionPlayer). No FK relation — deliberately mirrors FeedbackReport.userId's precedent, since anonymous hot-seat play has no guaranteed user row to reference.
   stateJson Json?
   createdAt DateTime            @default(now())
   endedAt   DateTime?

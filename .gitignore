@@ -21,6 +21,9 @@ assets/**
 # opt-in full game-event logs (docs/hotel-0d-ai-specifikacio.md §4.8) — local analysis artifacts, not versioned
 logs/**
 
+# temporal style samples
+mockups/**
+
 # OS
 .DS_Store
 Thumbs.db

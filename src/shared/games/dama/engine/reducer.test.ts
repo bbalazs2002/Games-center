@@ -172,6 +172,7 @@ describe('reducer — win detection', () => {
       ]),
     });
     const next = reducer(state, { type: 'MOVE', from: pos(5, 0), to: pos(3, 2) });
-    expect(next.status).toBe('LIGHT_WON');
+    expect(next.status).toBe('FINISHED');
+    expect(next.outcome).toBe('LIGHT_WON');
   });
 });

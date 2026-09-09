@@ -1,7 +1,6 @@
 import { Room, type Client } from 'colyseus';
 import type { Prisma } from '@prisma/client';
 import { ArraySchema, type Schema } from '@colyseus/schema';
-import { createWriteStream, mkdirSync, type WriteStream } from 'node:fs';
 import type { GameRoomState } from '@shared/core/GameRoomState';
 import { OpaqueGameStateSchema } from '@shared/core/OpaqueGameStateSchema';
 import { PendingJoinRequest } from '@shared/core/PendingJoinRequestSchema';
@@ -10,7 +9,7 @@ import type { Reducer } from '@shared/core/types';
 import { verifyToken, type AuthPayload } from '../auth/jwt';
 import { prisma } from '../db/prismaClient';
 import { ensureAiUser } from './aiUsers';
-import { GAME_LOG_DIR, gameLogFilePath } from './gameLogFile';
+import { GAME_SESSION_STATUS } from './gameSessionStatus';
 
 const FLUSH_INTERVAL_MS = 5000;
 // Defensive upper bound for a chain-capture-triggered run of consecutive AI
@@ -21,13 +20,6 @@ const MAX_AI_MOVES_PER_TRIGGER = 40;
 // this is a casual family app, not a competitive one. Widened 120s -> 300s
 // (2026-07-24, Hotel-0b planning) — same reasoning, just more generous.
 const RECONNECTION_WINDOW_SECONDS = 300;
-// Off by default for ONLINE rooms — meant for offline analysis of AI-only
-// test games (see docs/hotel-0d-ai-specifikacio.md §4.8/7), not regular
-// online play, so it isn't wired into any lobby UI, only reachable by
-// passing enableGameLog at room-creation time. Local/hot-seat games log
-// unconditionally instead, via the separate localGameLogRoutes.ts HTTP path
-// (2026-07-29) — GAME_LOG_DIR/gameLogFilePath are shared with that module so
-// both write into the exact same logs/games/ convention.
 
 export interface GameRoomCreateOptions {
   token?: string;
@@ -46,8 +38,6 @@ export interface GameRoomCreateOptions {
   password?: string;
   /** Hotel-only (2-4, chosen at creation) — meaningless/ignored for a fixed-player-count game like Dáma. */
   playerCount?: number;
-  /** Simple on/off switch for full JSONL event logging (every applied action + resulting state) — see docs/hotel-0d-ai-specifikacio.md §4.8. */
-  enableGameLog?: boolean;
   /** Ramses-only — whether the 2-3-as pakli speciális kártyáit (Homokvihar/Ajándék/Kockázat/Fata Morgana/Sivatagi póker/Záró) tartalmazza a húzópakli. Defaults to true — see docs/ramses-0a-specifikacio.md §8.3. Ignored by games without this concept. */
   includeSpecialCards?: boolean;
 }
@@ -117,6 +107,19 @@ export abstract class GameRoom<
    * checking it's actually their turn.
    */
   protected abstract computeAiMove(state: TState, slot: TPlayerSlot): TAction | null;
+
+  /**
+   * Is `state` a finished game? Every game's own state carries a
+   * `status: 'IN_PROGRESS'|'FINISHED'` field for exactly this — each
+   * subclass implements this in one line by delegating to its own
+   * `gameCompletion.ts` adapter (see src/shared/core/gameCompletion.ts),
+   * matching the field-assignment style already used for `reducer`/
+   * `createInitialState` below. Drives `GameSession.status`/`endedAt` (see
+   * applyAction/onDispose) — the moment this flips true, the DB row is
+   * marked FINISHED immediately, not just whenever the next periodic flush
+   * happens to land.
+   */
+  protected abstract isGameFinished(state: TState): boolean;
 
   /** Writes the current `gameState` into `this.state` (the live Colyseus Schema) — game-specific because the mapping depends entirely on TColyseusState's shape. */
   protected abstract syncState(): void;
@@ -204,6 +207,8 @@ export abstract class GameRoom<
   protected gameState!: TState;
   private dbSessionId!: string;
   private dirty = false;
+  /** Guards markSessionFinished() against re-firing on every subsequent applyAction (e.g. mid AI-chain) once a game has already been marked FINISHED. */
+  private terminalStatusWritten = false;
   private flushInterval?: ReturnType<typeof setInterval>;
   // protected, not private — a subclass with its own per-slot custom message
   // handler (Gwent's 'submitDeck'/'requestPrivateSync', see afterSync() doc
@@ -214,8 +219,6 @@ export abstract class GameRoom<
   private aiOpponentCountRequested = 0;
   private roomPassword: string | null = null;
   private creatorSessionId: string | null = null;
-  private gameLogStream: WriteStream | null = null;
-  private gameLogSeq = 0;
   private pendingAiMoveTimer: ReturnType<typeof setTimeout> | null = null;
 
   async onAuth(_client: Client, options: GameRoomJoinOptions): Promise<AuthPayload> {
@@ -245,14 +248,9 @@ export abstract class GameRoom<
     }
 
     const session = await prisma.gameSession.create({
-      data: { gameType: this.gameType, status: 'WAITING' },
+      data: { gameType: this.gameType, status: GAME_SESSION_STATUS.WAITING },
     });
     this.dbSessionId = session.id;
-
-    if (options.enableGameLog) {
-      mkdirSync(GAME_LOG_DIR, { recursive: true });
-      this.gameLogStream = createWriteStream(gameLogFilePath(this.gameType, this.dbSessionId), { flags: 'a' });
-    }
 
     this.onMessage('action', (client: Client, action: unknown) => {
       const slot = this.clientSlots.get(client.sessionId);
@@ -322,7 +320,17 @@ export abstract class GameRoom<
     if (this.flushInterval) clearInterval(this.flushInterval);
     if (this.pendingAiMoveTimer) clearTimeout(this.pendingAiMoveTimer);
     await this.flushToDatabase();
-    this.gameLogStream?.end();
+    // The room emptied out (or was destroyed) without the game itself ever
+    // reaching a win condition — mark it distinctly from a still-in-progress
+    // game, which otherwise looks identical in the DB (status stuck at
+    // WAITING/IN_PROGRESS forever). Skipped if markSessionFinished() already
+    // ran — that already wrote the correct terminal status.
+    if (!this.terminalStatusWritten) {
+      await prisma.gameSession.update({
+        where: { id: this.dbSessionId },
+        data: { status: GAME_SESSION_STATUS.ABANDONED, endedAt: new Date() },
+      });
+    }
   }
 
   /** Slot assignment + AI registration + capacity check — the single path shared by direct joins and accepted join requests. */
@@ -351,7 +359,10 @@ export abstract class GameRoom<
       await this.setPrivate(true); // capacity is the ONLY reason a room ever disappears from the lobby list
       this.rejectRemainingPendingRequests('A szoba megtelt.');
       this.state.ready = true;
-      await prisma.gameSession.update({ where: { id: this.dbSessionId }, data: { status: 'IN_PROGRESS' } });
+      await prisma.gameSession.update({
+        where: { id: this.dbSessionId },
+        data: { status: GAME_SESSION_STATUS.IN_PROGRESS },
+      });
     }
   }
 
@@ -394,26 +405,28 @@ export abstract class GameRoom<
     });
   }
 
-  private applyAction(action: TAction, actorSlot: TPlayerSlot | null = null): void {
+  private applyAction(action: TAction, _actorSlot: TPlayerSlot | null = null): void {
     this.gameState = this.reducer(this.gameState, action);
     this.syncState();
     this.afterSync();
     this.dirty = true;
-    this.logAction(actorSlot, action);
+    if (!this.terminalStatusWritten && this.isGameFinished(this.gameState)) {
+      this.terminalStatusWritten = true;
+      this.dirty = false;
+      void this.markSessionFinished();
+    }
   }
 
-  /** No-op unless `enableGameLog` was passed at creation (see onCreate) — see docs/hotel-0d-ai-specifikacio.md §4.8. */
-  private logAction(actorSlot: TPlayerSlot | null, action: TAction): void {
-    if (!this.gameLogStream) return;
-    const entry = {
-      seq: this.gameLogSeq++,
-      timestamp: new Date().toISOString(),
-      actorSlot,
-      isAi: actorSlot !== null && this.aiSlots.has(actorSlot),
-      action,
-      state: this.gameState,
-    };
-    this.gameLogStream.write(`${JSON.stringify(entry)}\n`);
+  /** Writes the DB row's terminal status the moment the game actually ends — not waiting for the next periodic flushToDatabase() tick, and not waiting for the room to empty out (onDispose, which is tied to Colyseus room lifecycle, not game completion). */
+  private async markSessionFinished(): Promise<void> {
+    await prisma.gameSession.update({
+      where: { id: this.dbSessionId },
+      data: {
+        status: GAME_SESSION_STATUS.FINISHED,
+        endedAt: new Date(),
+        stateJson: this.gameState as Prisma.InputJsonValue,
+      },
+    });
   }
 
   /**

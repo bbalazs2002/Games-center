@@ -1,4 +1,5 @@
 import type { AuthPayload } from '../../auth/jwt';
+import { isFinished } from '@shared/core/gameCompletion';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 import {
   chooseRamsesAiAction,
@@ -66,6 +67,7 @@ export class RamsesRoom extends GameRoom<RamsesState, RamsesAction, PlayerId, Ra
   // Placeholder until onCreate resolves the real player count from options —
   // onCreate always reassigns this before the base class ever calls it.
   protected createInitialState = () => createInitialState(placeholderPlayerNames(MIN_PLAYERS));
+  protected isGameFinished = isFinished;
   // Single, game-global memory — not per-slot, since every participant
   // watches the same shared board (see docs/ramses-0c-ai-specifikacio.md §3.1).
   private readonly aiMemory: RevealMemory = createRevealMemory();

@@ -117,6 +117,14 @@ export interface GwentState {
   activeWeatherRows: Row[];
   phase: GwentPhase;
   winnerIds: PlayerId[];
+  /**
+   * Lifecycle flag mirroring the same field on every other game's state —
+   * deliberately redundant with `phase === 'FINISHED'`/`winnerIds` (which
+   * already carry this plus the specific outcome), so that "is this game
+   * over" can be checked uniformly across all five games without needing to
+   * know each one's own state shape (see src/shared/core/gameCompletion.ts).
+   */
+  status: 'IN_PROGRESS' | 'FINISHED';
   /** Append-only event history — see GwentLogEntry. */
   log: GwentLogEntry[];
 }

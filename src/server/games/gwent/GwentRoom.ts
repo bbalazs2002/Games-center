@@ -1,5 +1,6 @@
 import type { Client } from 'colyseus';
 import type { AuthPayload } from '../../auth/jwt';
+import { isFinished } from '@shared/core/gameCompletion';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 import { OpaqueGameStateSchema } from '@shared/core/OpaqueGameStateSchema';
 import { buildTacticalAiDeckConfig, chooseGwentAiAction, GWENT_AI_MOVE_DELAY_MS, isGwentAiDifficulty, type GwentAiDifficulty } from '@shared/games/gwent/ai';
@@ -92,6 +93,7 @@ export class GwentRoom extends GameRoom<GwentState, GwentAction, PlayerId> {
   // both players actually submit their real GwentPlayerConfig via
   // 'submitDeck' (see registerDeckConfig) — docs/gwent-0b-multiplayer-specifikacio.md §4.5.
   protected createInitialState = createPlaceholderGwentState;
+  protected isGameFinished = isFinished;
   private readonly deckConfigsBySlot = new Map<PlayerId, GwentPlayerConfig>();
   private aiDifficulty: GwentAiDifficulty = DEFAULT_AI_DIFFICULTY;
 

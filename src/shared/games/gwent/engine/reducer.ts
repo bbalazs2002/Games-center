@@ -407,7 +407,10 @@ function applyContinueAfterRound(state: GwentState): GwentState {
   const twoRoundsWon = state.players.find((p) => p.roundsWon >= 2);
   if (eliminated || twoRoundsWon) {
     const winner = twoRoundsWon ?? getOpponent(state, eliminated!.id);
-    return appendLog({ ...state, phase: 'FINISHED', winnerIds: [winner.id] }, { type: 'GAME_WON', winnerId: winner.id });
+    return appendLog(
+      { ...state, phase: 'FINISHED', winnerIds: [winner.id], status: 'FINISHED' },
+      { type: 'GAME_WON', winnerId: winner.id },
+    );
   }
 
   const roundOutcome = lastRoundResolvedEntry(state);

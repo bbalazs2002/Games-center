@@ -4,7 +4,7 @@ import { Quaternion, Vector3 } from 'three';
 import type { GameTransport } from '../../../core/transport/GameTransport';
 import { LocalGameTransport } from '../../../core/transport/LocalGameTransport';
 import { useGameTransport } from '../../../core/transport/useGameTransport';
-import { useLocalGameLogger } from '../../../core/transport/useLocalGameLogger';
+import { useLocalSessionPersistence } from '../../../core/transport/useLocalSessionPersistence';
 import { cloneWithTint } from '../../../renderers/models/materialTint';
 import { useGLTFScene } from '../../../renderers/models/useGLTFScene';
 import { LoopTrackBoard3D, type LoopTrackSpace, type LoopTrackToken } from '../../../renderers/loop-track-3d/LoopTrackBoard3D';
@@ -13,6 +13,7 @@ import { LocalGameControls } from '../../../ui-kit/LocalGameControls';
 import { Modal } from '../../../ui-kit/Modal';
 import { useReportFeedbackContext } from '../../../ui-kit/useFeedbackContext';
 import { useGameTheme } from '../../../shell/useGameTheme';
+import { isFinished } from '@shared/core/gameCompletion';
 import type { GazdalkodjOkosanAction } from '@shared/games/gazdalkodjOkosan/engine/actions';
 import { FURNITURE_CATALOG, ALL_FURNITURE_ITEMS } from '@shared/games/gazdalkodjOkosan/engine/furnitureCatalog';
 import { createInitialState } from '@shared/games/gazdalkodjOkosan/engine/initialState';
@@ -616,12 +617,12 @@ export function GazdalkodjOkosanGamePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
-  const loggedLocalTransport = useLocalGameLogger(localTransport, 'gazdalkodjOkosan');
-  const transport = providedTransport ?? loggedLocalTransport;
+  const transport = providedTransport ?? localTransport;
   const [state, dispatch] = useGameTransport(transport);
   // hotSeatAiSlots is empty in online mode (prop unset), so this is a no-op there.
   useGazdalkodjOkosanHotSeatAi(isLocalMode ? transport : null, hotSeatAiSlots ?? {});
   useReportFeedbackContext('gazdalkodj-okosan', state);
+  useLocalSessionPersistence('gazdalkodj-okosan', isLocalMode, state, isFinished(state));
   const navigate = useNavigate();
 
   const [inspectedPlayerId, setInspectedPlayerId] = useState<PlayerId | null>(null);

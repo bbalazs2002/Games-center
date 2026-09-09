@@ -9,6 +9,7 @@ import type { DamaAction } from '@shared/games/dama/engine/actions';
 import { createInitialState } from '@shared/games/dama/engine/initialState';
 import { reducer } from '@shared/games/dama/engine/reducer';
 import type { DamaState, Player, Position } from '@shared/games/dama/engine/state';
+import { isFinished } from '@shared/core/gameCompletion';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 
 function isPosition(value: unknown): value is Position {
@@ -23,6 +24,7 @@ export class DamaRoom extends GameRoom<DamaState, DamaAction, Player> {
   protected readonly gameType = 'dama';
   protected reducer = reducer;
   protected createInitialState = createInitialState;
+  protected isGameFinished = isFinished;
   private aiDifficulty: DamaAiDifficulty = 'MEDIUM';
   // Updated by computeAiMove whenever it actually runs a search — read by
   // aiMoveDelayMs() for the NEXT move. GameRoom queries aiMoveDelayMs()

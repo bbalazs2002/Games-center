@@ -15,8 +15,8 @@ export function getValidMoves(state: DamaState, from: Position): Position[] {
 }
 
 export function getWinner(state: DamaState): Player | null {
-  if (state.status === 'LIGHT_WON') return 'LIGHT';
-  if (state.status === 'DARK_WON') return 'DARK';
+  if (state.outcome === 'LIGHT_WON') return 'LIGHT';
+  if (state.outcome === 'DARK_WON') return 'DARK';
   return null;
 }
 

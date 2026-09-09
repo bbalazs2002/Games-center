@@ -1,4 +1,5 @@
 import type { AuthPayload } from '../../auth/jwt';
+import { isFinished } from '@shared/core/gameCompletion';
 import { GameRoom, type GameRoomCreateOptions } from '../../core/GameRoom';
 import { chooseGazdalkodjOkosanAiAction, GAZDALKODJ_OKOSAN_AI_MOVE_DELAY_MS, isGazdalkodjOkosanAiDifficulty, type GazdalkodjOkosanAiDifficulty } from '@shared/games/gazdalkodjOkosan/ai';
 import { rollD6 } from '@shared/games/gazdalkodjOkosan/dice';
@@ -83,6 +84,7 @@ export class GazdalkodjOkosanRoom extends GameRoom<GazdalkodjOkosanState, Gazdal
   // Placeholder until onCreate resolves the real player count from options —
   // onCreate always reassigns this before the base class ever calls it.
   protected createInitialState = () => createGazdalkodjOkosanInitialState(placeholderPlayerNames(MIN_PLAYERS));
+  protected isGameFinished = isFinished;
   private aiDifficulty: GazdalkodjOkosanAiDifficulty = DEFAULT_AI_DIFFICULTY;
 
   async onCreate(options: GameRoomCreateOptions): Promise<void> {

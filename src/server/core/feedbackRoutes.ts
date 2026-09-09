@@ -4,13 +4,13 @@ import { prisma } from '../db/prismaClient';
 
 /**
  * Bug/suggestion reports — see docs/shell-ux-specifikacio.md §4.3. Auth is
- * OPTIONAL here, deliberately DIFFERENT from localGameLogRoutes.ts's strict
- * `verifyToken`-or-401 gate: `/games/:gameId/local` isn't behind
- * RequireAuth, so a hot-seat player reporting a real bug may have no JWT at
- * all — a debug log silently no-op'ing in that case is fine (fire-and-forget,
- * purely diagnostic infra), but silently dropping an actual user report
- * isn't. `userId` is attached only when a token happens to be present AND
- * valid; anything else still gets recorded.
+ * OPTIONAL here — `/games/:gameId/local` isn't behind RequireAuth, so a
+ * hot-seat player reporting a real bug may have no JWT at all, and silently
+ * dropping an actual user report would be wrong. `userId` is attached only
+ * when a token happens to be present AND valid; anything else still gets
+ * recorded. `tryGetUserId` below is the same optional-auth pattern
+ * localSessionRoutes.ts also uses, for the same underlying reason (hot-seat
+ * play has no guaranteed login).
  */
 export const feedbackRouter = Router();
 
