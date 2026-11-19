@@ -1,0 +1,36 @@
+@startuml installer-release-folyamat
+title Games Center — release és telepítés az Installerrel
+
+actor "Fejlesztő" as Dev
+participant "GitHub Actions\n(release.yml)" as CI
+participant "GitHub Releases" as Rel
+actor "Szerver-felhasználó" as Op
+participant "installer.pyz" as Inst
+participant "Docker" as Docker
+participant "games-center\n(konténer)" as App
+participant "Böngésző" as Browser
+
+Dev -> CI : git tag vX.Y.Z
+CI -> CI : lint, tsc, typecheck:server, test
+CI -> CI : tag == package.json verzió?
+CI -> CI : docker build --build-arg APP_VERSION=X.Y.Z
+CI -> CI : docker save | gzip > image.tar.gz
+CI -> CI : migrations.txt, SHA256SUMS
+CI -> Rel : deploy.json, docker-compose.deploy.yml,\nimage.tar.gz, migrations.txt, SHA256SUMS
+
+Op -> Inst : Telepítés / frissítés
+Inst -> Rel : mellékletek letöltése (token, Contents: Read)
+Inst -> Inst : SHA-256 ellenőrzés, compose-áttekintés
+Inst -> Op : BASE_PATH, JWT_SECRET, ENABLED_GAMES, port
+Inst -> Docker : docker load, compose up -d\n(APP_VERSION, PORT, DB_NETWORK)
+Docker -> App : indítás (prisma migrate deploy + seed)
+Inst -> App : GET /api/health
+App --> Inst : {"status":"ok","version":"X.Y.Z"}
+Inst -> Inst : current -> releases/X.Y.Z
+
+== Futásidejű konfiguráció a kliensnek ==
+Browser -> App : GET /game-center/lobby (az Apache levágja az előtagot)
+App -> App : renderIndexHtml: <base href=BASE_PATH>\n+ window.__APP_CONFIG__ (basePath, enabledGames)
+App --> Browser : index.html (no-cache)
+Browser -> App : assets/*.js (relatív, <base> alapján)
+@enduml

@@ -39,7 +39,7 @@ Kulcsok elhelyezése (a nyilvános kulcsokat Claude adja meg — lásd lent — 
 
 ```bash
 sudo -u claude-ops mkdir -p ~claude-ops/.ssh
-echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBzj2AlZFS2cDA1N5nFkoSBPuwm0ZueN4F7q7assmuT9 games-center-deploy" | sudo -u claude-ops tee ~claude-ops/.ssh/authorized_keys > /dev/null
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBzj2AlZFS2cDA1N5nFkoSBPuwm0ZueN4F7q7assmuT9 games-center-claude-ops" | sudo -u claude-ops tee ~claude-ops/.ssh/authorized_keys > /dev/null
 sudo chmod 700 ~claude-ops/.ssh
 sudo chmod 600 ~claude-ops/.ssh/authorized_keys
 
