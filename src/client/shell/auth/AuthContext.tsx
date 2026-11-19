@@ -1,9 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { DEFAULT_SERVER_URL } from '../../core/serverUrl';
+import { SERVER_URL as API_BASE_URL } from '../../core/serverUrl';
 import { AuthContext, type AuthState } from './useAuth';
 
 const STORAGE_KEY = 'games-center:auth';
-const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? DEFAULT_SERVER_URL;
 
 function loadStoredAuth(): AuthState | null {
   const raw = localStorage.getItem(STORAGE_KEY);

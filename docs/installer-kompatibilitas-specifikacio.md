@@ -1,6 +1,6 @@
 # Installer-kompatibilitás — Specifikáció (B út: futásidejű konfiguráció)
 
-**Státusz:** TERV, jóváhagyásra vár — kód még nem készült. Az Installer 0.2.0 állapotához igazítva (2026-11-19): a volume-kezelés és a `{basePath}` helyőrző már megvalósult az Installerben, lásd 7–8. szakasz.
+**Státusz:** 2–5. lépés (futásidejű konfiguráció, szerver, kliens, helyi ellenőrzés) KÉSZ 2026-11-19; a 6–8. lépés (Dockerfile, release-artefaktok, próba-release, átállás) hátra van. Az Installer 0.2.0 állapotához igazítva (2026-11-19): a volume-kezelés és a `{basePath}` helyőrző már megvalósult az Installerben, lásd 7–8. szakasz.
 **Dátum:** 2026-11-19
 **Kapcsolódik:** [deployment-specifikacio.md](./deployment-specifikacio.md) (a mai SSH+build-a-szerveren deploy, amit ez kiváltana), [deployment-kezi-utmutato.md](./deployment-kezi-utmutato.md), az Installer repó (`bbalazs2002/Installer`) `docs/release-contract.md`-je.
 **Diagram:** [installer-release-folyamat.puml](./diagrams/installer-release-folyamat.puml)

@@ -1,4 +1,6 @@
 import type { ComponentType } from 'react';
+import { isGameEnabled } from '@shared/core/appConfig';
+import { APP_CONFIG } from '../core/appConfig';
 import { assetUrl } from '../core/assetUrl';
 
 export interface GameOnlineOptions {
@@ -99,24 +101,16 @@ const ALL_GAMES: GameDescriptor[] = [
 
 /**
  * Production deploys expose only the games that are actually beta-ready
- * (e.g. `ENABLED_GAMES=dama,hotel` — see docs/deployment-specifikacio.md §4)
- * via a comma-separated, build-time `VITE_ENABLED_GAMES` (bridged from the
- * plain `ENABLED_GAMES` env var by `vite.config.ts`, so both the client and
- * the server read the same single source of truth without duplicating the
- * value under two different names). Unset/empty — the default for local dev
- * and CI — means every game is enabled, so `npm run dev`/`vitest` behavior
- * never changes unless a deploy explicitly opts into restricting it.
+ * (e.g. `ENABLED_GAMES=dama,hotel`, see docs/deployment-specifikacio.md §4).
+ * The list is a RUNTIME value now: the server reads `ENABLED_GAMES` and
+ * injects it into the page (`APP_CONFIG.enabledGames`), so the client and the
+ * server share one source of truth without any build-time bridging. `null` —
+ * the default for local dev and CI — means every game is enabled, so
+ * `npm run dev`/`vitest` behavior never changes unless a deploy explicitly
+ * opts into restricting it.
  */
 function filterEnabledGames(games: GameDescriptor[]): GameDescriptor[] {
-  const raw: string = import.meta.env.VITE_ENABLED_GAMES;
-  if (!raw) return games;
-  const enabledIds = new Set(
-    raw
-      .split(',')
-      .map((id: string) => id.trim())
-      .filter(Boolean),
-  );
-  return games.filter((game) => enabledIds.has(game.id));
+  return games.filter((game) => isGameEnabled(APP_CONFIG.enabledGames, game.id));
 }
 
 export const GAMES_REGISTRY: GameDescriptor[] = filterEnabledGames(ALL_GAMES);

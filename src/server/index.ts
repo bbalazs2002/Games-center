@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,8 +7,11 @@ import { WebSocketTransport } from '@colyseus/ws-transport';
 import { LobbyRoom, Server as ColyseusServer } from 'colyseus';
 import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { isGameEnabled as isGameInList, parseBasePath, parseEnabledGames } from '@shared/core/appConfig';
 import { authRouter } from './auth/authRoutes';
 import { feedbackRouter } from './core/feedbackRoutes';
+import { renderIndexHtml } from './core/clientShell';
+import { createHealthRouter, resolveAppVersion } from './core/healthRoutes';
 import { localSessionRouter } from './core/localSessionRoutes';
 import { DamaRoom } from './games/dama/DamaRoom';
 import { GazdalkodjOkosanRoom } from './games/gazdalkodjOkosan/GazdalkodjOkosanRoom';
@@ -17,18 +20,18 @@ import { HotelRoom } from './games/hotel/HotelRoom';
 import { RamsesRoom } from './games/ramses/RamsesRoom';
 
 /**
- * Same single source of truth as the client's `gamesRegistry.ts` filter (see
- * docs/deployment-specifikacio.md §4) — unset/empty means every game stays
- * registered, so local dev/CI behavior never changes. Filtering HERE (not
- * just hiding the menu entry client-side) means a disabled game's Colyseus
- * room genuinely can't be joined/created — no room handler is registered for
- * it at all, not just hard to find.
+ * Runtime configuration — the same two values reach the client through the injected
+ * `window.__APP_CONFIG__` (see docs/installer-kompatibilitas-specifikacio.md §3.1), so one image
+ * serves any sub-path and any game set. `ENABLED_GAMES` unset/empty means every game stays
+ * registered, so local dev/CI behavior never changes. Filtering HERE (not just hiding the menu
+ * entry client-side) means a disabled game's Colyseus room genuinely can't be joined/created —
+ * no room handler is registered for it at all. A malformed `BASE_PATH` throws, so the server
+ * refuses to start instead of serving a broken client.
  */
-const enabledGames = process.env.ENABLED_GAMES?.split(',')
-  .map((id) => id.trim())
-  .filter(Boolean);
+const enabledGames = parseEnabledGames(process.env.ENABLED_GAMES);
+const basePath = parseBasePath(process.env.BASE_PATH);
 function isGameEnabled(id: string): boolean {
-  return !enabledGames || enabledGames.includes(id);
+  return isGameInList(enabledGames, id);
 }
 
 const app = express();
@@ -37,22 +40,31 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/local-sessions', localSessionRouter);
 app.use('/api/feedback', feedbackRouter);
+app.use('/api/health', createHealthRouter(resolveAppVersion()));
 
 /**
  * Serves the built client (see docs/deployment-specifikacio.md §5) — a
  * no-op under local dev/CI, where `dist/` is never built and the Vite dev
- * server handles the client on its own port instead. The SPA fallback uses
- * a RegExp (not a bare `'*'` string) so it unambiguously excludes `/api/*`
- * regardless of the installed Express/path-to-regexp version's wildcard
- * quirks — any other GET resolves to `index.html`, letting React Router
- * handle the actual path client-side.
+ * server handles the client on its own port instead. `index.html` is NEVER
+ * served raw: it is rendered once at startup with the runtime config
+ * injected (`renderIndexHtml`), hence `index: false` on the static handler.
+ * The SPA fallback uses a RegExp (not a bare `'*'` string) so it
+ * unambiguously excludes `/api/*` regardless of the installed
+ * Express/path-to-regexp version's wildcard quirks — any other GET resolves
+ * to the rendered page, letting React Router handle the actual path
+ * client-side. The Apache proxy strips the sub-path before it reaches here.
  */
 const distDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../dist');
 const distIndexHtml = path.join(distDir, 'index.html');
 if (existsSync(distIndexHtml)) {
-  app.use(express.static(distDir));
+  const renderedIndex = renderIndexHtml(readFileSync(distIndexHtml, 'utf8'), {
+    basePath,
+    enabledGames,
+  });
+  app.use(express.static(distDir, { index: false }));
   app.get(/^(?!\/api).*/, (_req, res) => {
-    res.sendFile(distIndexHtml);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.type('html').send(renderedIndex);
   });
 }
 

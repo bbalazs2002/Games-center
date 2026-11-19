@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '../../shell/auth/useAuth';
-import { DEFAULT_SERVER_URL } from '../serverUrl';
+import { SERVER_URL as API_BASE_URL } from '../serverUrl';
 import { generateUuid } from '../uuid';
 
-const API_BASE_URL = import.meta.env.VITE_SERVER_URL ?? DEFAULT_SERVER_URL;
 const DEBOUNCE_MS = 2000;
 
 /**

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
+import { APP_CONFIG } from '../core/appConfig';
 import { LoadingScreen } from '../ui-kit/LoadingScreen';
 import { LoginPage } from './auth/LoginPage';
 import { RequireAuth } from './auth/RequireAuth';
@@ -23,12 +24,11 @@ const HotelModelViewerPage = lazy(() => import('../games/hotel/ui/HotelModelView
 // Debug-only raw .glb inspector — see docs/gazdalkodj-okosan-0c-vizual-specifikacio.md.
 const GazdalkodjOkosanModelViewerPage = lazy(() => import('../games/gazdalkodjOkosan/ui/GazdalkodjOkosanModelViewerPage'));
 
-// Vite's BASE_URL always mirrors vite.config.ts's `base` (build-time
-// VITE_BASE_PATH, e.g. "/game-center/" in production — see
-// docs/deployment-specifikacio.md §8) and always ends in "/", but
-// react-router's basename wants no trailing slash — `undefined` for the
-// default root deploy keeps local dev/CI's URLs exactly as before.
-const BASENAME = import.meta.env.BASE_URL === '/' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '');
+// The runtime sub-path injected by the server (see src/client/core/appConfig.ts and
+// docs/installer-kompatibilitas-specifikacio.md §3.1) always ends in "/", but react-router's
+// basename wants no trailing slash — `undefined` for the default root deploy keeps local
+// dev/CI's URLs exactly as before.
+const BASENAME = APP_CONFIG.basePath === '/' ? undefined : APP_CONFIG.basePath.replace(/\/$/, '');
 
 export const router = createBrowserRouter([
   {
